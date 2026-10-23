@@ -1,0 +1,7 @@
+# Cloudflare Pages redirects
+# Docs: https://developers.cloudflare.com/pages/configuration/redirects/
+# NOTE: Pages pretty-URLs already 301s /jab.html -> /jab and serves it,
+# so no per-page rules are needed here.
+
+# Avoid duplicate content between /index.html and /
+/index.html    /    301

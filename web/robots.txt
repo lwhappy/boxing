@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# 3D assets and audio must stay crawlable: the demo pages need them to render.
+Allow: /media/
+Allow: /assets/
+Allow: /vendor/
+
+Sitemap: https://silentjab.com/sitemap.xml

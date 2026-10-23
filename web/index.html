@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Basic Boxing Moves &amp; Combinations — Learn Every Punch | SilentJab</title>
+<meta name="description" content="Learn basic boxing moves and combinations with frame-by-frame 3D demos: jab, cross, hook, uppercut and more. Technique, timing, footwork and the mistakes to avoid." />
+<meta name="keywords" content="basic boxing moves, boxing combinations, how to throw a jab, jab cross, boxing techniques, boxing basics, boxing footwork" />
+<link rel="canonical" href="https://silentjab.com/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Basic Boxing Moves & Combinations — Learn Every Punch" />
+<meta property="og:description" content="Learn basic boxing moves and combinations with frame-by-frame 3D demos: jab, cross, hook, uppercut and more." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "SilentJab",
+  "url": "https://silentjab.com/",
+  "description": "Basic boxing moves and combinations, explained with interactive 3D demos.",
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Basic Boxing Moves & Combinations",
+  "hasPart": [
+    { "@type": "WebPage", "name": "How to Throw a Jab", "url": "https://silentjab.com/jab.html" },
+    { "@type": "WebPage", "name": "Jab + Cross (1-2)", "url": "https://silentjab.com/jab-cross.html" }
+  ]
+}
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#moves">Moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid">
+
+      <!-- Left: 3D stage (canvas + action buttons above it) -->
+      <div class="stage hero-stage" id="demo" aria-label="3D demo area">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Play an action" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: copy -->
+      <div class="hero-copy">
+        <div class="kicker">Learn · Watch · Repeat</div>
+        <h1>Basic boxing moves <em>&amp; combinations</em></h1>
+        <p>
+          Every punch broken down the same way: stance and mechanics first, then the 3D demo where you can
+          orbit the camera and throw the shot yourself. Start with the jab, put it together with the cross,
+          and build the rest of your arsenal from there.
+        </p>
+        <div class="quick">
+          <span class="chip">How to throw a jab</span>
+          <span class="chip">Jab + cross (1-2)</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section" id="moves">
+    <div class="section-head">
+      <div>
+        <h2>Moves &amp; combinations</h2>
+        <p>Each card opens a standalone 3D demo: press the buttons, watch the punch land, and read the technique notes beside the fighters.</p>
+      </div>
+      <div class="count">02 demos</div>
+    </div>
+
+    <div class="grid">
+
+      <a class="card" href="./jab.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="12" r="4"/>
+            <path d="M12 12h8"/>
+            <path d="M17 9l3 3-3 3"/>
+          </svg>
+        </span>
+        <h3>Jab <span class="arrow">→</span></h3>
+        <p>The lead-hand straight. Fastest punch you own: measures distance, blinds the guard, and gets back before the counter arrives.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>Lead hand · basics</span></div>
+      </a>
+
+      <a class="card" href="./jab-cross.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+          </svg>
+        </span>
+        <h3>Jab + Cross <span class="arrow">→</span></h3>
+        <p>The one-two. The jab occupies the guard, the rear hand comes through the gap — the first combination every boxer learns.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>1-2 · combination</span></div>
+      </a>
+
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <span>© 2026 SilentJab — technique reference for striking sports.</span>
+    <span><a href="#moves">Moves</a></span>
+  </footer>
+
+</main>
+
+<script type="module" src="./assets/home-stage.js"></script>
+</body>
+</html>

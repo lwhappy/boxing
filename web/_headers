@@ -1,0 +1,32 @@
+# Cloudflare Pages custom headers
+# Docs: https://developers.cloudflare.com/pages/configuration/headers/
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# three.js + addons: content-hashed, cache forever
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 3D models & audio: big files, cache 30 days
+/media/*
+  Cache-Control: public, max-age=2592000
+
+# css/js: cache 7 days
+/assets/*
+  Cache-Control: public, max-age=604800
+
+# always revalidate HTML so new deploys show up immediately
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# AdSense root file: refresh hourly
+/ads.txt
+  Cache-Control: public, max-age=3600
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=3600

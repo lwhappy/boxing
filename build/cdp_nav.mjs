@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+const PORT = process.env.CDP_PORT || '9222';
+const URL_ = process.env.NAV_URL || process.argv[2];
+const WAIT = Number(process.env.WAIT_MS || 12000);
+const ver = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
+const ws = new WebSocket(ver.webSocketDebuggerUrl);
+let idc = 0; const pending = new Map();
+const send = (method, params = {}, sessionId) => { const id = ++idc; const msg = { id, method, params }; if (sessionId) msg.sessionId = sessionId; ws.send(JSON.stringify(msg)); return new Promise((res, rej) => pending.set(id, { res, rej })); };
+ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { const { res, rej } = pending.get(m.id); pending.delete(m.id); m.error ? rej(new Error(JSON.stringify(m.error))) : res(m.result); } };
+ws.onopen = async () => {
+  const { targetInfos } = await send('Target.getTargets');
+  const t = targetInfos.find(x => x.type === 'page');
+  const sid = (await send('Target.attachToTarget', { targetId: t.targetId, flatten: true })).sessionId;
+  await send('Runtime.enable', {}, sid); await send('Page.enable', {}, sid);
+  await send('Page.navigate', { url: URL_ }, sid);
+  await new Promise(r => setTimeout(r, WAIT));
+  const r = await send('Runtime.evaluate', { expression: `JSON.stringify({href:location.href.slice(0,90),ready:document.readyState,title:document.title,text:(document.body?document.body.innerText:'').replace(/\\s+/g,' ').slice(0,400)})`, returnByValue: true }, sid);
+  console.log(r.result.value);
+  process.exit(0);
+};

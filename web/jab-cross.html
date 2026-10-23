@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Jab + Cross (1-2) — Boxing Combination Explained | SilentJab</title>
+<meta name="description" content="The one-two: the jab blinds, the cross lands. Watch the 3D combo demo, then read the timing, weight transfer, guard and recovery notes that make the combination work." />
+<link rel="canonical" href="https://silentjab.com/jab-cross.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Jab + Cross (1-2) — Boxing Combination Explained | SilentJab" />
+<meta property="og:description" content="The one-two: the jab blinds, the cross lands. Watch the 3D combo demo, then read the timing, weight transfer, guard and recovery notes that make the combination work." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Jab + Cross (1-2) — Boxing Combination Explained | SilentJab",
+  "description": "The one-two: the jab blinds, the cross lands. Watch the 3D combo demo, then read the timing, weight transfer, guard and recovery notes that make the combination work.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Jab + Cross", "item": "https://silentjab.com/jab-cross.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/boxing.css" />
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="hud">
+    <div class="top">
+      <div class="brand">
+        <div class="eyebrow"><a href="./index.html">SilentJab</a><span class="sep">/</span>3D technique demo</div>
+        <h1>Jab + Cross <span>/ Boxing Combination</span></h1>
+        <p class="lede">Boxing’s first combination and still its best: the jab occupies the guard, the rear hand comes through the gap. Two punches, one rhythm — watch both land in the 3D demo.</p>
+      </div>
+    </div>
+
+    <div class="hint">
+      <span><kbd>drag</kbd> orbit</span>
+      <span><kbd>scroll</kbd> zoom</span>
+      <span><kbd>R</kbd> reset view</span>
+    </div>
+  </div>
+
+  <!-- Attack buttons: drawn above both fighters (positioned by CSS, outside HUD flow) -->
+  <div class="attackbar" id="attackbar" hidden></div>
+
+  <!-- Side panel: written as static HTML so crawlers (and no-WebGL visitors) get the
+       technique text; the engine only swaps it when another attack is selected. -->
+  <aside class="brief show" id="brief">
+    <div class="b-kicker">Combo 01 / One-two</div>
+    <div class="b-title">Jab + Cross</div>
+    <section class="b-sec">
+      <h4>Action</h4>
+      <p>The classic one-two, and it is driven from the floor up. First the lead jab snaps out from the guard with a small step-in, the lead shoulder high, the rear hand at the chin. Before the jab is fully back, the rear foot pivots on the ball, the rear hip turns through, the rear shoulder comes around and the rear fist travels on a straight line past your own chin — that crossing line over the body is what gives the cross its name. The jab retracts while the cross extends: the two punches overlap, one rhythm, and both hands come home to the guard before you re-set.</p>
+    </section>
+    <section class="b-sec">
+      <h4>When to use</h4>
+      <p>The first combination every fighter learns and the one that still lands at world level. Throw it when you need to close distance behind a blind, when the opponent reacts to the jab with a parry or a flinch, when she is against the ropes, or as the opening two beats of a longer combination. In this demo the defender takes the combo on her guard and is rocked backward, then both fighters return to idle.</p>
+    </section>
+    <section class="b-sec">
+      <h4>Advantages</h4>
+      <p>Two chances instead of one: the jab steals a beat of vision so the slower, heavier cross arrives unseen, and the cross carries the whole body — rear leg, hip and shoulder — so it is the hardest straight punch you have. The rhythm is easy to extend into a three or four-punch combination, and both punches keep you in stance and able to move after them.</p>
+    </section>
+    <section class="b-sec">
+      <h4>Limits</h4>
+      <p>Two punches mean two openings. If the jab does not occupy the guard, the cross becomes a wide, telegraphed shot that a counter-right beats to the target. The big hip rotation squares your shoulders and briefly takes you off your base, so the rear hand must come back to the chin — a dropped rear hand after the cross is the single most common knockout you will eat.</p>
+    </section>
+  </aside>
+
+  <!-- Hit labels (projected from world coordinates) -->
+  <div class="floaters" id="floaters"></div>
+
+  <!-- Sound toggle: off by default -->
+  <button class="sound" id="sound" type="button" aria-pressed="false" title="Toggle hit sound">
+    <span class="bars"><i></i><i></i><i></i><i></i></span>
+    <span id="sound-label">Sound off</span>
+  </button>
+
+  <div id="loader">
+    <div class="ring"></div>
+    <div class="load-text" id="load-text">Loading model</div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <div id="error"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+
+<!-- Scene config: this page runs a single scene, the engine reads window.SCENE -->
+<script>
+const LONG_JAB_HIT_T = 0.567;   // long-jab impact time (Blender sound cue: frame 17 / 30 fps)
+window.SCENE = {
+  id: 'jab-cross',
+  label: 'Jab + Cross',
+  glb: './media/glb/2.glb',
+  // Defender only idles; the hit reaction (black-backward) plays out and returns to idle.
+  // Neither fighter slides or freezes.
+  blackCycle: ['black-idle'],
+  hits: {
+    'red-jab-cross': [
+      {
+        // Frame 15: farthest point of the lead jab. The anchor is bound to the lead index
+        // bone (so it follows the glove), with the idle phase synced to 0.4 at launch and a
+        // -0.017 static offset for the defender: horizontal residual < 2 cm.
+        // On impact she starts the low block immediately, then rolls into the backward clip.
+        t: 15 / 30,
+        url: './media/audio/punch-impact.wav',
+        gain: 0.85, shake: 0.012,
+        anchor: 'black-hit-glove-center',
+        label: 'BLOCK', tone: 'block',
+        fx: { color: '#ffd9a0', size: 0.38, life: 0.4 },
+        // Hard cut into the reaction on the same frame (fade 0, no 80 ms cross-fade).
+        // The block runs at 1.5x: by the time the second punch lands (frame 21, 0.2 s later)
+        // her glove centre sits exactly in front of the fist (at 1x the block was too shallow
+        // and the anchor sat too high, so the punch looked like it hit her head).
+        react: 'black-low-block', reactFade: 0, reactSpeed: 1.5
+      },
+      {
+        // Frame 21: the rear hand meets the centre of her raised glove (measured deviation
+        // 5.8 cm, mostly vertical, while the block is running).
+        // Does not interrupt the block — the backward clip is queued behind it.
+        t: 21 / 30,
+        url: './media/audio/punch-impact.wav',
+        gain: 0.95, shake: 0.02,
+        anchor: 'black-hit-glove-center',
+        label: 'BLOCK', tone: 'block',
+        fx: { color: '#ffd9a0', size: 0.45, life: 0.45 },
+        react: 'black-backward', appendReact: true, reactFade: 0, reactSpeed: 1.4
+      }
+    ],
+    // Body variation: the contact frame for the rear fist on the stomach anchor was found
+    // with the calibration probe; black-hit-stomach returns to idle when it finishes.
+    'red-jab-cross-body': [
+      {
+        // Frame 21: rear fist closest to the stomach anchor (measured 0.081, horizontal
+        // residual 3 cm, visually touching)
+        t: 21 / 30,
+        url: './media/audio/punch-impact.wav',
+        gain: 0.95, shake: 0.02,
+        anchor: 'back-hit-stomach',
+        label: 'HIT', tone: 'hit',
+        fx: { color: '#ffd9a0', size: 0.45, life: 0.45 },
+        react: 'black-hit-stomach'
+      }
+    ]
+  },
+  // Move labels: each punch prints its name above the attacker's head and floats up.
+  // Timed to the impact frames (f15 / f21); both combos share the same rhythm.
+  callouts: {
+    'red-jab-cross': [
+      { t: 15 / 30, label: 'Jab' },
+      { t: 21 / 30, label: 'Cross' }
+    ],
+    'red-jab-cross-body': [
+      { t: 15 / 30, label: 'Jab' },
+      { t: 21 / 30, label: 'Cross' }
+    ]
+  },
+  // At launch the defender's idle phase is synced to 0.4 (found by scanning the whole
+  // 0-2.23 s phase space: it puts the glove in the friendliest place at both impact frames,
+  // f15 and f21, with horizontal residual < 2 cm). A single -0.017 static offset removes
+  // the rest, so the contact point is reproducible on every run.
+  blackPreSlide: { step: -0.017, dur: 0.2 },
+  attacks: [
+    {
+      id: 'jab-cross-head',
+      label: 'Hit Head',
+      sub: 'one-two combo · 2.17s',
+      clip: 'red-jab-cross',
+      brief: {
+        kicker: 'Combo 01 / One-two',
+        title: 'Jab + Cross',
+        meta: [
+          ['Clip', 'red-jab-cross'],
+          ['Duration', '2.17 s · 65 frames'],
+          ['Impacts', 'frame 14 (jab) · frame 20 (cross)'],
+          ['Reaction', 'black-backward — rocked, then back to idle']
+        ],
+        sections: [
+          ['Action', 'The classic one-two, and it is driven from the floor up. First the lead jab snaps out from the guard with a small step-in, the lead shoulder high, the rear hand at the chin. Before the jab is fully back, the rear foot pivots on the ball, the rear hip turns through, the rear shoulder comes around and the rear fist travels on a straight line past your own chin — that crossing line over the body is what gives the cross its name. The jab retracts while the cross extends: the two punches overlap, one rhythm, and both hands come home to the guard before you re-set.'],
+          ['When to use', 'The first combination every fighter learns and the one that still lands at world level. Throw it when you need to close distance behind a blind, when the opponent reacts to the jab with a parry or a flinch, when she is against the ropes, or as the opening two beats of a longer combination. In this demo the defender takes the combo on her guard and is rocked backward, then both fighters return to idle.'],
+          ['Advantages', 'Two chances instead of one: the jab steals a beat of vision so the slower, heavier cross arrives unseen, and the cross carries the whole body — rear leg, hip and shoulder — so it is the hardest straight punch you have. The rhythm is easy to extend into a three or four-punch combination, and both punches keep you in stance and able to move after them.'],
+          ['Limits', 'Two punches mean two openings. If the jab does not occupy the guard, the cross becomes a wide, telegraphed shot that a counter-right beats to the target. The big hip rotation squares your shoulders and briefly takes you off your base, so the rear hand must come back to the chin — a dropped rear hand after the cross is the single most common knockout you will eat.']
+        ]
+      }
+    },
+    {
+      id: 'jab-cross-body',
+      label: 'Hit Body',
+      sub: 'body shot · 2.23s',
+      clip: 'red-jab-cross-body',
+      brief: {
+        kicker: 'Combo 02 / Body shot',
+        title: 'Jab + Cross (Body)',
+        meta: [
+          ['Clip', 'red-jab-cross-body'],
+          ['Duration', '2.23 s'],
+          ['Impact', 'right fist → stomach'],
+          ['Reaction', 'black-hit-stomach — doubles over, then back to idle']
+        ],
+        sections: [
+          ['Action', 'The same one-two rhythm, but the second punch goes downstairs. The jab still goes to the head. As it retracts, drop your level instead of standing tall: bend both knees, sit down on the shot, tilt the torso slightly to the rear-hand side, and drive the rear fist down-and-forward into the opponent\'s stomach — knuckles turned so the first two land, elbow tucked, the punch coming up from the floor rather than swinging down from the shoulder. The head moves off the centre line while you are down there.'],
+          ['When to use', 'Whenever the guard is high. A body shot punishes an opponent who covers her face: while she is protecting the head, the rear hand slips underneath and lands on the stomach. Also useful against a taller fighter who leans back to avoid head shots, or as a change-up after two or three head combinations so she stops expecting it.'],
+          ['Advantages', 'It attacks the part of the body nobody guards well and it hurts more than a head shot — a clean stomach or liver shot doubles the opponent over and takes her legs away, which ends fights without a knockout. It also forces the guard down, which re-opens the head for the next combination.'],
+          ['Limits', 'You have to drop your own level, so your head comes down into uppercut and knee range, and the shot only works at close distance. Recovery is slower than a head shot — you are bent and committed when it lands — so if it misses you are the one out of position. It also scores less with judges than a clean head shot in most scoring systems.']
+        ]
+      }
+    }
+  ],
+  brief: {
+    kicker: 'Scene / One-two',
+    title: 'Jab + Cross',
+    meta: [
+      ['Combo', 'Jab → Cross'],
+      ['Status', 'red-jab-cross · black-backward ready']
+    ],
+    sections: [
+      ['Action', 'The rear-hand straight punch driven from the ground up: push off the rear ball of the foot, pivot that foot and hip through, let the rear shoulder come around and the rear fist travel on a straight line across the body past your own chin. The lead hand stays high because you are momentarily square to the target.'],
+      ['When to use', 'The power shot off the lead: thrown behind the jab as the classic one-two, as a counter when the opponent commits to her own punch, or to punish a dropped guard.'],
+      ['Advantages', 'The most power you get from a straight punch — the force comes from the floor through the rear leg, hip and shoulder rather than the arm, and it arrives on a shorter path than a hook.'],
+      ['Limits', 'The big rotation leaves you square and briefly off balance, so a missed cross is the punch most often countered. It also needs to be set up: thrown cold from the outside it is easy to see coming.']
+    ]
+  }
+};
+</script>
+<script type="module" src="./assets/boxing.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# WorkBuddy workspace data
+.workbuddy/
+
+# Heavy assets: 5.2 GB FBX animation library + 1.1 GB Blender sources
+# (individual .blend files exceed GitHub's 100 MB limit; keep them local)
+animations-black/
+animations-red/
+resources/
+_archive/
+
+# Node
+node_modules/

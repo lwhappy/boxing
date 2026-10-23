@@ -1,0 +1,938 @@
+[
+ {
+  "file": "Big Hit To Head - Receiving A Big Hit From A Left Punch.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23708
+ },
+ {
+  "file": "Big Hit To Head - Receiving A Big Hit From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Big Hit To Head - Receiving A Big Hit From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23687
+ },
+ {
+  "file": "Big Kidney Hit - Receiving A Big Hit In The Kidneys.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23706
+ },
+ {
+  "file": "Big Rib Hit - Receiving A Big Hit In The Ribs.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23706
+ },
+ {
+  "file": "Big Side Hit - Receiving A Big Hit In The Side.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23699
+ },
+ {
+  "file": "Big Stomach Hit - Receiving A Big Hit In The Stomach.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23697
+ },
+ {
+  "file": "Body Jab Cross - Boxing Body Jab Cross Long.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Body Jab Cross - Boxing Body Jab Cross Medium.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23733
+ },
+ {
+  "file": "Body Jab Cross - Boxing Body Jab Cross Short.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23693
+ },
+ {
+  "file": "Boxing - Back Hand Cross.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23735
+ },
+ {
+  "file": "Boxing - Body Punch To The Knee.fbx",
+  "mb": 23.3,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23823
+ },
+ {
+  "file": "Boxing - Boxing Back Hand Hook.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23736
+ },
+ {
+  "file": "Boxing - Boxing Back Hand Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Boxing - Boxing Idle.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Boxing - Boxing Illegal Knee.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23752
+ },
+ {
+  "file": "Boxing - Boxing Jab Cross Combo.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23733
+ },
+ {
+  "file": "Boxing - Boxing Lead Hand Hook.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23727
+ },
+ {
+  "file": "Boxing - Boxing Lead Hand Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Boxing - Boxing Leading Hand Jab.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23713
+ },
+ {
+  "file": "Center Block - High Center Block.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23724
+ },
+ {
+  "file": "Center Block - Low Center Block.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23703
+ },
+ {
+  "file": "Combo Punch - Eight Punch Combo.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23773
+ },
+ {
+  "file": "Defeat - Defeat From A Boxing Loss.fbx",
+  "mb": 23.3,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23824
+ },
+ {
+  "file": "Dodging - Boxing Dodge Advance.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23745
+ },
+ {
+  "file": "Dodging - Boxing Dodge Retreat.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23740
+ },
+ {
+  "file": "Elbow Punch - Illegal Elbow Rear Arm With Forward Step.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23713
+ },
+ {
+  "file": "Entry - Entering From Ring Corner.fbx",
+  "mb": 23.3,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23820
+ },
+ {
+  "file": "Entry - Entering Ring.fbx",
+  "mb": 23.4,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23963
+ },
+ {
+  "file": "Fighting Idle - Male Fight Idle Boxing Stance.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23797
+ },
+ {
+  "file": "Head Hit - Receiving A Big Hit To The Head From A Left Punch.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23708
+ },
+ {
+  "file": "Head Hit - Receiving A Big Hit To The Head From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Head Hit - Receiving A Big Hit To The Head From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23695
+ },
+ {
+  "file": "Head Hit - Receiving A Light Hit To The Head From A Left Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23676
+ },
+ {
+  "file": "Head Hit - Receiving A Light Hit To The Head From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23668
+ },
+ {
+  "file": "Head Hit - Receiving A Light Hit To The Head From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23676
+ },
+ {
+  "file": "Head Hit - Receiving A Medium Hit To The Head From A Left Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23686
+ },
+ {
+  "file": "Head Hit - Receiving A Medium Hit To The Head From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23680
+ },
+ {
+  "file": "Head Hit - Receiving A Medium Hit To The Head From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23685
+ },
+ {
+  "file": "Headbutt - Illegal Headbutt With Step.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23733
+ },
+ {
+  "file": "Hit Reaction - Receive Punch To The Body.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23716
+ },
+ {
+  "file": "Hit To Body - Receiving A Body Hit By A Right Uppercut.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23683
+ },
+ {
+  "file": "Hit To Body - Receiving A Body Hit By A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23692
+ },
+ {
+  "file": "Hit To Body - Receiving A Hit By An Uppercut To The Body.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Hit To Body - Receiving A Hit To The Body By A Straight.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23692
+ },
+ {
+  "file": "Hit To Body - Receiving A Hit To The Body By A Uppercut.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23684
+ },
+ {
+  "file": "Hook - Long Hook Punch To The Body.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23784
+ },
+ {
+  "file": "Hook - Long Hook Punch To The Head.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23742
+ },
+ {
+  "file": "Hook - Mid Hook Punch To The Body.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23754
+ },
+ {
+  "file": "Hook - Mid Hook Punch To The Head.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23727
+ },
+ {
+  "file": "Hook - Short Hook Punch To The Body.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23734
+ },
+ {
+  "file": "Hook - Short Hook Punch To The Head.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23690
+ },
+ {
+  "file": "Idle - Bouncing Boxing Idle.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Idle - Male Boxing Idle.fbx",
+  "mb": 23.3,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23811
+ },
+ {
+  "file": "Illegal Elbow Punch - Illegal Cross Elbow.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23729
+ },
+ {
+  "file": "Illegal Elbow Punch - Illegal Elbow To The Head.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23742
+ },
+ {
+  "file": "Illegal Elbow Punch - Illegal Elbow Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23729
+ },
+ {
+  "file": "Illegal Headbutt - Illegal Headbutt With Step.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23740
+ },
+ {
+  "file": "Illegal Knee - Boxing Illegal Knee.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23742
+ },
+ {
+  "file": "Illegal Knee - Muay Thai Illegal Knee.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23742
+ },
+ {
+  "file": "Jab Cross - Boxing Jab Cross Long.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23740
+ },
+ {
+  "file": "Jab Cross - Boxing Jab Cross Medium.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23735
+ },
+ {
+  "file": "Jab Cross - Short Jab Cross.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23726
+ },
+ {
+  "file": "Kidney Hit - Receiving A Hit In The Kidneys.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23681
+ },
+ {
+  "file": "Lead Jab - Long Body Jab.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23718
+ },
+ {
+  "file": "Lead Jab - Long Head Jab.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23726
+ },
+ {
+  "file": "Lead Jab - Med Head Jab.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Lead Jab - Mid Body Jab.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23717
+ },
+ {
+  "file": "Lead Jab - Short Body Jab.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23677
+ },
+ {
+  "file": "Lead Jab - Short Head Jab.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23692
+ },
+ {
+  "file": "Left Block - High Left Block.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Left Block - Low Left Block.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23701
+ },
+ {
+  "file": "Left Pivot - High Left Boxing Pivot.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23689
+ },
+ {
+  "file": "Left Pivot - Low Left Boxing Pivot.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23688
+ },
+ {
+  "file": "Light Hit To Head - Receiving A Light Hit From A Left Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23665
+ },
+ {
+  "file": "Light Hit To Head - Receiving A Light Hit From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23663
+ },
+ {
+  "file": "Light Hit To Head - Receiving A Light Hit From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23661
+ },
+ {
+  "file": "Livershot Knockdown - Receiving A Hit To The Liver.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23770
+ },
+ {
+  "file": "Long Left Side Step - Long Left Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23663
+ },
+ {
+  "file": "Long Right Side Step - Long Right Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23665
+ },
+ {
+  "file": "Long Step Forward - Long Boxing Step Forward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23674
+ },
+ {
+  "file": "Medium Hit To Head - Receiving A Medium Hit From A Left Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23677
+ },
+ {
+  "file": "Medium Hit To Head - Receiving A Medium Hit From A Right Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23672
+ },
+ {
+  "file": "Medium Hit To Head - Receiving A Medium Hit From A Straight Punch.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23668
+ },
+ {
+  "file": "Medium Left Side Step - Medium Left Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23665
+ },
+ {
+  "file": "Medium Right Side Step - Medium Right Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23665
+ },
+ {
+  "file": "Medium Step Forward - Medium Boxing Step Forward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23670
+ },
+ {
+  "file": "Punch Combo - Four Punch Combo.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23738
+ },
+ {
+  "file": "Quick Formal Bow - Quick Formal Bow.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23781
+ },
+ {
+  "file": "Quick Informal Bow - Quick Informal Bow.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23784
+ },
+ {
+  "file": "Receive Punch To The Face - Receive Stomach Uppercut.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23695
+ },
+ {
+  "file": "Receive Stomach Uppercut - Receive Stomach Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23710
+ },
+ {
+  "file": "Receive Uppercut To The Face - Receive An Uppercut Punch To The Face.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23693
+ },
+ {
+  "file": "Receiving A Big Uppercut - Getting Rocked By A Big Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23751
+ },
+ {
+  "file": "Receiving An Uppercut - Getting Hit By An Uppercut.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23709
+ },
+ {
+  "file": "Rib Hit - Receiving A Hit In The Ribs.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23674
+ },
+ {
+  "file": "Right Block - High Right Block.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23709
+ },
+ {
+  "file": "Right Block - Low Right Block.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23694
+ },
+ {
+  "file": "Right Pivot - High Right Boxing Pivot.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23672
+ },
+ {
+  "file": "Right Pivot - Low Right Boxing Pivot.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23686
+ },
+ {
+  "file": "Short Left Side Step - Short Left Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23663
+ },
+ {
+  "file": "Short Right Side Step - Short Right Boxing Side Step.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23666
+ },
+ {
+  "file": "Short Step Forward - Short Boxing Step Forward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23674
+ },
+ {
+  "file": "Side Hit - Receiving A Hit In The Side.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23672
+ },
+ {
+  "file": "Speedbag - Punching A Speedbag.fbx",
+  "mb": 23.4,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23934
+ },
+ {
+  "file": "Step Backward - Long Boxing Step Backward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23664
+ },
+ {
+  "file": "Step Backward - Medium Boxing Step Backward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23663
+ },
+ {
+  "file": "Step Backward - Short Boxing Step Backward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23668
+ },
+ {
+  "file": "Stomach Hit - Receiving A Hit In The Stomach.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23684
+ },
+ {
+  "file": "Taunt - Boxing Taunt.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23706
+ },
+ {
+  "file": "Taunt - Taunting Pointing At Wrist.fbx",
+  "mb": 23.2,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23790
+ },
+ {
+  "file": "Victory - Victory From A Boxing Win.fbx",
+  "mb": 23.3,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23809
+ },
+ {
+  "file": "Walking - Boxing Advancing Forward.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23674
+ },
+ {
+  "file": "Walking - Boxing Left Side Step Walk.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23675
+ },
+ {
+  "file": "Walking - Boxing Side Step Walk.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23675
+ },
+ {
+  "file": "Walking Backwards - One Foot At A Time In Combat Pose.fbx",
+  "mb": 23.1,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23666
+ },
+ {
+  "file": "Warming Up - Boxing Warm Up Exercise.fbx",
+  "mb": 23.4,
+  "ver": 7700,
+  "mesh": true,
+  "deformer": true,
+  "kb": 23918
+ }
+]
