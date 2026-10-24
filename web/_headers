@@ -18,8 +18,27 @@
 /assets/*
   Cache-Control: public, max-age=604800
 
-# always revalidate HTML so new deploys show up immediately
-/*.html
+# --- HTML --------------------------------------------------------------
+# Always revalidate HTML so a new deploy shows up immediately.
+#
+# Pages redirects /x.html -> /x and /dir/index.html -> /dir/, so the URL that
+# actually gets served is the extension-less one. Header rules match the
+# REQUEST path, so these have to target the served form.
+#
+# Only ONE splat is allowed per pattern, hence one rule per section instead
+# of a single /*.html catch-all.
+/  Cache-Control: public, max-age=0, must-revalidate
+
+/moves/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/combos/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/training/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/404
   Cache-Control: public, max-age=0, must-revalidate
 
 # AdSense root file: refresh hourly

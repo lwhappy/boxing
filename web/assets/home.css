@@ -151,6 +151,19 @@ a { color: inherit; }
   font-size: clamp(13.5px, 1.15vw, 15.5px);
 }
 
+/* 正文里的内联跳转 */
+.hero p a {
+  color: var(--red);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 116, 52, 0.34);
+  transition: color .18s ease, border-color .18s ease;
+}
+
+.hero p a:hover {
+  color: #ffb08a;
+  border-color: rgba(255, 176, 138, 0.6);
+}
+
 .hero .quick {
   margin-top: 22px;
   display: flex;
@@ -465,6 +478,20 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   color: var(--muted);
   font-size: 13.5px;
   max-width: 56ch;
+}
+
+/* 段落里的内联跳转（“See all moves →”） */
+.section-head p a {
+  color: var(--red);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 116, 52, 0.34);
+  transition: color .18s ease, border-color .18s ease;
+}
+
+.section-head p a:hover {
+  color: #ffb08a;
+  border-color: rgba(255, 176, 138, 0.6);
 }
 
 .section-head .count {

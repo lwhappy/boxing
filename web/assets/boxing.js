@@ -42,11 +42,32 @@ const CHARACTERS = {
 const sceneCfg = window.SCENE;
 if (!sceneCfg) throw new Error('missing window.SCENE — 页面必须先定义场景配置');
 
+/* 资源路径解析：页面里的 window.SCENE 用的是「相对于该页面」的路径
+ * （例如 '../media/glb/2.glb'）。用 document.baseURI 解析，
+ * 这样页面放在 /training/ 等任意目录下都能找到同一份模型和音效。 */
+const ASSET_BASE = document.baseURI;
+function resolveAsset(p) {
+  if (!p || typeof p !== 'string') return p;
+  try { return new URL(p, ASSET_BASE).href; } catch { return p; }
+}
+
 const HIT_SOUNDS = sceneCfg.hits || {};
 const CALLOUTS = sceneCfg.callouts || {};          // clip 名 → [{ t, label }]
 const ATTACKS = sceneCfg.attacks || [];
 const BLACK_CYCLE = sceneCfg.blackCycle || ['black-idle', 'black-taunt'];
 const blackState = { mode: 'cycle', index: 0 };
+
+// 把配置里的模型/音效路径统一解析成绝对地址（就地改写，保证缓存键一致）
+if (sceneCfg.glb) sceneCfg.glb = resolveAsset(sceneCfg.glb);
+for (const list of Object.values(HIT_SOUNDS)) {
+  for (const h of list) {
+    if (!h) continue;
+    if (h.url) h.url = resolveAsset(h.url);
+    if (h.byPhase) {
+      for (const v of Object.values(h.byPhase)) if (v && v.url) v.url = resolveAsset(v.url);
+    }
+  }
+}
 
 const canvas = document.getElementById('scene');
 const loaderEl = document.getElementById('loader');

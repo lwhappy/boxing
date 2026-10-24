@@ -1,7 +1,71 @@
 # Cloudflare Pages redirects
 # Docs: https://developers.cloudflare.com/pages/configuration/redirects/
-# NOTE: Pages pretty-URLs already 301s /jab.html -> /jab and serves it,
-# so no per-page rules are needed here.
+#
+# The site was restructured into three directories (/moves/, /combos/, /training/).
+# Pages' built-in "pretty URLs" would send /jab.html -> /jab, which no longer
+# exists, so every old flat URL gets an explicit 301 to its new home.
+# Explicit rules win over the built-in redirect (redirects run before headers),
+# so the nested .html addresses also get a permanent 301 instead of a 307.
 
-# Avoid duplicate content between /index.html and /
 /index.html    /    301
+/moves    /moves/    301
+/combos    /combos/    301
+/training    /training/    301
+/moves/index.html    /moves/    301
+/combos/index.html    /combos/    301
+/training/index.html    /training/    301
+
+# --- legacy flat URLs -> new nested addresses ---
+/training.html    /training/    301
+/jab.html    /moves/jab    301
+/jab    /moves/jab    301
+/cross.html    /moves/cross    301
+/cross    /moves/cross    301
+/leadhook.html    /moves/leadhook    301
+/leadhook    /moves/leadhook    301
+/rearhook.html    /moves/rearhook    301
+/rearhook    /moves/rearhook    301
+/leaduppercut.html    /moves/leaduppercut    301
+/leaduppercut    /moves/leaduppercut    301
+/rearuppercut.html    /moves/rearuppercut    301
+/rearuppercut    /moves/rearuppercut    301
+/combo_cross_leadhook_cross.html    /combos/combo_cross_leadhook_cross    301
+/combo_cross_leadhook_cross    /combos/combo_cross_leadhook_cross    301
+/combo_idle_jab_cross_leadhook.html    /combos/combo_idle_jab_cross_leadhook    301
+/combo_idle_jab_cross_leadhook    /combos/combo_idle_jab_cross_leadhook    301
+/combo_jab_cross.html    /combos/combo_jab_cross    301
+/combo_jab_cross    /combos/combo_jab_cross    301
+/combo_jab_cross_hook.html    /combos/combo_jab_cross_hook    301
+/combo_jab_cross_hook    /combos/combo_jab_cross_hook    301
+/combo_jab_cross_leadhook_cross.html    /combos/combo_jab_cross_leadhook_cross    301
+/combo_jab_cross_leadhook_cross    /combos/combo_jab_cross_leadhook_cross    301
+/combo_jab_cross_leadhook_cross_dup.html    /combos/combo_jab_cross_leadhook_cross_dup    301
+/combo_jab_cross_leadhook_cross_dup    /combos/combo_jab_cross_leadhook_cross_dup    301
+/combo_jab_cross_leadhook_rearhook.html    /combos/combo_jab_cross_leadhook_rearhook    301
+/combo_jab_cross_leadhook_rearhook    /combos/combo_jab_cross_leadhook_rearhook    301
+/combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
+/combo_jab_cross_leaduppercut    /combos/combo_jab_cross_leaduppercut    301
+/combo_jab_jab_cross.html    /combos/combo_jab_jab_cross    301
+/combo_jab_jab_cross    /combos/combo_jab_jab_cross    301
+/combo_jab_rearuppercut_leadhook.html    /combos/combo_jab_rearuppercut_leadhook    301
+/combo_jab_rearuppercut_leadhook    /combos/combo_jab_rearuppercut_leadhook    301
+
+# --- nested .html -> extension-less (upgrades the built-in 307 to 301) ---
+/moves/jab.html    /moves/jab    301
+/moves/cross.html    /moves/cross    301
+/moves/leadhook.html    /moves/leadhook    301
+/moves/rearhook.html    /moves/rearhook    301
+/moves/leaduppercut.html    /moves/leaduppercut    301
+/moves/rearuppercut.html    /moves/rearuppercut    301
+/combos/combo_cross_leadhook_cross.html    /combos/combo_cross_leadhook_cross    301
+/combos/combo_idle_jab_cross_leadhook.html    /combos/combo_idle_jab_cross_leadhook    301
+/combos/combo_jab_cross.html    /combos/combo_jab_cross    301
+/combos/combo_jab_cross_hook.html    /combos/combo_jab_cross_hook    301
+/combos/combo_jab_cross_leadhook_cross.html    /combos/combo_jab_cross_leadhook_cross    301
+/combos/combo_jab_cross_leadhook_cross_dup.html    /combos/combo_jab_cross_leadhook_cross_dup    301
+/combos/combo_jab_cross_leadhook_rearhook.html    /combos/combo_jab_cross_leadhook_rearhook    301
+/combos/combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
+/combos/combo_jab_jab_cross.html    /combos/combo_jab_jab_cross    301
+/combos/combo_jab_rearuppercut_leadhook.html    /combos/combo_jab_rearuppercut_leadhook    301
+/training/jab.html    /training/jab    301
+/training/jab-cross.html    /training/jab-cross    301

@@ -1,13 +1,17 @@
 /* SilentJab — homepage stage (single character, lightweight action switcher)
- * 模型：./media/glb/index.glb（红方骨架，7 条动画，动作名无前缀）
+ * 模型：media/glb/index.glb（红方骨架，7 条动画，动作名无前缀）
  * 行为：默认循环播 idle；点顶部按钮播对应动作（单次，播完自动淡回 idle）；
  *       支持拖拽环绕 + 滚轮缩放。
+ *
+ * 路径说明：模型路径用 import.meta.url 解析（相对于本模块所在的 assets/ 目录），
+ * 所以首页和 moves/、training/ 下的页面引用的是同一个文件，不会因为多了一级
+ * 目录层级而 404。
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const GLB_URL = './media/glb/index.glb';
+const GLB_URL = new URL('../media/glb/index.glb', import.meta.url).href;
 const IDLE_CLIP = 'idle';
 
 /* 页面可选配置 window.STAGE（不传 = 首页默认形态）：

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Jab — Boxing Punch Explained | SilentJab</title>
+<meta name="description" content="The measuring punch of boxing. Watch the 3D jab and long-jab demo against a live defender, then read the timing, weight transfer, guard and recovery notes that make a jab work." />
+<link rel="canonical" href="https://silentjab.com/training/jab" />
+<meta property="og:url" content="https://silentjab.com/training/jab" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Jab — Boxing Punch Explained | SilentJab" />
+<meta property="og:description" content="The measuring punch of boxing. Watch the 3D jab and long-jab demo against a live defender, then read the timing, weight transfer, guard and recovery notes that make a jab work." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Jab — Boxing Punch Explained | SilentJab",
+  "description": "The measuring punch of boxing. Watch the 3D jab and long-jab demo against a live defender, then read the timing, weight transfer, guard and recovery notes that make a jab work.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Training", "item": "https://silentjab.com/training/" },
+      { "@type": "ListItem", "position": 3, "name": "Jab", "item": "https://silentjab.com/training/jab" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="../assets/boxing.css" />
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="hud">
+    <div class="top">
+      <div class="brand">
+        <div class="eyebrow"><a href="../index.html">SilentJab</a><span class="sep">/</span>3D technique demo</div>
+        <h1>Jab <span id="scene-tag">/ Jab</span></h1>
+        <p class="lede">Boxing's measuring punch. The lead hand goes out to read distance and steal a beat of vision, then comes straight back to the chin. Two versions here: the short jab as a feint, and the long jab thrown at full extension against a live defender.</p>
+      </div>
+      <nav class="mininav" aria-label="Main">
+        <a href="../moves/">Moves</a>
+        <a href="../combos/">Combos</a>
+        <a href="./">Training</a>
+      </nav>
+    </div>
+
+    <div class="hint">
+      <span><kbd>drag</kbd> orbit</span>
+      <span><kbd>scroll</kbd> zoom</span>
+      <span><kbd>R</kbd> reset view</span>
+    </div>
+  </div>
+
+  <!-- Attack buttons: drawn above both fighters (positioned by CSS, outside HUD flow) -->
+  <div class="attackbar" id="attackbar" hidden></div>
+
+  <!-- Side panel: written as static HTML so crawlers (and no-WebGL visitors) get the
+       technique text; the engine only swaps it when another attack is selected. -->
+  <aside class="brief show" id="brief">
+    <div class="b-kicker">Attack 01 / Lead hand</div>
+    <div class="b-title">Jab</div>
+    <section class="b-sec">
+      <h4>Action</h4>
+      <p>A straight punch off the lead hand. The elbow stays on the punching line, the fist snaps out of the guard and comes back along the same path — no wind-up, almost no hip turn, the rear hand never leaves the chin.</p>
+    </section>
+    <section class="b-sec">
+      <h4>When to use</h4>
+      <p>The measuring stick of boxing. It reads distance, occupies the opponent's vision, interrupts their rhythm and pulls the guard open for the hand behind it. Here it is a pure feint — the black fighter is not touched and her idle/taunt loop is left untouched.</p>
+    </section>
+    <section class="b-sec">
+      <h4>Advantages</h4>
+      <p>Shortest travel time of any punch, so it is the hardest to see and the easiest to recover from. Power is low by design: the value is in timing and placement, not impact. A jab that returns faster than it left is a good jab.</p>
+    </section>
+    <section class="b-sec">
+      <h4>Limits</h4>
+      <p>A jab that lands on a high guard spends your energy for nothing, and a dropped lead hand after it leaves the cross line open. Reach for it too often and you train the opponent to beat it. Measure first, then commit.</p>
+    </section>
+  </aside>
+
+  <!-- Hit labels (projected from world coordinates) -->
+  <div class="floaters" id="floaters"></div>
+
+  <!-- Sound toggle: off by default -->
+  <button class="sound" id="sound" type="button" aria-pressed="false" title="Toggle hit sound">
+    <span class="bars"><i></i><i></i><i></i></span>
+    <span id="sound-label">Sound off</span>
+  </button>
+
+  <div id="loader">
+    <div class="ring"></div>
+    <div class="load-text" id="load-text">Loading model</div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <div id="error"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three/three.module.min.js",
+    "three/addons/": "../vendor/three/addons/"
+  }
+}
+</script>
+
+<!-- Scene config: this page runs a single scene, the engine reads window.SCENE -->
+<script>
+/* 长刺拳的命中时刻。
+ * 数值来自 Blender NLA 里的 sound 条：jab 条起于第 264 帧、sound 起于第 280 帧，
+ * fps=30 → 相对偏移 16 帧，t = 17/30 ≈ 0.567s（相对 clip 起点）。
+ *
+ * 已用标定探针复核过（步进 red-long-head-jab，逐帧比对红方拳套与黑方锚点的距离）：
+ * 第 17 帧正是红拳离黑方左手套最近的时刻（实测 5.5 cm），
+ * 整条 clip 里没有比它更近的帧 —— 所以这个常量可以照搬。
+ * 扫描黑方待机循环的各个相位，命中距离稳定在 2.6–6.7 cm，接触点可复现。
+ * 想改触发点只动这一个常量。 */
+const LONG_JAB_HIT_T = 0.567;
+
+window.SCENE = {
+  id: 'jab',
+  label: 'Jab',
+  glb: '../media/glb/1.glb',
+  // 黑方在 idle ⇄ taunt 之间循环；命中时刻落在哪一段，决定她是被格挡还是被打中。
+  blackCycle: ['black-idle', 'black-taunt'],
+  hits: {
+    'red-long-head-jab': [
+      {
+        t: LONG_JAB_HIT_T,
+        url: '../media/audio/punch-impact.wav',
+        gain: 0.95,
+        shake: 0.016,
+        // 按黑方当时所处的循环阶段取不同的锚点 / 反应
+        byPhase: {
+          idle: {
+            // 黑方在待机 → 低位格挡（black-low-block），特效仍打在左手套锚点上
+            anchor: 'black-hit-glove', react: 'black-low-block',
+            label: 'BLOCK', tone: 'block',
+            fx: { color: '#ffd9a0', size: 0.45, life: 0.45 }
+          },
+          taunt: {
+            // 黑方在挑衅 → 中等力度头部受击（black-midium-hit-head，导出时的动作名就是 midium）
+            anchor: 'black-hit-head', react: 'black-midium-hit-head',
+            label: 'HIT', tone: 'hit',
+            fx: { color: '#ffd9a0', size: 0.45, life: 0.45 }
+          }
+        }
+      }
+    ]
+  },
+  attacks: [
+    {
+      id: 'jab',
+      label: 'Jab',
+      sub: 'lead hand · 1.37s',
+      clip: 'red-short-jab',
+      brief: {
+        kicker: 'Attack 01 / Lead hand',
+        title: 'Jab',
+        meta: [
+          ['Clip', 'red-short-jab'],
+          ['Duration', '1.37 s · 41 frames'],
+          ['Target', 'High guard / feint'],
+          ['Reaction', 'None — black keeps her loop']
+        ],
+        sections: [
+          ['Action', 'A straight punch off the lead hand. The elbow stays on the punching line, the fist snaps out of the guard and comes back along the same path: no wind-up, almost no hip turn, the rear hand never leaves the chin.'],
+          ['When to use', 'The measuring stick of boxing. It reads distance, occupies the opponent\'s vision, interrupts their rhythm and pulls the guard open for the hand behind it. Here it is a pure feint — the black fighter is not touched and her idle/taunt loop is left untouched.'],
+          ['Advantages', 'Shortest travel time of any punch, so it is the hardest to see and the easiest to recover from. Power is low by design: the value is in timing and placement, not impact. A jab that returns faster than it left is a good jab.'],
+          ['Limits', 'A jab that lands on a high guard spends your energy for nothing, and a dropped lead hand after it leaves the cross line open. Reach for it too often and you train the opponent to beat it. Measure first, then commit.']
+        ]
+      }
+    },
+    {
+      id: 'long',
+      label: 'Long jab',
+      sub: 'extended lead · 2.00s',
+      clip: 'red-long-head-jab',
+      brief: {
+        kicker: 'Attack 02 / Extended lead',
+        title: 'Long jab',
+        meta: [
+          ['Clip', 'red-long-head-jab'],
+          ['Duration', '2.00 s · 60 frames'],
+          ['Impact', LONG_JAB_HIT_T.toFixed(2) + ' s (Blender sound cue)'],
+          ['Target', 'Glove (idle) / Head (taunt)'],
+          ['Reaction', 'Low block (idle) / Medium head hit (taunt)']
+        ],
+        sections: [
+          ['Action', 'The lead jab thrown at full extension with the weight stepping forward. The shoulder drives the punch, the hips rotate a little more than a normal jab, and the fist lands at maximum reach.'],
+          ['When to use', 'Interception and distance control. It is thrown the moment the opponent starts to enter, or when her guard is down. Two outcomes in this scene: if the black fighter is resting in her idle, the punch is caught on her lead glove and she answers with a low block; if she is taunting with her hands open, the same punch lands on the head and she eats a medium head shot.'],
+          ['Advantages', 'Buys roughly 10–15 cm of reach — the longest weapon you own without stepping past the opponent\'s line. The cost is real: longer recovery, the lead shoulder and chin commit forward, and a missed long jab leaves the head exposed for the counter. Hard to read, hard to punish, expensive to miss.']
+        ]
+      }
+    }
+  ]
+};
+</script>
+<script type="module" src="../assets/boxing.js?v=2"></script>
+</body>
+</html>

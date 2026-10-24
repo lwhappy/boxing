@@ -74,6 +74,27 @@
   .brand .eyebrow a:hover { color: var(--text); }
   .brand .eyebrow .sep { opacity: .45; margin: 0 6px; }
 
+  /* ---------- HUD 内的紧凑导航（training 练习页是全屏场景，没有页头） ---------- */
+  .hud .mininav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    pointer-events: auto;              /* HUD 整体 pointer-events:none，链接要单独放行 */
+  }
+
+  .hud .mininav a {
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color .18s ease;
+  }
+
+  .hud .mininav a:hover { color: var(--text); }
+  .hud .mininav a[aria-current="page"] { color: var(--text); }
+
   .lede {
     margin: 9px 0 0;
     max-width: 38ch;

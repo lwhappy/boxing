@@ -9,7 +9,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CFG = window.COMBO || {};
 // Versioned URL: /media/* is cached for 30 days, so a re-exported GLB would
 // otherwise stay stale in browsers and edge caches. Bump ?v= when the GLB changes.
-const GLB_URL = './media/glb/' + (CFG.glb || 'combo_jab_cross.glb') + '?v=1';
+// The path is resolved against this module's own directory (assets/), so the same
+// engine works from the site root and from the nested combos/ folder.
+const GLB_URL = new URL('../media/glb/' + (CFG.glb || 'combo_jab_cross.glb') + '?v=1', import.meta.url).href;
 
 const canvas = document.getElementById('stage-canvas');
 const barEl = document.getElementById('stage-bar');
