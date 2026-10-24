@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Jab-Cross-Lead Hook-Rear Hook Combo — Boxing Combinations in 3D | SilentJab</title>
+<meta name="description" content="Four-punch combination: the 1-2-3 extended with a rear hook to close the exchange." />
+<link rel="canonical" href="https://silentjab.com/combo_jab_cross_leadhook_rearhook.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Jab-Cross-Lead Hook-Rear Hook Combo — Boxing Combinations in 3D | SilentJab" />
+<meta property="og:description" content="Four-punch combination: the 1-2-3 extended with a rear hook to close the exchange." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Jab-Cross-Lead Hook-Rear Hook Combo — Boxing Combinations in 3D | SilentJab",
+  "description": "Four-punch combination: the 1-2-3 extended with a rear hook to close the exchange.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Combinations", "item": "https://silentjab.com/index.html#combos" },
+      { "@type": "ListItem", "position": 3, "name": "Jab-Cross-Lead Hook-Rear Hook", "item": "https://silentjab.com/combo_jab_cross_leadhook_rearhook.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+      <a href="./index.html#combos">Combos</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays the combo, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the jab-cross-lead hook-rear hook combo">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the combo" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading combo model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing combinations · 3D demo</div>
+        <h1>Jab-Cross-Lead Hook-Rear Hook</h1>
+        <p>Four-punch combination: the 1-2-3 extended with a rear hook to close the exchange.</p>
+        <div class="quick">
+          <span class="chip">Combo 1-2-3-4</span>
+          <span class="chip">Four punches</span>
+          <span class="chip">Both hooks</span>
+          <span class="chip">High output</span>
+          <span class="chip">Sequence: idle → jab → cross → lead hook → rear hook</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>The sequence</h2>
+            <p>Jab to open, cross to load the lead side, lead hook to go around the guard — then the rear hook arrives as the coup de grâce. The lead hook's rotation carries your weight to the rear side, which loads the rear hip for the final hook. Four punches, one continuous flow.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>When you have the opponent hurt or covering up and want to maximize damage. This combo puts pressure on both sides of the guard — the lead hook attacks one side, the rear hook the other, giving the opponent nowhere to hide.</p>
+          </section>
+          <section class="note">
+            <h2>Key detail</h2>
+            <p>The rear hook is the heaviest punch in the sequence. It benefits from the momentum of the three punches before it — your body is already rotating, the rear hip is loaded from the lead hook's recoil, and the rear fist swings through with the full weight of your torso behind it.</p>
+          </section>
+          <section class="note">
+            <h2>Common mistake</h2>
+            <p>Running out of breath or balance by punch four. Four-punch combos require conditioning and tight mechanics. If the stance widens or the hands drop after the third punch, the rear hook becomes a lazy arm swing with no power and a wide-open chin.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./combo_jab_cross_hook.html">← Jab-Cross-Hook</a>
+          <a class="chip" href="./combo_jab_jab_cross.html">Jab-Jab-Cross →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#combos">All combos</a></span>
+</footer>
+
+<!-- Combo stage: loads a single combo GLB and auto-plays it -->
+<script>
+window.COMBO = {
+  glb: 'combo_jab_cross_leadhook_rearhook.glb'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/combo-stage.js?v=2"></script>
+</body>
+</html>

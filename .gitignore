@@ -3,6 +3,7 @@
 
 # WorkBuddy workspace data
 .workbuddy/
+.workbuddy-ai/
 
 # Heavy assets: 5.2 GB FBX animation library + 1.1 GB Blender sources
 # (individual .blend files exceed GitHub's 100 MB limit; keep them local)
@@ -10,6 +11,13 @@ animations-black/
 animations-red/
 resources/
 _archive/
+
+# Source material for the combo pipeline (360 MB, incl. a 132 MB index.blend).
+# Only the Python sources are tracked; the .blend/.fbx stay local.
+motion-combine/*.blend
+motion-combine/*.blend1
+motion-combine/*.fbx
+red-combine/
 
 # Node
 node_modules/

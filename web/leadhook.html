@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Lead Hook — Boxing Basics in 3D | SilentJab</title>
+<meta name="description" content="A short horizontal arc from the lead hand that goes around the guard instead of through it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #3." />
+<link rel="canonical" href="https://silentjab.com/leadhook.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Lead Hook — Boxing Basics in 3D | SilentJab" />
+<meta property="og:description" content="A short horizontal arc from the lead hand that goes around the guard instead of through it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #3." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Lead Hook — Boxing Basics in 3D | SilentJab",
+  "description": "A short horizontal arc from the lead hand that goes around the guard instead of through it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #3.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Lead Hook", "item": "https://silentjab.com/leadhook.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the lead hook">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the lead hook" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing basics · 3D demo</div>
+        <h1>How to throw a <em>lead hook</em></h1>
+        <p>A short horizontal arc from the lead hand that goes around the guard instead of through it.</p>
+        <div class="quick">
+          <span class="chip">Punch #3</span>
+          <span class="chip">Lead hand</span>
+          <span class="chip">Close range</span>
+          <span class="chip">Comes around the guard</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>Action</h2>
+            <p>Keep the elbow bent at roughly 90 degrees and level with the fist. From the guard, pivot the lead foot and turn the whole lead side of the body: the hip rotates, the shoulder swings around, and the fist travels in a tight horizontal arc toward the jaw, knuckles facing down. The arm stays rigid — it does not swing. The power is body rotation, not the shoulder. Bring the fist back inside your guard immediately.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>At close to mid range, when the guard is high and tight: the hook goes around it, not through it. Classic placements are after the jab (1-3) or after the cross (1-2-3), aimed at the jaw or the temple — or, with the elbow slightly wider, at the ribs and liver.</p>
+          </section>
+          <section class="note">
+            <h2>Advantages</h2>
+            <p>It attacks from outside the opponent's field of vision, so it arrives where the guard isn't. With the whole body behind the rotation it is one of the two classic knockout punches, and it needs almost no wind-up.</p>
+          </section>
+          <section class="note">
+            <h2>Limits</h2>
+            <p>It only works at the right distance: too far and it becomes a slap, too close and there is no room for the arc. A wide miss swings your own jaw into the counter, and the punch telegraphs badly if the elbow flares before the hip turns.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./cross.html">← Cross</a>
+          <a class="chip" href="./rearhook.html">Rear Hook →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
+
+<!-- Shared stage: this page asks for one move only, auto-played on load -->
+<script>
+window.STAGE = {
+  buttons: ['lead-hand-hook'],
+  labels: { 'lead-hand-hook': 'Replay' },
+  autoPlay: 'lead-hand-hook'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/home-stage.js"></script>
+</body>
+</html>

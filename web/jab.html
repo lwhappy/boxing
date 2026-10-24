@@ -4,20 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="data:," />
-<title>How to Throw a Jab — Boxing Technique & 3D Demo | SilentJab</title>
-<meta name="description" content="Learn the jab step by step: stance, lead-hand extension, snap-back and the mistakes that cost you the exchange. Interactive 3D demo with a live opponent reacting to every punch." />
+<title>Jab — Boxing Basics in 3D | SilentJab</title>
+<meta name="description" content="The fastest punch in boxing: lead hand, straight line, back to the chin before the opponent sees it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #1." />
 <link rel="canonical" href="https://silentjab.com/jab.html" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="SilentJab" />
-<meta property="og:title" content="How to Throw a Jab — Boxing Technique & 3D Demo | SilentJab" />
-<meta property="og:description" content="Learn the jab step by step: stance, lead-hand extension, snap-back and the mistakes that cost you the exchange. Interactive 3D demo with a live opponent reacting to every punch." />
+<meta property="og:title" content="Jab — Boxing Basics in 3D | SilentJab" />
+<meta property="og:description" content="The fastest punch in boxing: lead hand, straight line, back to the chin before the opponent sees it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #1." />
 <meta name="twitter:card" content="summary_large_image" />
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "name": "How to Throw a Jab — Boxing Technique & 3D Demo | SilentJab",
-  "description": "Learn the jab step by step: stance, lead-hand extension, snap-back and the mistakes that cost you the exchange. Interactive 3D demo with a live opponent reacting to every punch.",
+  "name": "Jab — Boxing Basics in 3D | SilentJab",
+  "description": "The fastest punch in boxing: lead hand, straight line, back to the chin before the opponent sees it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #1.",
   "inLanguage": "en",
   "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
   "breadcrumb": {
@@ -29,70 +29,97 @@
   }
 }
 </script>
-<link rel="stylesheet" href="./assets/boxing.css" />
+<link rel="stylesheet" href="./assets/home.css" />
 </head>
 <body>
-  <canvas id="scene"></canvas>
 
-  <div class="hud">
-    <div class="top">
-      <div class="brand">
-        <div class="eyebrow"><a href="./index.html">SilentJab</a><span class="sep">/</span>3D technique demo</div>
-        <h1>How to Throw a Jab <span>/ Boxing Basics</span></h1>
-        <p class="lede">The fastest punch in boxing: lead hand, straight line, back to the chin before the opponent sees it. Drag to orbit the 3D demo, then hit the buttons to throw it.</p>
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the jab">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the jab" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
       </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing basics · 3D demo</div>
+        <h1>How to throw a <em>jab</em></h1>
+        <p>The fastest punch in boxing: lead hand, straight line, back to the chin before the opponent sees it.</p>
+        <div class="quick">
+          <span class="chip">Punch #1</span>
+          <span class="chip">Lead hand</span>
+          <span class="chip">Long range</span>
+          <span class="chip">Starts every combo</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>Action</h2>
+            <p>Start from your stance with the lead foot forward and the weight even on both legs. From the guard the lead fist travels in a straight line from your shoulder to the target: the elbow stays directly under the fist, the rear hand stays glued to the chin, the chin tucks behind the lead shoulder and the rear shoulder is slightly higher than the lead one. The fist snaps back along the same path the instant it lands — it should return faster than it went out. No wind-up, almost no hip turn.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>The measuring stick of boxing: throw it to read distance, to occupy the opponent's eyes, to interrupt their rhythm, to make them flinch, and to pull the guard open so the rear hand has a gap to shoot through. Also the safest way to keep a taller opponent from walking in.</p>
+          </section>
+          <section class="note">
+            <h2>Advantages</h2>
+            <p>The shortest travel time of any punch, so it is the hardest to see and the cheapest to recover from. It keeps you balanced and in stance, it can be thrown while moving in any direction, and it is the entry point of almost every combination. A fast jab wins rounds on its own because it scores without exposing you.</p>
+          </section>
+          <section class="note">
+            <h2>Limits</h2>
+            <p>Power is low by design — it does not stop a pressure fighter who is willing to eat it, and judges rarely reward it as a damaging blow. If it is thrown lazy with the hand dropping on the way back, it hands the opponent a free counter over the top; if the lead shoulder stays low, the chin is exposed behind it.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./rearuppercut.html">← Rear Uppercut</a>
+          <a class="chip" href="./cross.html">Cross →</a>
+        </div>
+      </div>
+
     </div>
+  </section>
 
-    <div class="hint">
-      <span><kbd>drag</kbd> orbit</span>
-      <span><kbd>scroll</kbd> zoom</span>
-      <span><kbd>R</kbd> reset view</span>
-    </div>
-  </div>
+</main>
 
-  <!-- Attack buttons: drawn above both fighters (positioned by CSS, outside HUD flow) -->
-  <div class="attackbar" id="attackbar" hidden></div>
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
 
-  <!-- Side panel: written as static HTML so crawlers (and no-WebGL visitors) get the
-       technique text; the engine only swaps it when another attack is selected. -->
-  <aside class="brief show" id="brief">
-    <div class="b-kicker">Attack 01 / Lead hand</div>
-    <div class="b-title">Jab</div>
-    <section class="b-sec">
-      <h4>Action</h4>
-      <p>Start from your stance with the lead foot forward and the weight even on both legs. From the guard the lead fist travels in a straight line from your shoulder to the target: the elbow stays directly under the fist, the rear hand stays glued to the chin, the chin tucks behind the lead shoulder and the rear shoulder is slightly higher than the lead one. The fist snaps back along the same path the instant it lands — it should return faster than it went out. No wind-up, almost no hip turn.</p>
-    </section>
-    <section class="b-sec">
-      <h4>When to use</h4>
-      <p>The measuring stick of boxing: throw it to read distance, to occupy the opponent's eyes, to interrupt their rhythm, to make them flinch, and to pull the guard open so the rear hand has a gap to shoot through. Also the safest way to keep a taller opponent from walking in. In this demo it is a pure feint — the other fighter is not touched and her idle / taunt loop keeps running.</p>
-    </section>
-    <section class="b-sec">
-      <h4>Advantages</h4>
-      <p>The shortest travel time of any punch, so it is the hardest to see and the cheapest to recover from. It keeps you balanced and in stance, it can be thrown while moving in any direction, and it is the entry point of almost every combination. A fast jab wins rounds on its own because it scores without exposing you.</p>
-    </section>
-    <section class="b-sec">
-      <h4>Limits</h4>
-      <p>Power is low by design — it does not stop a pressure fighter who is willing to eat it, and judges rarely reward it as a damaging blow. If it is thrown lazy with the hand dropping on the way back, it hands the opponent a free counter over the top; if the lead shoulder stays low, the chin is exposed behind it.</p>
-    </section>
-  </aside>
-
-  <!-- Hit labels (projected from world coordinates) -->
-  <div class="floaters" id="floaters"></div>
-
-  <!-- Sound toggle: off by default -->
-  <button class="sound" id="sound" type="button" aria-pressed="false" title="Toggle hit sound">
-    <span class="bars"><i></i><i></i><i></i><i></i></span>
-    <span id="sound-label">Sound off</span>
-  </button>
-
-  <div id="loader">
-    <div class="ring"></div>
-    <div class="load-text" id="load-text">Loading model</div>
-    <div class="bar"><i id="bar"></i></div>
-  </div>
-
-  <div id="error"></div>
-
+<!-- Shared stage: this page asks for one move only, auto-played on load -->
+<script>
+window.STAGE = {
+  buttons: ['jab'],
+  labels: { 'jab': 'Replay' },
+  autoPlay: 'jab'
+};
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -101,89 +128,6 @@
   }
 }
 </script>
-
-<!-- Scene config: this page runs a single scene, the engine reads window.SCENE -->
-<script>
-const LONG_JAB_HIT_T = 0.567;   // long-jab impact time (Blender sound cue: frame 17 / 30 fps)
-window.SCENE = {
-  id: 'jab',
-  label: 'Jab',
-  glb: './media/glb/1.glb',
-  blackCycle: ['black-idle', 'black-taunt'],
-  hits: {
-    'red-long-head-jab': [
-      {
-        t: LONG_JAB_HIT_T,
-        url: './media/audio/punch-impact.wav',
-        gain: 0.95,
-        shake: 0.016,
-        // Pick a different anchor / reaction depending on which loop phase the defender is in
-        byPhase: {
-          idle: {
-            // Defender idling -> low block; the impact FX still sits on her lead glove anchor
-            anchor: 'black-hit-glove', react: 'black-low-block',
-            label: 'BLOCK', tone: 'block',
-            fx: { color: '#ffd9a0', size: 0.45, life: 0.45 }
-          },
-          taunt: {
-            // Defender taunting (hands open) -> medium head hit (clip name is spelled "midium" at export)
-            anchor: 'black-hit-head', react: 'black-midium-hit-head',
-            label: 'HIT', tone: 'hit',
-            fx: { color: '#ffd9a0', size: 0.45, life: 0.45 }
-          }
-        }
-      }
-    ]
-  },
-  attacks: [
-    {
-      id: 'jab',
-      label: 'Jab',
-      sub: 'lead hand · 1.37s',
-      clip: 'red-short-jab',
-      brief: {
-        kicker: 'Attack 01 / Lead hand',
-        title: 'Jab',
-        meta: [
-          ['Clip', 'red-short-jab'],
-          ['Duration', '1.37 s · 41 frames'],
-          ['Target', 'High guard / feint'],
-          ['Reaction', 'None — the defender keeps her loop']
-        ],
-        sections: [
-          ['Action', 'Start from your stance with the lead foot forward and the weight even on both legs. From the guard the lead fist travels in a straight line from your shoulder to the target: the elbow stays directly under the fist, the rear hand stays glued to the chin, the chin tucks behind the lead shoulder and the rear shoulder is slightly higher than the lead one. The fist snaps back along the same path the instant it lands — it should return faster than it went out. No wind-up, almost no hip turn.'],
-          ['When to use', 'The measuring stick of boxing: throw it to read distance, to occupy the opponent\'s eyes, to interrupt their rhythm, to make them flinch, and to pull the guard open so the rear hand has a gap to shoot through. Also the safest way to keep a taller opponent from walking in. In this demo it is a pure feint — the other fighter is not touched and her idle / taunt loop keeps running.'],
-          ['Advantages', 'The shortest travel time of any punch, so it is the hardest to see and the cheapest to recover from. It keeps you balanced and in stance, it can be thrown while moving in any direction, and it is the entry point of almost every combination. A fast jab wins rounds on its own because it scores without exposing you.'],
-          ['Limits', 'Power is low by design — it does not stop a pressure fighter who is willing to eat it, and judges rarely reward it as a damaging blow. If it is thrown lazy with the hand dropping on the way back, it hands the opponent a free counter over the top; if the lead shoulder stays low, the chin is exposed behind it.']
-        ]
-      }
-    },
-    {
-      id: 'long',
-      label: 'Long jab',
-      sub: 'extended lead · 2.00s',
-      clip: 'red-long-head-jab',
-      brief: {
-        kicker: 'Attack 02 / Extended lead',
-        title: 'Long jab',
-        meta: [
-          ['Clip', 'red-long-head-jab'],
-          ['Duration', '2.00 s · 60 frames'],
-          ['Impact', LONG_JAB_HIT_T.toFixed(2) + ' s (Blender sound cue)'],
-          ['Target', 'Glove (idle) / Head (taunt)'],
-          ['Reaction', 'Low block (idle) / Medium head hit (taunt)']
-        ],
-        sections: [
-          ['Action', 'Everything from a normal jab, plus commitment. Push off the rear ball of the foot, let the lead foot step in with the punch, bend the front knee and let the hips rotate a little more than a short jab. The lead shoulder turns over and extends so the fist arrives at maximum reach, while the rear hand stays at the chin and the head stays off the punching line (slightly outside the lead shoulder). Then pull it straight back and re-set the stance.'],
-          ['When to use', 'Interception and distance control: throw it the moment the opponent starts to step in, when her guard has dropped, or when you need to buy 10–15 cm of reach without stepping past her lead foot. In this scene it has two outcomes — with the defender resting in her idle the punch is caught on her raised lead glove and she answers with a low block; with her hands open in the taunt the same punch lands on the head and she eats a medium head shot.'],
-          ['Advantages', 'The longest weapon you own without giving up your position: it reaches the opponent before her own punches can reach you, so it works as a wall against entries. Because the hips and lead leg are behind it, it lands harder than a short jab and can genuinely move an opponent backwards.'],
-          ['Limits', 'The reach is bought with time and commitment: recovery is slower, the lead shoulder and chin travel forward, and a missed long jab leaves the head hanging in range for a counter. It also eats more energy and is easier to read than a short jab because the step telegraphs it.']
-        ]
-      }
-    }
-  ]
-};
-</script>
-<script type="module" src="./assets/boxing.js"></script>
+<script type="module" src="./assets/home-stage.js"></script>
 </body>
 </html>

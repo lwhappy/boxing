@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Rear Hook — Boxing Basics in 3D | SilentJab</title>
+<meta name="description" content="The heaviest hook you own — the rear hand swings across the body with the whole rear leg behind it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #4." />
+<link rel="canonical" href="https://silentjab.com/rearhook.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Rear Hook — Boxing Basics in 3D | SilentJab" />
+<meta property="og:description" content="The heaviest hook you own — the rear hand swings across the body with the whole rear leg behind it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #4." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Rear Hook — Boxing Basics in 3D | SilentJab",
+  "description": "The heaviest hook you own — the rear hand swings across the body with the whole rear leg behind it. Watch the 3D demo, then read the action, timing, advantages and limits of punch #4.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Rear Hook", "item": "https://silentjab.com/rearhook.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the rear hook">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the rear hook" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing basics · 3D demo</div>
+        <h1>How to throw a <em>rear hook</em></h1>
+        <p>The heaviest hook you own — the rear hand swings across the body with the whole rear leg behind it.</p>
+        <div class="quick">
+          <span class="chip">Punch #4</span>
+          <span class="chip">Rear hand</span>
+          <span class="chip">Knockout punch</span>
+          <span class="chip">Lands off-angle</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>Action</h2>
+            <p>The same arc as the lead hook, but driven by the rear side: push off the rear foot, pivot it hard, and let the rear hip and shoulder carry the fist around in a horizontal line toward the jaw. The lead hand comes home to protect your own chin while the rear arm swings — for a moment your face is turned toward the punch. Recompose the guard the instant the fist passes the target.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>When the opponent circles toward your rear side and walks into range, or as the second power shot in a combination: 1-2-4 and 2-3-2 are the classic patterns. It is also the standard answer to an opponent who slips your cross to the outside.</p>
+          </section>
+          <section class="note">
+            <h2>Advantages</h2>
+            <p>The most power available in a hook — the rotation has the whole rear leg and hip behind it, and it lands from an angle the guard rarely covers well. It is the punch behind many of boxing's most famous one-punch knockouts.</p>
+          </section>
+          <section class="note">
+            <h2>Limits</h2>
+            <p>It has the longest path of any punch, so it is the easiest to see and the most expensive to miss: a wide rear hook leaves your entire right side open. It also needs the opponent at exactly hooking distance, and the big rotation must be reset before you can punch again.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./leadhook.html">← Lead Hook</a>
+          <a class="chip" href="./leaduppercut.html">Lead Uppercut →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
+
+<!-- Shared stage: this page asks for one move only, auto-played on load -->
+<script>
+window.STAGE = {
+  buttons: ['back-hand-hook'],
+  labels: { 'back-hand-hook': 'Replay' },
+  autoPlay: 'back-hand-hook'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/home-stage.js"></script>
+</body>
+</html>

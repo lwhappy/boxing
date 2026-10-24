@@ -9,17 +9,21 @@
 
 | 页面 | 作用 | 状态 |
 |---|---|---|
-| `index.html` | 首页：3D 舞台 + 两张招式卡 | ✅ 已改版（去掉 coming soon 与说明区块） |
-| `jab.html` | 单招页：刺拳（含防守方反应） | ✅ 可用 |
-| `jab-cross.html` | 组合页：1-2（头 / 腹两种） | ✅ 可用 |
-| `assets/boxing.js` | 3D 引擎（单场景、命中判定、反应链、浮字） | ✅ 已移除中文副标题 |
-| `assets/boxing.css` / `home.css` | 样式 | ✅ |
-| `media/glb/*.glb` | 压缩后的模型（1 / 2 / index） | ✅ 39.7 → 5.8 MB |
+| `index.html` | 首页：3D 舞台 + 6 个动作按钮 + 6 张招式卡 | ✅ 已改版 |
+| `jab.html` `cross.html` `<br>leadhook.html` `rearhook.html` `<br>leaduppercut.html` `rearuppercut.html` | 六个单招页：左侧 3D 动画自动播放该动作，右侧四段技法说明；手机端动画在上、文字在下 | ✅ 由生成器产出 |
+| `build/gen_move_pages.py` | 六页的生成器（改文案/新增动作只改这里，不手改 HTML） | ✅ |
+| `assets/home-stage.js` | 共享 3D 舞台：`window.STAGE` 传 `buttons / labels / autoPlay`，首页与六个单招页共用一套代码 | ✅ 已参数化 |
+| `assets/home.css` | 首页 + 单招页 + 训练页样式（`.move-hero` 顶端对齐 / 桌面吸顶 / 手机单列 / `.combo-bar`） | ✅ |
+| `training.html` | 训练页：双人对练，勾选招式 → Confirm 连播，命中锚点触发火花与音效 | ✅ 新增（见第 11 节） |
+| `assets/training-stage.js` | 训练页引擎：双骨架隔离、命中帧预计算、进步位移、火花/音效 | ✅ |
+| `assets/boxing.js` / `boxing.css` | 旧双人对打引擎（仅 `_archive/` 里的备份页引用） | 保留不删 |
+| `media/glb/*.glb` | 压缩后的模型（1 / 2 / index / combine） | ✅ 39.7 → 5.8 MB；combine 39.7 → 6.1 MB |
 | `media/audio/*.wav` | 命中音效 | ✅ |
-| `sitemap.xml` / `robots.txt` | 搜索引擎入口 | ✅ 新增 |
-| `_archive/index-tabs.bak.html` | 旧 tab 版备份 | 已移出部署目录 |
+| `sitemap.xml` / `robots.txt` | 搜索引擎入口 | ✅ 8 条 URL |
+| `_archive/jab-twoFighters-20261023.html`、`<br>`_archive/jab-cross-twoFighters-20261023.html`、`<br>`_archive/index-tabs.bak.html` | 改版前的页面备份 | 已移出部署目录 |
 
 > 部署单位就是 `web/` 一个目录，不再依赖外部 `resources/`。
+> 单招页的 HTML 由 `python3 build/gen_move_pages.py` 生成，模板里改一处即可全站同步。
 
 ---
 
@@ -34,13 +38,13 @@ Advantages / Limits）直接写在 `<aside class="brief show">` 里，引擎只�
 - [x] JS 未加载时正文依然可见（无 WebGL 也有完整文字）
 - [x] 验收：`curl -s https://silentjab.com/jab.html | grep -c "b-sec"` = 4
 
-### 2.1b 移动端正文被整块隐藏（未解决）
-`assets/boxing.css` 第 503 行：`@media (max-width: 980px) { .brief { display: none; } }`
-——手机用户在页面上**看不到任何技法说明**，而移动端是 Google 的主要索引版本。
+### 2.1b 移动端正文可见性　✅ 已随改版解决
+旧 `assets/boxing.css` 第 503 行有 `@media (max-width: 980px) { .brief { display: none; } }`，
+手机用户在旧页面上**看不到任何技法说明**。新单招页已改用 `home.css`：≤980px 时
+`.hero-grid` 变单列（动画在上、文字在下），正文全部留在文档流里。
 
-- [ ] 改成可展开的底部抽屉（`display:block` + `max-height` + 滚动），而不是 `display:none`
-- [ ] 或至少在移动端把正文渲染到画布下方的普通文档流里
-- 影响：不改的话，移动端仍然是"零正文页面"
+- [x] 六个单招页在 390px 宽度实测：无横向溢出、chips 自动折行、四段说明完整可见
+- [ ] 若以后恢复旧 `boxing.css` 页面，仍需处理 `.brief` 的 `display:none`
 
 ### 2.2 资产路径跑到 web 目录外　✅ 已完成
 原本 `SCENE.glb` 写 `../resources/glb/1.glb`、音频写 `../resources/audio/*.wav`。
@@ -60,7 +64,7 @@ Advantages / Limits）直接写在 `<aside class="brief show">` 里，引擎只�
 - 注：脚本只改贴图字节、重算 bufferView 偏移，不碰骨骼与动画，命中锚点不受影响
 
 ### 2.4 基础文件
-- [x] `sitemap.xml`（3 条 URL，`lastmod` 2026-10-23）
+- [x] `sitemap.xml`（7 条 URL：首页 + 六个单招页，`lastmod` 2026-10-23）
 - [x] `robots.txt`（`Sitemap:` 指向 + 显式 Allow `media/ assets/ vendor/`）
 - [ ] `<link rel="icon" href="data:,">` → 换成真实 favicon（32/180/512 三档）
 - [ ] 补 `og:image`（1200×630），三页共用
@@ -237,10 +241,21 @@ gzip_min_length 1024;
 ## 9. 技术债
 
 - [x] `index-tabs.bak.html` 移出 `web/`（已移到项目根 `_archive/`）
+- [x] 三页 head 高度重复 → 已由 `build/gen_move_pages.py` 生成六个单招页，head 只在一处
+- [x] 「每加一招就复制一页」→ 现在改生成器的 `MOVES` 数组即可，页面与 sitemap 一起产出
 - [ ] `assets/boxing.js` / `home-stage.js` 里的中文注释逐步转英文（便于以后交接/开源）
-- [ ] 三页 head 高度重复 → 上线前做一次模板化（或静态生成）避免改一处漏两处
-- [ ] `SCENE` 配置与页面耦合，后续每加一招就复制一页 → 可考虑 `?move=x` 单页方案（P2 再评估，会牺牲独立 URL 的 SEO 收益）
-- [ ] 「Long jab」「Hit Body」这类第二招式的正文目前只存在于 JS 配置里，不进 DOM → 建议各自开独立页（`/long-jab.html`、`/jab-cross-body.html`），而不是塞回同一页
+- [ ] `SCENE` 配置与页面耦合，后续可考虑 `?move=x` 单页方案（P2 再评估，会牺牲独立 URL 的 SEO 收益）
+- [ ] 旧 `assets/boxing.js` 双人对打引擎已无在线页面引用，确认不再需要后可整体移入 `_archive/`
+
+### 9.1 踩过的坑（避免重犯）
+
+- **`.stage` 必须是 `position: relative`**：`canvas` 是 `position: absolute; inset: 0`，
+  一旦把 `.stage` 改成 `static`，canvas 的包含块退化成 viewport，宽高变成"整页大小"，
+  取景随之全乱（模型巨大并溢出卡片）。手机上"取消吸顶"只能写 `position: relative; top: auto;`，
+  **漏掉 `top: auto` 会残留 `top: 84px` 的相对偏移**，把动画从 91px 推到 175px、压住标题。
+- **无头浏览器测移动端**：`--window-size` 最小被钳到 500px，390px 的"截断"其实只是截图裁剪；
+  要看真实 390 布局，用一个 390px 宽的 `iframe` 包一层再截图。
+- **`--dump-dom` 不进入 iframe**：测 iframe 内部布局，要在父页面读 `iframe.contentDocument` 把结果写进父页面 `<title>`。
 
 ---
 
@@ -255,3 +270,40 @@ gzip_min_length 1024;
 | M4 | GA4 + GSC | 能按页面看关键词与事件 |
 | M5 | 内容补到 15 篇 | 拳击簇 P1/P2 全部上线 |
 | M6 | AdSense 申请与首轮广告位 | 过审 + 文中单广告位，CLS 不破 0.1 |
+| M7 | 训练页（双人对练 + 组合连击） | ✅ 完成（见第 11 节） |
+
+---
+
+## 11. 训练页 `training.html`
+
+**模型**：`media/glb/combine.glb`（39.7 MB → **6.1 MB**，`build/compress_glb.py` 处理）
+- `Armature`＝进攻方（红，右侧），驱动 6 条拳法动画
+- `Armature.001`＝防守方（黑，左侧），播 `defence-idle`，身上挂两个命中锚点：
+  - `ancher1` → 父级 `Head`（世界 y≈0.74，约在 74% 身高）
+  - `ahcher2` → 父级 `Spine1`（世界 y≈0.52，约在 52% 身高）
+  - 注意导出名有拼写：`ancher1` / `ahcher2`，代码按 `/(ancher|ahcher)/i` 匹配
+
+**实现要点**（`assets/training-stage.js`）
+- 两套骨架同名（Mixamo），加载后给骨骼加 `@atk` / `@def` 后缀并同步改写所有动画轨，避免 PropertyBinding 串绑
+- GLTFLoader 会去掉名字里的冒号、给重名节点追加 `_1`，所以按名找骨骼统一走 `canon()`（去后缀 + 去 `_N`）
+- 进攻方没有自己的 idle → 运行时克隆防守方的 `defence-idle` 并按规范名逐轨映射到进攻骨架（零额外体积）
+- **按招式指定命中锚点**（`MOVES[].target`）：jab / cross → `ahcher2`（躯干），两个 hook / 两个 uppercut → `ancher1`（头部）
+- 锚点角色识别：优先看父骨骼（`Head|Neck` → head，`Spine|Chest|Hips` → body），判不出才退回名字规则，重新导出改名也不会错配
+- 命中帧 `impactT` 用两段式选帧：先取「拳套到目标锚点水平距离最小」的帧，再在 `dh ≤ 最小值 + 6cm` 的候选里挑垂直偏差最小的，兼顾「手真的伸出去」和「打到该高度」
+- 播放时：起手前采样命中帧姿势 → 反解下蹲角 → 量出水平差值 → 进攻方整体平移（0.11s 补间）→ 拳到达命中帧时补一次水平残差 → 火花 + 命中音效
+- **防守方下蹲**（`bendDefender` / `solveCrouch`）：髋 + 膝 + 踝按角度屈曲、脊柱三段前倾，再按脚踝高度把根压回地面（脚不离地）。二分反解「蹲多少度能让目标锚点降到拳套高度」，上限 1.75 rad。这样拳套够不到头部锚点时由黑方沉身去接，而不是把红方抬到空中
+- 命中精度实测：6 个动作水平 `hitDist` 全部 **0.000**，垂直残差 0.6–6.7 cm；播完自动回原位（`baseAttackerPos`）并解锁 UI
+
+**踩过的坑（本节新增）**
+1. 位移把 `gap.y` 也算进去 → 后手上勾拳把红方抬离地面 0.22（≈ 1/4 身高），像悬浮。位移必须只取水平分量。
+2. `bendDefender` 用「当前根高度」算落脚校正，而根高度里已经含上一帧的偏移 → 误差逐帧累积，越蹲越浅（同一角度实测差 10 cm）。必须先 `position.y = baseRootY` 再量脚踝。
+3. 连招求解前没清掉上一招的下蹲叠加 → 二分出来的是「相对已蹲高度」的增量，连招越往后越蹲不到位。求解前 `mixer.update(0)` 把骨骼重写回纯动画姿势。
+4. 二分的基准姿势本身随 idle 呼吸浮动，命中帧还可能差几厘米（实测最大 6.7 cm，在上勾拳）。可以接受；若追求更准，可对 idle 做 0.7s 的相位预判。
+
+**已知取舍**
+- `back-hand-hook` / `back-hand-uppercut` 这两条 clip 的拳套最高只到 y≈0.50–0.58，要贴头部锚点（y≈0.74）必须让黑方深蹲 51°–75°。当前按此实现（用户确认「让黑方下蹲」），视觉是明显的躲闪式沉身；若觉得蹲太深，两个替代方案：a) 把 `anchor1` 下移到下颌；b) 重新导出这两条动画，把拳套抬到下颌高度。
+- 音效用 WebAudio（`media/audio/punch-impact.wav`），首次点 Confirm 时创建 AudioContext；无音频设备的环境会静默降级。
+
+**测试脚本**（真实时间 CDP，无头浏览器虚拟时间会被网络加载卡住，不可靠）
+- `build/cdp_training.mjs`：单招式测试（`node build/cdp_training.mjs <url> <clipName>`，默认 jab），含命中帧截图
+- `build/cdp_training_all.mjs`：六招连播，逐招打印锚点与贴合误差

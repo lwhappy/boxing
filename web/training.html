@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Boxing Combo Trainer — Chain Punches on a 3D Target | SilentJab</title>
+<meta name="description" content="Pick jab, cross, hooks and uppercuts in any order, press confirm, and watch a 3D boxer chain them on a live target — every punch lands on the mark with hit effects and sound." />
+<link rel="canonical" href="https://silentjab.com/training.html" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Boxing Combo Trainer — Chain Punches on a 3D Target | SilentJab" />
+<meta property="og:description" content="Pick punches in any order, press confirm, and watch a 3D boxer chain them on a live target." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Boxing Combo Trainer — Chain Punches on a 3D Target",
+  "description": "Pick punches in any order, press confirm, and watch a 3D boxer chain them on a live target.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Training", "item": "https://silentjab.com/training.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="kicker">Training · combo builder</div>
+    <h1>Chain your punches <em>on a live target</em></h1>
+    <p>Select any punches in order, press confirm, and the fighter steps in and throws the whole sequence — every shot lands on the mark with hit effects and sound.</p>
+
+    <!-- 3D stage: black target (left) + red attacker (right) -->
+    <div class="stage training-stage" aria-label="3D sparring trainer">
+      <canvas id="stage-canvas"></canvas>
+      <div class="stage-loading" id="stage-loading">
+        <div class="ring"></div>
+        <span id="stage-loading-text">Loading 3D model…</span>
+      </div>
+      <div class="stage-error" id="stage-error" hidden></div>
+    </div>
+
+    <!-- Combo builder: pick moves, then confirm -->
+    <div class="combo-bar" id="combo-bar" role="toolbar" aria-label="Build a combo">
+      <button type="button" class="combo-btn" data-move="jab">Jab</button>
+      <button type="button" class="combo-btn" data-move="cross">Cross</button>
+      <button type="button" class="combo-btn" data-move="lead-hand-hook">Lead Hook</button>
+      <button type="button" class="combo-btn" data-move="back-hand-hook">Rear Hook</button>
+      <button type="button" class="combo-btn" data-move="lead-hand-uppercut">Lead Uppercut</button>
+      <button type="button" class="combo-btn" data-move="back-hand-uppercut">Rear Uppercut</button>
+      <button type="button" class="combo-btn confirm" id="combo-confirm">Confirm</button>
+    </div>
+    <p class="combo-hint" id="combo-hint">Pick punches in order, then press Confirm to play the combo.</p>
+
+    <div class="move-notes">
+      <section class="note">
+        <h2>How it works</h2>
+        <p>The black fighter carries two target points — one at the head, one at the chest. Every punch is assigned to a target: jab and cross drive into the body mark, while both hooks and both uppercuts aim for the head. The engine finds the moment in each clip where the striking glove reaches that mark, steps the red boxer into range, and lands the glove on it — plus a flash and an impact sound on contact. When a punch tops out below head height, the black boxer ducks into it instead of the red one floating off the floor.</p>
+      </section>
+      <section class="note">
+        <h2>Combo tips</h2>
+        <p>Classic starters: jab → cross (the one-two), jab → lead hook, and jab → rear uppercut. Jabs and lead-hand shots travel shortest, so they measure the distance; rear-hand shots carry the power. Two same-hand punches in a row are slower — alternate lead and rear hands to keep the chain flowing. Punch selection order is the order they are thrown, so build from light to heavy.</p>
+      </section>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/training-stage.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Jab-Cross-Lead Hook-Cross (Alt) — Boxing Combinations in 3D | SilentJab</title>
+<meta name="description" content="Four-punch flow: the cross comes back to close the exchange after the hook." />
+<link rel="canonical" href="https://silentjab.com/combo_jab_cross_leadhook_cross_dup.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Jab-Cross-Lead Hook-Cross (Alt) — Boxing Combinations in 3D | SilentJab" />
+<meta property="og:description" content="Four-punch flow: the cross comes back to close the exchange after the hook." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Jab-Cross-Lead Hook-Cross (Alt) — Boxing Combinations in 3D | SilentJab",
+  "description": "Four-punch flow: the cross comes back to close the exchange after the hook.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Combinations", "item": "https://silentjab.com/index.html#combos" },
+      { "@type": "ListItem", "position": 3, "name": "Jab-Cross-Lead Hook-Cross", "item": "https://silentjab.com/combo_jab_cross_leadhook_cross_dup.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+      <a href="./index.html#combos">Combos</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays the combo, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the jab-cross-lead hook-cross combo">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the combo" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading combo model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing combinations · 3D demo</div>
+        <h1>Jab-Cross-Lead Hook-Cross</h1>
+        <p>Four-punch flow: the cross comes back to close the exchange after the hook.</p>
+        <div class="quick">
+          <span class="chip">Combo 1-2-3-2</span>
+          <span class="chip">Four punches</span>
+          <span class="chip">Alternate take</span>
+          <span class="chip">Flow combo</span>
+          <span class="chip">Sequence: idle → jab → cross → lead hook → cross</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>The sequence</h2>
+            <p>Jab opens the guard, cross loads the rotation, lead hook goes around — then the cross returns through the center. This is the same combination as the primary 1-2-3-2, rendered from a slightly different source animation to show how the same punch sequence can flow with different timing and emphasis.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>When the opponent is shell-covered after three punches and you want one more shot before resetting. The returning cross often finds a clean lane because the opponent's guard is still tracking the hook.</p>
+          </section>
+          <section class="note">
+            <h2>Key detail</h2>
+            <p>Watch the hips: after the hook, the rear side is loaded from the rotational recoil. The second cross doesn't need a fresh wind-up — it rides that stored rotation, making it fast and surprisingly heavy despite being the fourth punch in the chain.</p>
+          </section>
+          <section class="note">
+            <h2>Common mistake</h2>
+            <p>Forgetting to reset after punch four. Four punches is a lot of output — after the second cross, snap both hands back to the guard and reset your stance immediately. The counter is coming.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./combo_jab_rearuppercut_leadhook.html">← Jab-Rear Uppercut-Lead Hook</a>
+          <a class="chip" href="./combo_cross_leadhook_cross.html">Cross-Lead Hook-Cross →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#combos">All combos</a></span>
+</footer>
+
+<!-- Combo stage: loads a single combo GLB and auto-plays it -->
+<script>
+window.COMBO = {
+  glb: 'combo_jab_cross_leadhook_cross_dup.glb'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/combo-stage.js?v=2"></script>
+</body>
+</html>

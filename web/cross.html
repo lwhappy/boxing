@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Cross — Boxing Basics in 3D | SilentJab</title>
+<meta name="description" content="The rear-hand straight — the first power punch you learn, driven from the floor through the hip. Watch the 3D demo, then read the action, timing, advantages and limits of punch #2." />
+<link rel="canonical" href="https://silentjab.com/cross.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Cross — Boxing Basics in 3D | SilentJab" />
+<meta property="og:description" content="The rear-hand straight — the first power punch you learn, driven from the floor through the hip. Watch the 3D demo, then read the action, timing, advantages and limits of punch #2." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Cross — Boxing Basics in 3D | SilentJab",
+  "description": "The rear-hand straight — the first power punch you learn, driven from the floor through the hip. Watch the 3D demo, then read the action, timing, advantages and limits of punch #2.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Cross", "item": "https://silentjab.com/cross.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the cross">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the cross" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing basics · 3D demo</div>
+        <h1>How to throw a <em>cross</em></h1>
+        <p>The rear-hand straight — the first power punch you learn, driven from the floor through the hip.</p>
+        <div class="quick">
+          <span class="chip">Punch #2</span>
+          <span class="chip">Rear hand</span>
+          <span class="chip">Power shot</span>
+          <span class="chip">The “2” in the 1-2</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>Action</h2>
+            <p>From the guard, push off the ball of the rear foot and let that foot pivot inward. The rear hip turns through, the rear shoulder comes around, and the rear fist travels on a straight line across your body, just past your own chin — that crossing line is what gives the punch its name. The lead hand stays high at the cheek the whole way, because your shoulders square up for a moment as the punch lands. Snap the hand straight back to the guard and re-set your stance immediately.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>Almost always behind the jab: the jab steals a beat of attention, and the cross arrives while the opponent is still looking at the lead hand. It is also the standard counter when the guard drops, and the finish of most basic combinations — 1-2, 1-2-3, 1-1-2.</p>
+          </section>
+          <section class="note">
+            <h2>Advantages</h2>
+            <p>The hardest straight punch you own. The force comes from the floor through the rear leg, hip and shoulder instead of the arm, so it lands far heavier than the jab while still travelling on a straight, economical line.</p>
+          </section>
+          <section class="note">
+            <h2>Limits</h2>
+            <p>The big hip rotation squares your stance and briefly takes you off your base, so a missed cross is expensive — the counter hook is already loaded. Thrown cold from too far away it is easy to see coming, and a rear hand that stays low after the punch is the single most common knockout in boxing.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./jab.html">← Jab</a>
+          <a class="chip" href="./leadhook.html">Lead Hook →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
+
+<!-- Shared stage: this page asks for one move only, auto-played on load -->
+<script>
+window.STAGE = {
+  buttons: ['cross'],
+  labels: { 'cross': 'Replay' },
+  autoPlay: 'cross'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/home-stage.js"></script>
+</body>
+</html>

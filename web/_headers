@@ -9,9 +9,10 @@
 /vendor/*
   Cache-Control: public, max-age=31536000, immutable
 
-# 3D models & audio: big files, cache 30 days
+# 3D models & audio: big files, cache 30 days (but always revalidate so a
+# re-exported model is picked up; GLB URLs also carry a ?v= cache-buster)
 /media/*
-  Cache-Control: public, max-age=2592000
+  Cache-Control: public, max-age=2592000, must-revalidate
 
 # css/js: cache 7 days
 /assets/*

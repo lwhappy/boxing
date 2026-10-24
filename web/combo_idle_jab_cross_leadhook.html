@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Jab-Cross-Lead Hook Combo — Basic Boxing Combinations in 3D | SilentJab</title>
+<meta name="description" content="The full 1-2-3 from idle guard: the bread-and-butter three-punch combination." />
+<link rel="canonical" href="https://silentjab.com/combo_idle_jab_cross_leadhook.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Jab-Cross-Lead Hook Combo — Basic Boxing Combinations in 3D | SilentJab" />
+<meta property="og:description" content="The full 1-2-3 from idle guard: the bread-and-butter three-punch combination." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Jab-Cross-Lead Hook Combo — Basic Boxing Combinations in 3D | SilentJab",
+  "description": "The full 1-2-3 from idle guard: the bread-and-butter three-punch combination.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Combinations", "item": "https://silentjab.com/index.html#combos" },
+      { "@type": "ListItem", "position": 3, "name": "Jab-Cross-Lead Hook", "item": "https://silentjab.com/combo_idle_jab_cross_leadhook.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+      <a href="./index.html#combos">Combos</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays the combo, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the jab-cross-lead hook combo">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the combo" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading combo model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing combinations · 3D demo</div>
+        <h1>Jab-Cross-Lead Hook</h1>
+        <p>The full 1-2-3 from idle guard: the bread-and-butter three-punch combination.</p>
+        <div class="quick">
+          <span class="chip">Combo 1-2-3</span>
+          <span class="chip">Three punches</span>
+          <span class="chip">Classic combo</span>
+          <span class="chip">All ranges</span>
+          <span class="chip">Sequence: idle → jab → cross → lead hook</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>The sequence</h2>
+            <p>From the idle guard, the jab snaps out first — lead hand, straight line, back to chin. The cross follows immediately, driving through the gap the jab opened. As the cross returns, the lead hook fires in a tight arc around the guard. Three punches, three angles, one continuous motion.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>This is the most versatile combination in boxing. Use it at long range (the jab measures, the cross and hook follow if in range), at mid range (all three land clean), or as an entry combination to close distance. It works against any guard because it attacks from straight, straight, and circular angles.</p>
+          </section>
+          <section class="note">
+            <h2>Key detail</h2>
+            <p>Each punch loads the next. The jab's recoil sets the cross's hip rotation. The cross's hip turn loads the lead side for the hook. The hook's arc naturally brings the guard back to center. The whole combo flows like a single motion — no resets, no pauses, no telegraphing between punches.</p>
+          </section>
+          <section class="note">
+            <h2>Common mistake</h2>
+            <p>Throwing the hook as a separate action after the cross. The hook should begin as the cross is returning — both fists are moving at the same time. If you finish the cross, pause, then start the hook, you've given the opponent a full beat to recover and counter.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./combo_cross_leadhook_cross.html">← Cross-Lead Hook-Cross</a>
+          <a class="chip" href="./index.html#combos">← All combos</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#combos">All combos</a></span>
+</footer>
+
+<!-- Combo stage: loads a single combo GLB and auto-plays it -->
+<script>
+window.COMBO = {
+  glb: 'combined_idle_jab_cross_leadhook.glb'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/combo-stage.js?v=2"></script>
+</body>
+</html>

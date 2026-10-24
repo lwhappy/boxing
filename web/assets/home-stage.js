@@ -10,17 +10,25 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const GLB_URL = './media/glb/index.glb';
 const IDLE_CLIP = 'idle';
 
-// 按钮显示名与顺序（训练顺序：idle → jab → cross → 钩拳 → 上勾拳）
-const LABELS = {
+/* 页面可选配置 window.STAGE（不传 = 首页默认形态）：
+ *   buttons  底部按钮条的动作顺序（省略 idle 就不放 Idle 按钮）
+ *   labels   覆盖按钮文字（如招式页把 'jab' 显示成 'Replay'）
+ *   autoPlay 模型就绪后自动播放的动作（招式页传自己的 clip）
+ * 这样 index.html 和六个招式页共用这一个组件，页面只需传参。 */
+const CFG = window.STAGE || {};
+
+// 按钮显示名与顺序（首页训练顺序：jab → cross → 钩拳 → 上勾拳）
+const LABELS = Object.assign({
   'idle': 'Idle',
   'jab': 'Jab',
   'cross': 'Cross',
   'lead-hand-hook': 'Lead Hook',
-  'back-hand-hook': 'Back Hook',
+  'back-hand-hook': 'Rear Hook',
   'lead-hand-uppercut': 'Lead Uppercut',
-  'back-hand-uppercut': 'Back Uppercut'
-};
-const BUTTON_ORDER = ['idle', 'jab', 'cross', 'lead-hand-hook', 'back-hand-hook', 'lead-hand-uppercut', 'back-hand-uppercut'];
+  'back-hand-uppercut': 'Rear Uppercut'
+}, CFG.labels || {});
+const BUTTON_ORDER = CFG.buttons || ['idle', 'jab', 'cross', 'lead-hand-hook', 'back-hand-hook', 'lead-hand-uppercut', 'back-hand-uppercut'];
+const AUTO_PLAY = CFG.autoPlay || 'idle';
 
 const canvas = document.getElementById('stage-canvas');
 const barEl = document.getElementById('stage-bar');
@@ -354,6 +362,10 @@ function onLoaded(gltf) {
 
   posedPts = pts;
   loadingEl.classList.add('hidden');
+
+  // 招式页（window.STAGE.autoPlay）：加载完自动播一次该动作，播完由
+  // finished 回调淡回 idle；相机会随 playClip 切到该动作的取景包络
+  if (AUTO_PLAY !== IDLE_CLIP && oneShots[AUTO_PLAY]) playClip(AUTO_PLAY);
 
   // 调试句柄
   window.__homeStage = { mixer, idleAction, oneShots, playClip, model, camera, controls,

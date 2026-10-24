@@ -168,6 +168,116 @@ a { color: inherit; }
   background: rgba(255, 255, 255, 0.03);
 }
 
+/* 招式页：右栏的技法说明（Action / When to use / Advantages / Limits） */
+.move-notes {
+  margin-top: 26px;
+  display: grid;
+  gap: 18px;
+}
+.move-notes h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.move-notes p {
+  margin: 0;
+  font-size: clamp(13.5px, 1.1vw, 14.5px);
+  line-height: 1.72;
+  color: var(--muted-2);
+}
+
+a.chip { text-decoration: none; }
+a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
+
+/* 招式页：动画与文案顶端对齐（文案很长，垂直居中会让动画悬在半空）；滚动时动画吸顶 */
+.move-hero { align-items: start; }
+.move-hero .stage { position: sticky; top: 84px; }
+
+/* 招式页底部：上一招 / 下一招 */
+.pager {
+  margin-top: 26px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ---------------- hero 下方 CTA：训练模式入口 ---------------- */
+.hero-cta {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+}
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #1a0d05;
+  text-decoration: none;
+  background: linear-gradient(135deg, #ffb26b, #ff7a3d);
+  border: 1px solid rgba(255, 160, 90, 0.6);
+  box-shadow: 0 10px 30px rgba(255, 122, 61, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.cta-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 14px 34px rgba(255, 122, 61, 0.32);
+}
+
+/* ---------------- 训练页（training.html）：招式多选 + Confirm ---------------- */
+.combo-bar {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.combo-btn {
+  font: inherit;
+  cursor: pointer;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted-2);
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.03);
+  transition: color 0.15s, border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.combo-btn:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.25); }
+.combo-btn.selected {
+  color: #ffd9c2;
+  border-color: rgba(255, 122, 61, 0.55);
+  background: rgba(255, 122, 61, 0.12);
+}
+.combo-btn.confirm {
+  font-weight: 600;
+  color: #1a0d05;
+  background: linear-gradient(135deg, #ffb26b, #ff7a3d);
+  border-color: rgba(255, 160, 90, 0.6);
+}
+.combo-btn.confirm:hover { color: #1a0d05; filter: brightness(1.06); }
+.combo-bar.locked .combo-btn { opacity: 0.5; pointer-events: none; }
+.combo-hint {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* 训练舞台：两人并排，画幅比单招页更方正一点 */
+.stage.training-stage { aspect-ratio: 16 / 9; }
+@media (max-width: 620px) {
+  .stage.training-stage { aspect-ratio: 4 / 3.1; min-height: 300px; }
+}
+
 /* ---------------- 3D stage（首页交互演示） ---------------- */
 /* hidden 属性必须赢过任何 display 规则，否则隐藏的浮层会挡住整个舞台的点击 */
 [hidden] { display: none !important; }
@@ -552,6 +662,10 @@ a { color: inherit; }
   /* 单列：动画在上、文案在下 */
   .hero-grid { grid-template-columns: 1fr; gap: 26px; }
   .stage.hero-stage { aspect-ratio: 4 / 3; }
+  /* 手机端不要在滚动时吸顶，否则动画会盖住正文。
+     必须 position:relative 且 top:auto —— canvas 是绝对定位，需要它当包含块；
+     漏掉 top:auto 会残留 84px 偏移，把动画压到文案上 */
+  .move-hero .stage { position: relative; top: auto; }
   .hero h1 { max-width: 20ch; }
   .hero p { max-width: 60ch; }
 }

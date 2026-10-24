@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Lead Uppercut — Boxing Basics in 3D | SilentJab</title>
+<meta name="description" content="A short upward punch from the lead hand that splits a high guard from underneath. Watch the 3D demo, then read the action, timing, advantages and limits of punch #5." />
+<link rel="canonical" href="https://silentjab.com/leaduppercut.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Lead Uppercut — Boxing Basics in 3D | SilentJab" />
+<meta property="og:description" content="A short upward punch from the lead hand that splits a high guard from underneath. Watch the 3D demo, then read the action, timing, advantages and limits of punch #5." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Lead Uppercut — Boxing Basics in 3D | SilentJab",
+  "description": "A short upward punch from the lead hand that splits a high guard from underneath. Watch the 3D demo, then read the action, timing, advantages and limits of punch #5.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Lead Uppercut", "item": "https://silentjab.com/leaduppercut.html" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
+          <path d="M8 13h8"/>
+        </svg>
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
+      <a href="./index.html#moves">All moves</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-grid move-hero">
+
+      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
+      <div class="stage hero-stage" aria-label="3D demo of the lead uppercut">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the lead uppercut" hidden></div>
+        <div class="stage-loading" id="stage-loading">
+          <div class="ring"></div>
+          <span id="stage-loading-text">Loading 3D model…</span>
+        </div>
+        <div class="stage-error" id="stage-error" hidden></div>
+      </div>
+
+      <!-- Right: technique text -->
+      <div class="hero-copy">
+        <div class="kicker">Boxing basics · 3D demo</div>
+        <h1>How to throw a <em>lead uppercut</em></h1>
+        <p>A short upward punch from the lead hand that splits a high guard from underneath.</p>
+        <div class="quick">
+          <span class="chip">Punch #5</span>
+          <span class="chip">Lead hand</span>
+          <span class="chip">Inside range</span>
+          <span class="chip">Beats a high guard</span>
+        </div>
+        <div class="move-notes">
+          <section class="note">
+            <h2>Action</h2>
+            <p>Dip slightly at the knees — a small drop, not a lunge — and let the lead shoulder sink with them. From there drive the lead fist upward in a vertical line toward the chin, palm facing you, knuckles leading. The legs and hips push the punch up; the arm only guides it. The rear hand never leaves the chin, and the fist comes straight back down into the guard after it lands.</p>
+          </section>
+          <section class="note">
+            <h2>When to use</h2>
+            <p>Inside fighting, when the opponent leans in, or when a high guard is covering the face but leaving the line underneath open. Classic setups: after a body shot that doubles her over, or slipping inside the jab and rising with the uppercut.</p>
+          </section>
+          <section class="note">
+            <h2>Advantages</h2>
+            <p>It is the shortest route to the chin from inside range, and it travels on a line the guard does not cover — high gloves are almost blind to it. Because it is thrown by the lead hand, it is also the fastest uppercut you own and the easiest to hide behind a jab.</p>
+          </section>
+          <section class="note">
+            <h2>Limits</h2>
+            <p>You have to be close — it does almost nothing from outside — and dropping your level puts your own head on the line for hooks. If it misses, the recovery is longer than a jab's because the punch starts from a bent-knee position.</p>
+          </section>
+        </div>
+        <div class="pager">
+          <a class="chip" href="./rearhook.html">← Rear Hook</a>
+          <a class="chip" href="./rearuppercut.html">Rear Uppercut →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html#moves">All moves</a></span>
+</footer>
+
+<!-- Shared stage: this page asks for one move only, auto-played on load -->
+<script>
+window.STAGE = {
+  buttons: ['lead-hand-uppercut'],
+  labels: { 'lead-hand-uppercut': 'Replay' },
+  autoPlay: 'lead-hand-uppercut'
+};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./assets/home-stage.js"></script>
+</body>
+</html>

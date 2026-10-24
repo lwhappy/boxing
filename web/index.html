@@ -4,14 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="data:," />
-<title>Basic Boxing Moves &amp; Combinations — Learn Every Punch | SilentJab</title>
-<meta name="description" content="Learn basic boxing moves and combinations with frame-by-frame 3D demos: jab, cross, hook, uppercut and more. Technique, timing, footwork and the mistakes to avoid." />
-<meta name="keywords" content="basic boxing moves, boxing combinations, how to throw a jab, jab cross, boxing techniques, boxing basics, boxing footwork" />
+<title>Basic Boxing Moves — All Six Punches in 3D | SilentJab</title>
+<meta name="description" content="All six basic boxing punches in interactive 3D — jab, cross, lead hook, rear hook, lead uppercut, rear uppercut. Watch each one, replay in slow motion, and read the technique notes." />
+<meta name="keywords" content="basic boxing moves, boxing punches, six punches boxing, how to throw a jab, cross punch, lead hook, rear hook, uppercut, boxing techniques" />
 <link rel="canonical" href="https://silentjab.com/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SilentJab" />
-<meta property="og:title" content="Basic Boxing Moves & Combinations — Learn Every Punch" />
-<meta property="og:description" content="Learn basic boxing moves and combinations with frame-by-frame 3D demos: jab, cross, hook, uppercut and more." />
+<meta property="og:title" content="Basic Boxing Moves — All Six Punches in 3D" />
+<meta property="og:description" content="All six basic boxing punches in interactive 3D — jab, cross, lead hook, rear hook, lead uppercut, rear uppercut." />
 <meta name="twitter:card" content="summary_large_image" />
 <script type="application/ld+json">
 {
@@ -19,7 +19,7 @@
   "@type": "WebSite",
   "name": "SilentJab",
   "url": "https://silentjab.com/",
-  "description": "Basic boxing moves and combinations, explained with interactive 3D demos.",
+  "description": "Basic boxing punches, explained with interactive 3D demos.",
   "inLanguage": "en"
 }
 </script>
@@ -27,10 +27,14 @@
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "Basic Boxing Moves & Combinations",
+  "name": "Basic Boxing Moves — All Six Punches",
   "hasPart": [
-    { "@type": "WebPage", "name": "How to Throw a Jab", "url": "https://silentjab.com/jab.html" },
-    { "@type": "WebPage", "name": "Jab + Cross (1-2)", "url": "https://silentjab.com/jab-cross.html" }
+    { "@type": "WebPage", "name": "Jab", "url": "https://silentjab.com/jab.html" },
+    { "@type": "WebPage", "name": "Cross", "url": "https://silentjab.com/cross.html" },
+    { "@type": "WebPage", "name": "Lead Hook", "url": "https://silentjab.com/leadhook.html" },
+    { "@type": "WebPage", "name": "Rear Hook", "url": "https://silentjab.com/rearhook.html" },
+    { "@type": "WebPage", "name": "Lead Uppercut", "url": "https://silentjab.com/leaduppercut.html" },
+    { "@type": "WebPage", "name": "Rear Uppercut", "url": "https://silentjab.com/rearuppercut.html" }
   ]
 }
 </script>
@@ -58,7 +62,9 @@
       <span class="logo-text">SilentJab</span>
     </a>
     <nav class="nav" aria-label="Main">
+      <a href="./training.html">Training</a>
       <a href="#moves">Moves</a>
+      <a href="#combos">Combos</a>
     </nav>
   </div>
 </header>
@@ -68,10 +74,10 @@
   <section class="hero">
     <div class="hero-grid">
 
-      <!-- Left: 3D stage (canvas + action buttons above it) -->
+      <!-- Left: 3D stage (canvas + the six move buttons) -->
       <div class="stage hero-stage" id="demo" aria-label="3D demo area">
         <canvas id="stage-canvas"></canvas>
-        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Play an action" hidden></div>
+        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Play a move" hidden></div>
         <div class="stage-loading" id="stage-loading">
           <div class="ring"></div>
           <span id="stage-loading-text">Loading 3D model…</span>
@@ -82,18 +88,26 @@
       <!-- Right: copy -->
       <div class="hero-copy">
         <div class="kicker">Learn · Watch · Repeat</div>
-        <h1>Basic boxing moves <em>&amp; combinations</em></h1>
+        <h1>Basic boxing moves <em>— all six punches</em></h1>
         <p>
-          Every punch broken down the same way: stance and mechanics first, then the 3D demo where you can
-          orbit the camera and throw the shot yourself. Start with the jab, put it together with the cross,
-          and build the rest of your arsenal from there.
+          Every punch in the basic set, one 3D demo each: press a button and the fighter throws it,
+          orbit the camera, slow it down, then open the page for the full technique notes.
         </p>
         <div class="quick">
-          <span class="chip">How to throw a jab</span>
-          <span class="chip">Jab + cross (1-2)</span>
+          <a class="chip" href="./jab.html">Jab</a>
+          <a class="chip" href="./cross.html">Cross</a>
+          <a class="chip" href="./leadhook.html">Lead hook</a>
+          <a class="chip" href="./rearhook.html">Rear hook</a>
+          <a class="chip" href="./leaduppercut.html">Lead uppercut</a>
+          <a class="chip" href="./rearuppercut.html">Rear uppercut</a>
         </div>
       </div>
 
+    </div>
+
+    <!-- Below hero: training mode entry -->
+    <div class="hero-cta">
+      <a class="cta-btn" href="./training.html">Training mode — build your combo on a live target →</a>
     </div>
   </section>
 
@@ -101,9 +115,9 @@
     <div class="section-head">
       <div>
         <h2>Moves &amp; combinations</h2>
-        <p>Each card opens a standalone 3D demo: press the buttons, watch the punch land, and read the technique notes beside the fighters.</p>
+        <p>Each card opens its own 3D demo page: the punch plays automatically, you can replay it in slow motion, and read the technique notes beside the fighter.</p>
       </div>
-      <div class="count">02 demos</div>
+      <div class="count">06 demos</div>
     </div>
 
     <div class="grid">
@@ -118,19 +132,221 @@
         </span>
         <h3>Jab <span class="arrow">→</span></h3>
         <p>The lead-hand straight. Fastest punch you own: measures distance, blinds the guard, and gets back before the counter arrives.</p>
-        <div class="meta"><span class="tag">3D demo</span><span>Lead hand · basics</span></div>
+        <div class="meta"><span class="tag">3D demo</span><span>#1 · lead hand</span></div>
       </a>
 
-      <a class="card" href="./jab-cross.html">
+      <a class="card" href="./cross.html">
         <span class="ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
             <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
           </svg>
         </span>
-        <h3>Jab + Cross <span class="arrow">→</span></h3>
-        <p>The one-two. The jab occupies the guard, the rear hand comes through the gap — the first combination every boxer learns.</p>
-        <div class="meta"><span class="tag">3D demo</span><span>1-2 · combination</span></div>
+        <h3>Cross <span class="arrow">→</span></h3>
+        <p>The rear-hand straight and your first power punch: floor, hip and shoulder driving through one straight line.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>#2 · rear hand</span></div>
+      </a>
+
+      <a class="card" href="./leadhook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="7" cy="12" r="3.2"/>
+            <path d="M10 9c4 1 6 3 8 6"/>
+            <path d="M15 14l3 1"/>
+          </svg>
+        </span>
+        <h3>Lead hook <span class="arrow">→</span></h3>
+        <p>A tight horizontal arc from the lead hand that goes around the guard instead of through it.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>#3 · lead hand</span></div>
+      </a>
+
+      <a class="card" href="./rearhook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="17" cy="12" r="3.2"/>
+            <path d="M14 9c-4 1-6 3-8 6"/>
+            <path d="M9 14l-3 1"/>
+          </svg>
+        </span>
+        <h3>Rear hook <span class="arrow">→</span></h3>
+        <p>The heaviest hook you own: the whole rear leg and hip rotate behind a swinging fist aimed at the jaw.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>#4 · rear hand</span></div>
+      </a>
+
+      <a class="card" href="./leaduppercut.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 20c1-6-1-10-3-12"/>
+            <path d="M14 6l2-2 2 2"/>
+            <circle cx="12" cy="17" r="3.2"/>
+          </svg>
+        </span>
+        <h3>Lead uppercut <span class="arrow">→</span></h3>
+        <p>A short vertical punch from the lead hand that splits a high guard from underneath.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>#5 · lead hand</span></div>
+      </a>
+
+      <a class="card" href="./rearuppercut.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 20c-1-6 1-10 3-12"/>
+            <path d="M8 6l2-2 2 2"/>
+            <circle cx="12" cy="17" r="3.2"/>
+          </svg>
+        </span>
+        <h3>Rear uppercut <span class="arrow">→</span></h3>
+        <p>The knockout punch from below: rear leg, hip and fist driving up through the chin in one line.</p>
+        <div class="meta"><span class="tag">3D demo</span><span>#6 · rear hand</span></div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section" id="combos">
+    <div class="section-head">
+      <div>
+        <h2>Basic combinations</h2>
+        <p>Ten real boxing combos, each rendered as a single seamless 3D animation. The fighter starts from idle guard, throws every punch in sequence with no backward recovery between strikes, and the transitions blend smoothly — just like a live fighter. Press any card to watch.</p>
+      </div>
+      <div class="count">10 combos</div>
+    </div>
+
+    <div class="grid">
+
+      <a class="card" href="./combo_jab_cross.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross <span class="arrow">→</span></h3>
+        <p>The classic 1-2: lead-hand jab to occupy the guard, rear-hand cross to land the power. The first combo every boxer learns.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2 · two punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_cross_hook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <circle cx="7" cy="12" r="3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Hook <span class="arrow">→</span></h3>
+        <p>The 1-2-3: jab to open, cross to load, lead hook to finish on the inside. Three punches, three angles, one flow.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-3 · three punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_cross_leadhook_rearhook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <circle cx="7" cy="12" r="3"/>
+            <circle cx="17" cy="12" r="3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Lead Hook-Rear Hook <span class="arrow">→</span></h3>
+        <p>Four-punch combo: 1-2-3-4 — both hooks, both sides of the guard. Maximum pressure with no escape lane.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-3-4 · four punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_jab_cross.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="12" r="3"/>
+            <circle cx="13" cy="12" r="3"/>
+            <path d="M20 16h-5"/><path d="M17 13l3 3-3 3"/>
+          </svg>
+        </span>
+        <h3>Jab-Jab-Cross <span class="arrow">→</span></h3>
+        <p>Double jab to break rhythm, cross to capitalize. The second jab disrupts the opponent's counter timing.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-1-2 · three punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_cross_leadhook_cross.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <circle cx="7" cy="12" r="3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Lead Hook-Cross <span class="arrow">→</span></h3>
+        <p>Four-punch flow: 1-2-3-2 — the cross returns to finish what the hook started. Each punch loads the next.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-3-2 · four punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_cross_leaduppercut.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <path d="M9 20c-1-6 1-10 3-12"/>
+            <path d="M8 6l2-2 2 2"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Lead Uppercut <span class="arrow">→</span></h3>
+        <p>Three-punch combo that splits a high guard from underneath: jab, cross, then the lead uppercut drives up through the gap.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-5 · three punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_rearuppercut_leadhook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="12" r="3"/>
+            <path d="M15 20c1-6-1-10-3-12"/>
+            <path d="M14 6l2-2 2 2"/>
+            <circle cx="7" cy="17" r="3"/>
+          </svg>
+        </span>
+        <h3>Jab-Rear Uppercut-Lead Hook <span class="arrow">→</span></h3>
+        <p>Power uppercut from the rear hand, finished with a lead hook. Catches pressure fighters who lean forward after the jab.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-6-3 · three punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_jab_cross_leadhook_cross_dup.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <circle cx="7" cy="12" r="3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Lead Hook-Cross <span class="arrow">→</span></h3>
+        <p>Alternate take on the 1-2-3-2 flow — same sequence, different source animation and timing. Compare the rhythm.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-3-2 · alt take</span></div>
+      </a>
+
+      <a class="card" href="./combo_cross_leadhook_cross.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+            <path d="M20 16h-9"/><path d="M14 13l-3 3 3 3"/>
+            <circle cx="7" cy="12" r="3"/>
+            <path d="M4 8h9"/><path d="M10 5l3 3-3 3"/>
+          </svg>
+        </span>
+        <h3>Cross-Lead Hook-Cross <span class="arrow">→</span></h3>
+        <p>No jab to set up — straight to power: cross, hook, cross again. Three power shots, no breather punch.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>2-3-2 · three punches</span></div>
+      </a>
+
+      <a class="card" href="./combo_idle_jab_cross_leadhook.html">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="12" r="3"/>
+            <path d="M12 12h8"/>
+            <path d="M17 9l3 3-3 3"/>
+            <circle cx="7" cy="17" r="3"/>
+          </svg>
+        </span>
+        <h3>Jab-Cross-Lead Hook <span class="arrow">→</span></h3>
+        <p>The full 1-2-3 from idle guard — the bread-and-butter three-punch combination. Each punch loads the next.</p>
+        <div class="meta"><span class="tag">3D combo</span><span>1-2-3 · classic</span></div>
       </a>
 
     </div>
@@ -143,6 +359,12 @@
 
 </main>
 
+<!-- Homepage stage: the six basic punches, idle loops between them -->
+<script>
+window.STAGE = {
+  buttons: ['jab', 'cross', 'lead-hand-hook', 'back-hand-hook', 'lead-hand-uppercut', 'back-hand-uppercut']
+};
+</script>
 <script type="module" src="./assets/home-stage.js"></script>
 </body>
 </html>
