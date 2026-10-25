@@ -5,7 +5,15 @@
   "observability": {
     "enabled": true
   },
+  "workers_dev": true,
   "assets": {
-    "directory": "web"
-  }
+    "directory": "web",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    {
+      "pattern": "silentjab.com",
+      "custom_domain": true
+    }
+  ]
 }

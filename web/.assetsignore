@@ -1,0 +1,15 @@
+# Files that must NOT be published as static assets.
+# Wrangler reads this file (gitignore-style patterns) and skips matching
+# files when uploading the assets directory.
+# Docs: https://developers.cloudflare.com/workers/static-assets/
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
+# AppleDouble resource forks
+._*
+
+# Stray wrangler state (a `wrangler deploy` run with cwd=web/ leaves one here)
+.wrangler
+**/.wrangler

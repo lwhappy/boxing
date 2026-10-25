@@ -4,6 +4,8 @@
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  # Open the TLS connection to the Google tag CDN ahead of the gtag.js request.
+  Link: <https://www.googletagmanager.com>; rel=preconnect; crossorigin, <https://www.googletagmanager.com>; rel=dns-prefetch
 
 # three.js + addons: content-hashed, cache forever
 /vendor/*
