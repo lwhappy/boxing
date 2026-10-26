@@ -5,8 +5,8 @@
  * trimStart (seconds): the combo animations begin with a guard-stance phase
  * before the first punch fires. This trims that prefix so the action starts
  * at the punch itself, not the pre-punch guard.
- * Default: 1.0s — cuts the full pre-punch guard + wind-up so the action
- * starts in the middle of the first punch.
+ * Default: 1.5s — cuts the full pre-punch guard + wind-up so the action
+ * starts deep into the first punch.
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -289,7 +289,7 @@ function onLoaded(gltf) {
     comboClip = clips[0];
     // Trim the initial idle/loading phase so the first punch starts sooner.
     // The combo clips have ~1s of pre-punch setup; we cut roughly half of it.
-    const trimStart = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.0;
+    const trimStart = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.5;
     if (trimStart > 0 && comboClip.duration > trimStart + 0.5) {
       comboClip = trimClipStart(comboClip, trimStart);
     }
