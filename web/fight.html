@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:," />
+<title>Fight — Interactive 3D Boxing Scene | SilentJab</title>
+<meta name="description" content="Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation — jab, cross, hooks, uppercuts. Refresh to load a new fight scene." />
+<meta name="keywords" content="boxing fight, 3D boxing, boxing animation, boxing punches, interactive boxing, boxing scene" />
+<link rel="canonical" href="https://silentjab.com/fight.html" />
+<meta property="og:url" content="https://silentjab.com/fight.html" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Fight — Interactive 3D Boxing Scene | SilentJab" />
+<meta property="og:description" content="Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation." />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Fight — Interactive 3D Boxing Scene",
+  "description": "Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab", "url": "https://silentjab.com/" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Fight", "item": "https://silentjab.com/fight.html" }
+    ]
+  }
+}
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<link rel="stylesheet" href="./assets/home.css?v=3" />
+<link rel="stylesheet" href="./assets/fight.css?v=2" />
+<script>
+window.PAGE = { section: 'fight', depth: 0 };
+</script>
+<script src="./assets/site-config.js"></script>
+<script src="./assets/site-head.js"></script>
+
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <img src="./assets/img/glove.png" srcset="./assets/img/glove.png 1x, ./assets/img/glove@2x.png 2x, ./assets/img/glove@3x.png 3x" alt="" width="30" height="20">
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="./moves/" data-section="moves">Moves</a>
+      <a href="./combos/" data-section="combos">Combos</a>
+      <a href="./training/" data-section="training">Training</a>
+    </nav>
+  </div>
+</header>
+<script src="./assets/site-nav.js"></script>
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="wrap">
+    <ol>
+      <li><a href="./index.html">Home</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><span aria-current="page">Fight</span></li>
+    </ol>
+  </div>
+</nav>
+
+<main class="wrap fight-main">
+
+  <div class="fight-scene-label" id="fight-scene-label"></div>
+
+  <div class="fight-stage" id="fight-stage" aria-label="3D fight scene">
+    <canvas id="fight-canvas"></canvas>
+    <div class="fight-loading" id="fight-loading">
+      <div class="ring"></div>
+      <span id="fight-loading-text">Loading fight model…</span>
+    </div>
+    <div class="fight-error" id="fight-error" hidden></div>
+  </div>
+
+  <p class="fight-description" id="fight-description"></p>
+
+  <div class="fight-bar" id="fight-bar" role="toolbar" aria-label="Punch buttons" hidden></div>
+
+</main>
+
+<!-- Fight page config: scenes are dynamic — add/edit scenes here.
+     Each scene:
+       glb:          path to the GLB file (relative to this page)
+       label:        short scene name shown above the stage
+       active:       array of button numbers that are enabled (1-6)
+       description:  explanatory text shown below the stage
+     GLB clip naming:
+       defence-idle   — defence character idle loop
+       attack-idle    — attack character idle loop
+       attack-{key}  — attack punch (e.g. attack-jab, attack-cross) -->
+<script>
+window.FIGHT = {
+  scenes: [
+    {
+      glb: 'fight/glb/med-head-jab.glb',
+      label: 'Medium Head Jab',
+      active: [1],
+      description: 'A focused drill on the jab to the head. The defender holds guard while the attacker throws the jab — press the Jab button to fire it.'
+    }
+  ]
+};
+</script>
+<script type="module" src="./assets/fight-stage.js?v=4"></script>
+</body>
+</html>
