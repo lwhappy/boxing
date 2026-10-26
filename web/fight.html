@@ -102,6 +102,14 @@ window.PAGE = { section: 'fight', depth: 0 };
        label:        short scene name shown above the stage
        active:       array of button numbers that are enabled (1-6)
        description:  explanatory text shown below the stage
+       zoom:         camera zoom multiplier (optional). 1 = auto-fit the
+                     frame; < 1 pulls the camera in so the fighters fill
+                     more of the stage; > 1 pulls back.
+       offsets:      optional per-character position nudges, in model world
+                     units. The GLB carries Blender's own spacing; use this to
+                     tighten the gap between the two fighters without
+                     re-exporting. A positive x on 'defence' pulls it toward
+                     the attacker. Optional 'yaw' (degrees) rotates a fighter.
      GLB clip naming:
        defence-idle   — defence character idle loop
        attack-idle    — attack character idle loop
@@ -113,11 +121,15 @@ window.FIGHT = {
       glb: 'fight/glb/med-head-jab.glb',
       label: 'Medium Head Jab',
       active: [1],
-      description: 'A focused drill on the jab to the head. The defender holds guard while the attacker throws the jab — press the Jab button to fire it.'
+      zoom: 0.86,
+      description: 'A focused drill on the jab to the head. The defender holds guard while the attacker throws the jab — press the Jab button to fire it.',
+      offsets: {
+        defence: { x: 0.28 }
+      }
     }
   ]
 };
 </script>
-<script type="module" src="./assets/fight-stage.js?v=4"></script>
+<script type="module" src="./assets/fight-stage.js?v=10"></script>
 </body>
 </html>

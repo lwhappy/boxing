@@ -36,7 +36,14 @@ const PUNCHES = [
 /* Character config: bone count is the stable identifier (Blender re-exports
  * rename the tripo mesh nodes), meshKey is only a fallback hint.
  *   defence = 41-bone skeleton (tripo_node_5cd6af71)
- *   attack  = 33-bone skeleton (tripo_node_7b87a507 / ....003) */
+ *   attack  = 33-bone skeleton (tripo_node_7b87a507 / ....003)
+ *
+ * `offset` is a per-character world-space nudge applied AFTER the GLB is
+ * loaded, in units of the model's own world scale. It exists so the spacing
+ * between the two fighters can be tuned from the page config without
+ * re-exporting the GLB from Blender:
+ *   offset: { x: -0.12 }  →  pull the defence 0.12 closer to the attack
+ * A negative x on defence (and/or positive x on attack) closes the gap. */
 const CHARACTERS = {
   defence: { meshKey: 'tripo_node_5cd6af71', bones: 41, idleClip: 'defence-idle' },
   attack:  { meshKey: 'tripo_node_7b87a507',  bones: 33, idleClip: 'attack-idle' },
@@ -65,7 +72,7 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.enablePan = false;
-controls.minDistance = 1.4;
+controls.minDistance = 0.8;
 controls.maxDistance = 6;
 controls.maxPolarAngle = Math.PI * 0.55;
 
@@ -99,6 +106,7 @@ let gltfScene = null;       // current loaded scene root
 let userMoved = false;
 let homeFraming = null;
 let posedPts = null;
+let sceneZoom = 1;          // per-scene camera zoom multiplier (config `zoom`)
 
 /* ---------- material fix: force opaque (same as home-stage.js) ---------- */
 function forceOpaque(mat) {
@@ -111,10 +119,13 @@ function forceOpaque(mat) {
 
 /* ---------- camera framing (same algorithm as home-stage.js) ---------- */
 const _tv = new THREE.Vector3();
-/* Straight-on front view: the fight scene is authored facing +Z, so a pure
- * front camera reads the stances correctly. Slight downward tilt keeps the
- * camera roughly at chest height rather than looking up from the floor. */
-const VIEW_DIR = new THREE.Vector3(0, 0.06, 1).normalize();
+/* Side-on "fight camera": the two fighters are squared up along the X axis
+ * (defence at -X facing +X, attack at +X facing -X), so the camera sits on
+ * the -Z side looking back along +Z. That gives the classic profile face-off
+ * read instead of the awkward three-quarter view you get from +Z, where one
+ * fighter's back is turned to the lens.
+ * Slight downward tilt keeps the camera at chest height, not floor level. */
+const VIEW_DIR = new THREE.Vector3(0, 0.06, -1).normalize();
 
 function samplePose(model, budget = 9000) {
   model.updateMatrixWorld(true);
@@ -141,16 +152,21 @@ function samplePose(model, budget = 9000) {
   return pts;
 }
 
-function computeFraming(pts) {
+function computeFraming(pts, zoom = 1) {
   if (!pts || !pts.length) return null;
   const stageW = canvas.clientWidth || 480;
   const stageH = canvas.clientHeight || 480;
   const cRect = canvas.getBoundingClientRect();
   const bRect = barEl.getBoundingClientRect();
-  const barTop = bRect.height > 0 ? bRect.top - cRect.top : stageH * 0.86;
+  /* The button bar is still hidden while the model loads, so fall back to an
+   * estimate of where it will sit (stage bottom + gap) rather than treating
+   * the whole lower stage as free space. */
+  const barTop = bRect.height > 0
+    ? bRect.top - cRect.top
+    : stageH + 56;
   const topPad = stageH * 0.04;
   const bottomPad = Math.min(stageH * 0.38, Math.max(stageH * 0.07, stageH - barTop + stageH * 0.025));
-  const sidePad = stageW * (stageW < 620 ? 0.05 : 0.09);
+  const sidePad = stageW * (stageW < 620 ? 0.03 : 0.06);
 
   let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, minZ = 1e9, maxZ = -1e9;
   for (const p of pts) {
@@ -160,7 +176,7 @@ function computeFraming(pts) {
   }
   const center = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
   const target = center.clone();
-  let dist = Math.max(1.2, (maxY - minY) * 2.4);
+  let dist = Math.max(1.0, (maxY - minY) * 1.8);
 
   const wantCx = stageW / 2;
   const wantCy = (topPad + (stageH - bottomPad)) / 2;
@@ -168,10 +184,33 @@ function computeFraming(pts) {
   const wantH = stageH - bottomPad - topPad;
   const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
 
+  /* Screen-space correction.
+   * The camera may sit on either side of the model (VIEW_DIR decides) and the
+   * world axis that maps to screen-right flips with it, so the correction is
+   * expressed in the camera's own right/up basis rather than in world X/Y.
+   *
+   * To keep the loop stable, the target is moved in the *plane through the
+   * current target that is perpendicular to the view ray*. Moving along the
+   * camera's up axis would tilt the camera and feed back into the next
+   * iteration, so vertical correction is applied to a world-up vector that
+   * has been projected perpendicular to the view direction. */
+  const camRight = new THREE.Vector3();
+  const worldUp = new THREE.Vector3(0, 1, 0);
+  const camUp = new THREE.Vector3();
+  const viewRay = new THREE.Vector3();
+
   for (let iter = 0; iter < 8; iter++) {
     camera.position.copy(target).addScaledVector(VIEW_DIR, dist);
     camera.lookAt(target);
     camera.updateMatrixWorld(true);
+
+    camRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+    // Camera up, made perpendicular to the view ray so the target can be
+    // slid vertically without tilting the camera.
+    viewRay.copy(VIEW_DIR);
+    camUp.copy(worldUp).addScaledVector(viewRay, -worldUp.dot(viewRay));
+    if (camUp.lengthSq() < 1e-8) camUp.set(0, 0, 1);
+    camUp.normalize();
 
     let pMinX = 1e9, pMaxX = -1e9, pMinY = 1e9, pMaxY = -1e9;
     for (const p of pts) {
@@ -181,13 +220,24 @@ function computeFraming(pts) {
       if (sx < pMinX) pMinX = sx; if (sx > pMaxX) pMaxX = sx;
       if (sy < pMinY) pMinY = sy; if (sy > pMaxY) pMaxY = sy;
     }
-    const need = Math.max((pMaxX - pMinX) / wantW, (pMaxY - pMinY) / wantH) * 1.03;
+    const need = Math.max((pMaxX - pMinX) / wantW, (pMaxY - pMinY) / wantH) * 1.01;
     const dx = (wantCx - (pMinX + pMaxX) / 2);
     const dy = (wantCy - (pMinY + pMaxY) / 2);
+    // World units per screen pixel at the target plane
     const wpp = (2 * dist * halfTan) / stageH;
-    target.y += dy * wpp;
-    target.x -= dx * wpp;
-    dist = THREE.MathUtils.clamp(dist * need, controls.minDistance, controls.maxDistance);
+    /* Sign notes:
+     *  - sx grows to the right. The camera's own right axis (camRight)
+     *    points the way screen-right corresponds to in world space, so
+     *    moving the target along -camRight slides the content right.
+     *  - sy grows downward. Moving the target along +camUp (world up)
+     *    pushes the content down on screen, so a positive dy (content should
+     *    move up) needs the target moved along +camUp as well — both use
+     *    the same sign because dy is measured in the "content must travel"
+     *    direction. */
+    target.addScaledVector(camRight, -dx * wpp);
+    target.addScaledVector(camUp, dy * wpp);
+    // `zoom` < 1 pulls the camera in (bigger fighters), > 1 pushes it out.
+    dist = THREE.MathUtils.clamp(dist * need * zoom, controls.minDistance, controls.maxDistance);
     if (Math.abs(need - 1) < 0.002 && Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) break;
   }
   return { target, dist };
@@ -240,6 +290,9 @@ function loadScene(idx) {
   errorEl.hidden = true;
   loadingText.textContent = `Loading ${cfg.label || 'fight'} model…`;
   barEl.hidden = true;
+
+  // Camera zoom multiplier for this scene (1 = auto-fit, < 1 = closer)
+  sceneZoom = typeof cfg.zoom === 'number' && cfg.zoom > 0 ? cfg.zoom : 1;
 
   // Description text
   if (descEl) {
@@ -384,6 +437,25 @@ function onLoaded(gltf, cfg, activeSet) {
     rigs[key] = rig;
   }
 
+  /* Apply per-character position offsets.
+   * The GLB carries Blender's own spacing between the two Armatures. A scene
+   * can override that with `offsets: { defence: {x: -0.12}, attack: {...} }`
+   * in the config, which is applied here as a world-space nudge on the rig
+   * root. Offsets are expressed in the model's own world units (1 unit ≈
+   * one metre for these exports). */
+  const offsets = (cfg && cfg.offsets) || {};
+  for (const [key, rig] of Object.entries(rigs)) {
+    const off = offsets[key];
+    if (!off) continue;
+    rig.root.position.x += Number(off.x || 0);
+    rig.root.position.y += Number(off.y || 0);
+    rig.root.position.z += Number(off.z || 0);
+    if (off.yaw) {
+      rig.root.rotation.y += (Number(off.yaw) * Math.PI) / 180;
+    }
+  }
+  gltfScene.updateMatrixWorld(true);
+
   // Map clip name -> character key, using the raw glTF channel data
   const clipOwner = buildClipOwnerMap(gltf, rigs);
 
@@ -466,7 +538,7 @@ function onLoaded(gltf, cfg, activeSet) {
   }
 
   posedPts = pts;
-  homeFraming = computeFraming(pts);
+  homeFraming = computeFraming(pts, sceneZoom);
   applyFraming(homeFraming);
 
   // Build buttons
@@ -597,7 +669,7 @@ window.addEventListener('resize', () => {
   if (userMoved || !posedPts || !homeFraming) return;
   clearTimeout(reframeTimer);
   reframeTimer = setTimeout(() => {
-    homeFraming = computeFraming(posedPts);
+    homeFraming = computeFraming(posedPts, sceneZoom);
     if (homeFraming) applyFraming(homeFraming);
   }, 180);
 });
