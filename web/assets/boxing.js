@@ -75,7 +75,6 @@ const barEl = document.getElementById('bar');
 const loadTextEl = document.getElementById('load-text');
 const errorEl = document.getElementById('error');
 const briefEl = document.getElementById('brief');
-const sceneTagEl = document.getElementById('scene-tag');
 
 /* ---------- renderer / scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -100,7 +99,10 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.minDistance = 1.2;
-controls.maxDistance = 8;
+controls.maxDistance = 9;
+// 关掉平移：手机上双指拖拽默认是 pan，会把两名角色推出画面中心。
+// 这个场景只需要绕着看和缩放，平移没有任何意义。
+controls.enablePan = false;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.target.set(0, 0.95, 0);
 
@@ -809,12 +811,13 @@ function onLoaded(gltf) {
       gltfScene.updateMatrixWorld(true);
     }
   }
+  // 扫一遍所有动画姿态，得到与播放状态无关的固定包围盒。
+  // 出拳时手臂会朝镜头方向伸出 0.17m，只按当前帧取景的话镜头会跟着动作抖。
+  contentBox = measureContentEnvelope();
+  restBox = measureSceneBox();
   frameCamera();
 
   loaderEl.classList.add('hidden');
-
-  // 品牌区的场景名跟随 tab
-  if (sceneTagEl && sceneCfg) sceneTagEl.textContent = '/ ' + (sceneCfg.label || '');
 
   window.__app = {
     ready: true, gltf, chars, scene, camera, renderer, controls,
@@ -829,6 +832,14 @@ function onLoaded(gltf) {
     showFloater,
     showCallout,
     floaters,
+    frameCamera,
+    refitCamera,
+    resetView,
+    get fit() {
+      const { rest, content, restSize } = framingBoxes();
+      const f = framingFor(restSize, rest, content, camera.aspect);
+      return { radius: f.radius, dBase: f.dBase, dFit: f.dFit };
+    },
     get callouts() { return CALLOUTS; },
     get attacks() { return ATTACKS; },
     selectAttack,
@@ -1122,19 +1133,197 @@ function measureSceneBox() {
   return box;
 }
 
-function frameCamera() {
-  const box = measureSceneBox();
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-  const dist = Math.max(size.y * 2.2, 2.6);
+/* 内容包围盒：把所有动画片段的所有姿态都扫一遍，取骨骼世界坐标的并集。
+ *
+ * 为什么需要它：场景包围盒是「当前这一帧」的骨骼位置，会随动作变化。
+ * 实测 idle 时 z 跨度 0.286m，出拳时手臂往前伸到 0.456m（+0.17m）。
+ * 如果直接拿当前姿态算取景距离，镜头就会随着动画忽远忽近。
+ * 这里扫一遍全部分片得到一个与播放状态无关的固定盒子，取景就稳定了。
+ *
+ * 采样用独立的 AnimationMixer，不碰正在跑的 mixer：
+ *   - 不会打乱 live 的动作状态（play/crossFade/finished 事件链全不受影响）
+ *   - mixer 的 'finished' 事件监听只挂在 live mixer 上，不会被采样误触发
+ * 每个分片采样前 play() 会记住骨骼原值，stop() 时自动还原，采样不留下痕迹。
+ */
+const ENVELOPE_STEPS = 12;
+let contentBox = null;   // 全姿态并集（用于「不裁切」的视距）
+let restBox = null;      // 站立姿态（用于构图：视点高度与基准视距）
 
-  controls.target.set(center.x, size.y * 0.52, center.z);
-  camera.position.set(center.x + 0.25, size.y * 0.78, center.z + dist);
+function measureContentEnvelope() {
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  const has = (p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z);
+
+  for (const st of Object.values(chars)) {
+    if (!st.clips || !st.clips.length) continue;
+    const probe = new THREE.AnimationMixer(st.root);
+    for (const clip of st.clips) {
+      const act = probe.clipAction(clip);
+      act.setLoop(THREE.LoopOnce, 1);
+      act.clampWhenFinished = true;
+      act.setEffectiveWeight(1);
+      act.play();
+      act.paused = true;              // 手动拨 action.time，混音器不推进
+      for (let i = 0; i <= ENVELOPE_STEPS; i++) {
+        act.time = (clip.duration * i) / ENVELOPE_STEPS;
+        probe.update(0);
+        gltfScene.updateMatrixWorld(true);
+        st.root.traverse((o) => {
+          if (!o.isBone) return;
+          const p = o.getWorldPosition(v);
+          if (has(p)) box.expandByPoint(p);
+        });
+      }
+      act.stop();                     // 还原这个分片采样时动过的骨骼
+    }
+    probe.stopAllAction();
+    // 采样期间 live 的骨骼被搬动过，用 live mixer 重新求值回到待机姿势
+    st.mixer.update(1 / 30);
+    gltfScene.updateMatrixWorld(true);
+  }
+
+  if (box.isEmpty()) return null;
+  box.min.y = Math.min(box.min.y, 0);
+  return box;
+}
+
+/* 取景计算。
+ * 原来只按纵向取景（dist = size.y * 2.2），桌面端没问题；但竖屏手机的
+ * aspect 很小（约 0.46），横向才是瓶颈 —— 1.64m 宽的一对角色在 390px 宽的
+ * 视口里会被切掉一半（实测需要 5.16m 视距，而原来固定只有 2.62m）。
+ *
+ * 改成「角点投影 + 二分」：把场景包围盒的 8 个角投到 NDC 里，二分出能让
+ * 所有角点都落在画面安全范围内的最小视距。和只算宽度的公式相比，这个办法
+ * 把盒子的纵深、斜视角、以及出拳时手臂伸出的量都算进去了。
+ * 观察方向仍沿用桌面版的单位向量，所以竖屏拉远时观感一致，不会变成俯视图。
+ */
+const FIT_CORNER = new THREE.Vector3();
+const FIT_PROBE = new THREE.PerspectiveCamera();
+
+/* 8 个角点投影后的溢出比：<=1 表示整个包围盒都在画面安全区内。 */
+function fitOverflow(box, target, dir, radius, aspect, limitX, limitY) {
+  FIT_PROBE.fov = camera.fov;
+  FIT_PROBE.aspect = aspect;
+  FIT_PROBE.near = camera.near;
+  FIT_PROBE.far = camera.far;
+  FIT_PROBE.position.copy(target).addScaledVector(dir, radius);
+  FIT_PROBE.lookAt(target);
+  FIT_PROBE.updateMatrixWorld(true);
+  FIT_PROBE.updateProjectionMatrix();
+
+  let mx = 0, my = 0;
+  for (let i = 0; i < 8; i++) {
+    FIT_CORNER.set(
+      (i & 1) ? box.max.x : box.min.x,
+      (i & 2) ? box.max.y : box.min.y,
+      (i & 4) ? box.max.z : box.min.z
+    ).project(FIT_PROBE);
+    mx = Math.max(mx, Math.abs(FIT_CORNER.x));
+    my = Math.max(my, Math.abs(FIT_CORNER.y));
+  }
+  return Math.max(mx / limitX, my / limitY);
+}
+
+/* 二分出「刚好不裁切」的视距。视距越大投影越小，所以溢出对 radius 单调，
+ * 可以直接二分。 */
+function fitRadius(box, target, dir, aspect, limitX, limitY) {
+  let lo = 0.5, hi = 40;
+  if (fitOverflow(box, target, dir, hi, aspect, limitX, limitY) > 1) return hi;
+  for (let i = 0; i < 26; i++) {
+    const mid = (lo + hi) / 2;
+    if (fitOverflow(box, target, dir, mid, aspect, limitX, limitY) > 1) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+}
+
+function framingFor(restSize, restBox, contentBox, aspect) {
+  // 桌面基准取景：offset = (0.25, 0.26*size.y, zBase)，归一化后当作观察方向
+  const zBase = Math.max(restSize.y * 2.2, 2.6);
+  const unit = new THREE.Vector3(0.25, restSize.y * 0.26, zBase).normalize();
+  const dBase = zBase / unit.z;                      // 基准视距（= 原桌面取景距离）
+
+  // 视点按站立姿态算：构图（看的方向、看的高度）跟原来完全一致。
+  const center = restBox.getCenter(new THREE.Vector3());
+  const target = new THREE.Vector3(center.x, restSize.y * 0.52, center.z);
+
+  // 安全区：横向留 3% 余量，纵向留 8%（头顶空间要给 HUD）。
+  // 这里用全姿态并集来测，保证任何一帧（尤其是出拳伸臂）都不会被切到。
+  const dFit = fitRadius(contentBox, target, unit, aspect, 0.97, 0.92);
+
+  return { unit, target, radius: Math.max(dBase, dFit), dBase, dFit };
+}
+
+/* 取景用的两个盒子：
+ *   restBox    —— 站立姿态，决定视点与桌面基准视距（构图不变）
+ *   contentBox —— 全姿态并集，决定「不裁切」所需的视距（稳定不抖）
+ * 任一缺失就退回当前帧的实测盒，保证功能不挂。
+ */
+function framingBoxes() {
+  const rest = restBox || measureSceneBox();
+  const content = contentBox || rest;
+  return {
+    rest,
+    content,
+    restSize: rest.getSize(new THREE.Vector3()),
+  };
+}
+
+function homePosition(home) {
+  return home.target.clone().addScaledVector(home.unit, home.radius);
+}
+
+function frameCamera() {
+  const { rest, content, restSize } = framingBoxes();
+
+  // 观察方向与基准视距按站立姿态算（桌面构图保持原样），
+  // 「不裁切」的视距按全姿态并集算（任何一帧都不会切掉角色）。
+  const f = framingFor(restSize, rest, content, camera.aspect);
+
+  controls.target.copy(f.target);
+  camera.position.copy(f.target).addScaledVector(f.unit, f.radius);
+  controls.maxDistance = Math.max(9, f.radius * 1.4);
   controls.update();
 
   gltfScene.userData.homeView = {
     target: controls.target.clone(),
-    position: camera.position.clone()
+    unit: f.unit.clone(),
+    radius: f.radius
+  };
+}
+
+/* 视口变了（旋转手机、改窗口）：重新取景。
+ * 用户手动转过视角就保留他的方向，只把距离拉回「不裁切」的范围。 */
+function refitCamera() {
+  if (!gltfScene) return;
+  const home = gltfScene.userData.homeView;
+  if (!home) { frameCamera(); return; }
+
+  const { rest, content, restSize } = framingBoxes();
+  const f = framingFor(restSize, rest, content, camera.aspect);
+
+  const homePos = homePosition(home);
+  const moved = camera.position.distanceTo(homePos) > 1e-3;
+
+  if (!moved) {
+    controls.target.copy(f.target);
+    camera.position.copy(f.target).addScaledVector(f.unit, f.radius);
+  } else {
+    const dir = camera.position.clone().sub(controls.target);
+    const radius = dir.length();
+    if (radius > 1e-4) {
+      dir.multiplyScalar(1 / radius);
+      const clamped = Math.min(Math.max(radius, f.dFit), f.dBase * 1.8);
+      camera.position.copy(controls.target).addScaledVector(dir, clamped);
+    }
+  }
+  controls.maxDistance = Math.max(9, f.radius * 1.4);
+  controls.update();
+
+  gltfScene.userData.homeView = {
+    target: controls.target.clone(),
+    unit: f.unit.clone(),
+    radius: f.radius
   };
 }
 
@@ -1142,7 +1331,7 @@ function resetView() {
   const home = gltfScene && gltfScene.userData.homeView;
   if (!home) return;
   controls.target.copy(home.target);
-  camera.position.copy(home.position);
+  camera.position.copy(homePosition(home));
   controls.update();
 }
 
@@ -1156,6 +1345,7 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  refitCamera();
 });
 
 /* ---------- loop ---------- */

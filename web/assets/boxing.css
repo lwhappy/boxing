@@ -5,11 +5,18 @@
     --stroke: rgba(255, 255, 255, 0.10);
     --text: #eef2f7;
     --muted: #8b95a5;
+    --muted-2: #b9c3d1;   /* same value as home.css — brighter secondary text */
     --black-accent: #5aa9ff;
     --red-accent: #ff5a6a;
   }
 
   * { box-sizing: border-box; }
+
+  /* Link colour reset — same as home.css.
+     Without this the .logo anchor falls back to the browser default blue
+     (rgb(0,0,238)) instead of inheriting --text, so the site name rendered
+     blue on the training pages while every other page showed it in white. */
+  a { color: inherit; }
 
   html, body {
     margin: 0;
@@ -29,71 +36,158 @@
     touch-action: none;
   }
 
-  /* ---------- HUD ---------- */
+  /* ---------- Shared header overlay (same as all other pages) ---------- */
+  /* On training pages the canvas is full-screen, so the header overlays it.
+     The bars are near-opaque because the 3D backdrop behind them is a bright
+     photographic studio — a translucent bar washed the breadcrumb text out. */
+  .site-head {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    background: rgba(6, 7, 10, 0.92);
+    border-bottom: 1px solid var(--stroke);
+  }
+
+  .site-head .wrap {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 22px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  /* The glove art is a wide horizontal shape (knuckles pointing left).
+     Let it fill the mark's width and keep its own aspect ratio,
+     otherwise the square canvas shrinks the visible glove to ~26x17px. */
+  .logo-mark {
+    width: 30px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .logo-mark img {
+    width: 30px;
+    height: auto;
+    display: block;
+  }
+
+  .logo-text {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .nav a {
+    text-decoration: none;
+    color: var(--muted);
+    padding: 7px 12px;
+    border-radius: 999px;
+    transition: color .18s ease, background .2s ease;
+  }
+
+  .nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+  .nav a[aria-current="page"] { color: var(--text); }
+
+  /* ---------- Breadcrumb overlay (below header, above canvas) ---------- */
+  .breadcrumbs {
+    position: fixed;
+    top: 62px;
+    left: 0;
+    right: 0;
+    z-index: 19;
+    background: rgba(6, 7, 10, 0.9);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+    border-bottom: 1px solid var(--stroke);
+    pointer-events: auto;
+  }
+
+  .breadcrumbs .wrap {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 22px;
+  }
+
+  .breadcrumbs ol {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--muted-2);
+  }
+
+  .breadcrumbs li a {
+    text-decoration: none;
+    color: var(--muted-2);
+    transition: color .18s ease;
+  }
+
+  .breadcrumbs li a:hover { color: var(--text); }
+
+  .breadcrumbs li span[aria-current="page"] {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .breadcrumbs li.sep {
+    opacity: 0.45;
+    font-size: 10px;
+  }
+
+  /* ---------- HUD (page title + hints overlaid on canvas) ---------- */
+  /* padding-top clears the fixed header (62px) + breadcrumb bar (~35px) */
   .hud {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    padding: max(18px, env(safe-area-inset-top)) 22px 22px;
+    padding: 112px 22px 22px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
   }
 
-  .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
+  .hud-title {
+    pointer-events: none;
   }
 
-  .brand .eyebrow {
-    font-size: 10px;
-    letter-spacing: .32em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-
-  .brand h1 {
+  .hud-title h1 {
     margin: 0;
     font-size: clamp(18px, 3.4vw, 26px);
     font-weight: 650;
     letter-spacing: -0.01em;
   }
-
-  .brand h1 span { color: var(--muted); font-weight: 400; }
-
-  /* ---------- 单页版新增：品牌链接 / 导语 ---------- */
-  .brand .eyebrow a {
-    color: inherit;
-    text-decoration: none;
-    pointer-events: auto;            /* HUD 整体 pointer-events:none，链接要单独放行 */
-    transition: color .18s ease;
-  }
-  .brand .eyebrow a:hover { color: var(--text); }
-  .brand .eyebrow .sep { opacity: .45; margin: 0 6px; }
-
-  /* ---------- HUD 内的紧凑导航（training 练习页是全屏场景，没有页头） ---------- */
-  .hud .mininav {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    pointer-events: auto;              /* HUD 整体 pointer-events:none，链接要单独放行 */
-  }
-
-  .hud .mininav a {
-    font-size: 11px;
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-decoration: none;
-    white-space: nowrap;
-    transition: color .18s ease;
-  }
-
-  .hud .mininav a:hover { color: var(--text); }
-  .hud .mininav a[aria-current="page"] { color: var(--text); }
 
   .lede {
     margin: 9px 0 0;
@@ -118,7 +212,7 @@
   .attackbar {
     position: fixed;
     left: 50%;
-    top: clamp(70px, 14vh, 148px);
+    top: clamp(120px, 16vh, 168px);
     transform: translateX(-50%);
     display: flex;
     gap: 20px;
@@ -454,6 +548,56 @@
     color: var(--text);
   }
 
+  /* ---------- 底部操作台 ----------
+   * 桌面端：.dock / .dock-util 用 display:contents 拆散成空盒，
+   *          招式按钮和音效开关回到各自原来的固定位置 —— 手机端的改动不波及桌面。
+   * 手机端：.dock 收成屏幕底部的一条操作栏（工具按钮 + 招式按钮）。
+   */
+  .dock { display: contents; }
+  .dock-util { display: contents; }
+
+  /* ---------- 工具按钮（只有手机端需要） ---------- */
+  .util-btn {
+    display: none;
+    align-items: center;
+    gap: 7px;
+    appearance: none;
+    cursor: pointer;
+    padding: 7px 13px 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    background: rgba(16, 19, 25, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--muted);
+    font: inherit;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: color .2s ease, border-color .25s ease, box-shadow .3s ease;
+  }
+  .util-btn .util-ico { width: 13px; height: 13px; flex: 0 0 auto; opacity: .8; }
+  .util-btn:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
+  .util-btn.on {
+    color: #fff;
+    border-color: rgba(255, 170, 90, 0.45);
+    box-shadow: 0 0 26px rgba(255, 110, 30, 0.3);
+  }
+
+  /* ---------- 说明抽屉外壳（只有手机端需要） ---------- */
+  .sheet-head { display: none; }
+  .scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    background: rgba(4, 6, 10, 0.62);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .3s ease, visibility .3s;
+  }
+
   /* ---------- loader ---------- */
   #loader {
     position: fixed;
@@ -523,7 +667,10 @@
 
   @media (max-width: 980px) {
     .brief { display: none; }
-    .attackbar { gap: 12px; top: clamp(76px, 12vh, 120px); }
+    .lede { display: none; }
+    /* clears the header (63px) + breadcrumb (~26px) + the page title */
+    .hud { padding-top: 104px; }
+    .attackbar { gap: 12px; top: 152px; }
     .atk { min-width: 132px; padding: 12px 18px 13px; }
     .atk .k { font-size: 13.5px; }
     .hint { display: none; }
@@ -532,5 +679,13 @@
   @media (max-width: 560px) {
     .attackbar { left: 12px; right: 12px; transform: none; justify-content: center; flex-wrap: wrap; }
     .atk { min-width: 0; flex: 1 1 40%; }
-    .brand h1 { font-size: 17px; }
+    .hud-title h1 { font-size: 17px; }
+    /* Keep the breadcrumb on phones (it is a navigation aid), just make it compact */
+    .breadcrumbs ol { padding: 6px 0; font-size: 11px; gap: 6px; }
+    .breadcrumbs .wrap { padding: 0 16px; }
+    .site-head .wrap { padding: 0 16px; }
+    /* h1 sits under the breadcrumb (88px) and must clear the attack bar below it */
+    .hud { padding: 94px 16px 16px; }
+    .hud-title { position: relative; z-index: 7; }
+    .attackbar { top: 126px; }
   }

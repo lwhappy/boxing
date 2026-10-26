@@ -32,14 +32,12 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css" />
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-V3S1VZBR1J"></script>
 <script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-V3S1VZBR1J');
+window.PAGE = { section: 'combos', depth: 1, breadcrumb: [{ label: 'Jab-Cross-Lead Hook' }] };
 </script>
+<script src="../assets/site-config.js"></script>
+<script src="../assets/site-head.js"></script>
+
 </head>
 <body>
 
@@ -47,20 +45,30 @@ gtag('config', 'G-V3S1VZBR1J');
   <div class="wrap">
     <a class="logo" href="../index.html" aria-label="SilentJab home">
       <span class="logo-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 10a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/>
-          <path d="M8 13h8"/>
-        </svg>
+        <img src="../assets/img/glove.png" srcset="../assets/img/glove.png 1x, ../assets/img/glove@2x.png 2x, ../assets/img/glove@3x.png 3x" alt="" width="30" height="20">
       </span>
       <span class="logo-text">SilentJab</span>
     </a>
     <nav class="nav" aria-label="Main">
-      <a href="../training/">Training</a>
-      <a href="../moves/">All moves</a>
-      <a href="./">Combos</a>
+      <a href="../moves/" data-section="moves">Moves</a>
+      <a href="../combos/" data-section="combos">Combos</a>
+      <a href="../training/" data-section="training">Training</a>
     </nav>
   </div>
 </header>
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="wrap">
+    <ol>
+      <li><a href="../index.html">Home</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><a href="../combos/">Combinations</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><span aria-current="page">Jab-Cross-Lead Hook</span></li>
+    </ol>
+  </div>
+</nav>
+<script src="../assets/site-nav.js"></script>
 
 <main class="wrap">
 
@@ -121,7 +129,7 @@ gtag('config', 'G-V3S1VZBR1J');
 
 <footer class="site-foot">
   <span>© 2026 SilentJab — technique reference for striking sports.</span>
-  <span><a href="./">All combos</a></span>
+  <span><a href="../index.html">Home</a> · <a href="../moves/">Moves</a> · <a href="../combos/">Combos</a> · <a href="../training/">Training</a></span>
 </footer>
 
 <!-- Combo stage: loads a single combo GLB and auto-plays it -->
