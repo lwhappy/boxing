@@ -755,7 +755,23 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   .nav { gap: 0; }
   .nav a { padding: 7px 8px; }
 
-  /* 窄屏按钮不换行，改成单行横滑 */
+  /* 窄屏按钮换行成两行，保证全部可见 */
+  .hero-stage .stage-bar {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+    gap: 4px;
+  }
+  .hero-stage .stage-btn {
+    font-size: 9.5px;
+    padding: 5px 7px;
+    flex: 0 0 auto;
+  }
+  /* 非首页的 stage-bar 仍用单行横滑 */
   .stage-bar {
     bottom: 10px;
     left: 10px;
