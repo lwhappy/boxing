@@ -38,7 +38,7 @@ a { color: inherit; }
   width: 100%;
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 0 22px;
+  padding: 0 11px;
 }
 
 /* ---------------- header ---------------- */
@@ -717,7 +717,7 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
 .site-foot {
   margin: 44px auto 0;
   max-width: var(--maxw);
-  padding: 22px 22px 40px;
+  padding: 22px 11px 40px;
   border-top: 1px solid var(--stroke);
   display: flex;
   flex-wrap: wrap;
@@ -750,6 +750,10 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
 @media (max-width: 620px) {
   .grid { grid-template-columns: 1fr; }
   .stage { aspect-ratio: 4 / 3; }
+
+  /* Shrink nav item spacing so the header fits without horizontal scroll */
+  .nav { gap: 0; }
+  .nav a { padding: 7px 8px; }
 
   /* 窄屏按钮不换行，改成单行横滑 */
   .stage-bar {
