@@ -1,10 +1,75 @@
 /* SilentJab — combo stage (loads a single combo GLB, auto-plays the action)
  * Each combo page passes window.COMBO = { glb: 'filename.glb' }
  * The GLB contains one action that plays from start to finish.
+ *
+ * trimStart (seconds): the combo animations begin with a guard-stance phase
+ * before the first punch fires. This trims that prefix so the action starts
+ * at the punch itself, not the pre-punch guard.
+ * Default: 1.0s — cuts the full pre-punch guard + wind-up so the action
+ * starts in the middle of the first punch.
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/**
+ * Create a sub-clip by trimming the first `startSec` seconds off the source clip.
+ * This is a lightweight replacement for THREE.AnimationUtils.subclip() which is
+ * not bundled in the minified three.module.min.js.
+ *
+ * It works by cloning the source clip's tracks and shifting all keyframe times
+ * so the clip starts at `startSec` (original timeline) → 0 (new timeline).
+ */
+function trimClipStart(sourceClip, startSec) {
+  const newTracks = [];
+  for (const track of sourceClip.tracks) {
+    const times = track.times;
+    const values = track.values;
+    const itemSize = track.ValueItemSize || values.length / times.length;
+
+    // Find the range of keys that fall within [startSec, sourceClip.duration]
+    let firstIdx = -1;
+    let lastIdx = -1;
+    for (let i = 0; i < times.length; i++) {
+      if (times[i] >= startSec) {
+        if (firstIdx === -1) firstIdx = i;
+        lastIdx = i;
+      }
+    }
+
+    if (firstIdx === -1) {
+      // No keys after startSec — skip this track (it has no data in the trimmed range)
+      continue;
+    }
+
+    // If the first key in range is not exactly at startSec, we need to keep
+    // the key just before it for interpolation (but shift its time to 0)
+    if (firstIdx > 0) firstIdx--;
+
+    const count = lastIdx - firstIdx + 1;
+    const newTimes = new Float32Array(count);
+    const newValues = new values.constructor(count * itemSize);
+
+    for (let i = 0; i < count; i++) {
+      const srcIdx = firstIdx + i;
+      newTimes[i] = Math.max(0, times[srcIdx] - startSec);
+      for (let j = 0; j < itemSize; j++) {
+        newValues[i * itemSize + j] = values[srcIdx * itemSize + j];
+      }
+    }
+
+    // Create a new track with the same name but shifted times
+    const TrackType = track.constructor;
+    newTracks.push(new TrackType(track.name, newTimes, newValues, track.getInterpolation()));
+  }
+
+  const newClip = new THREE.AnimationClip(
+    sourceClip.name + '_trimmed',
+    sourceClip.duration - startSec,
+    newTracks
+  );
+  return newClip;
+}
 
 const CFG = window.COMBO || {};
 // Versioned URL: /media/* is cached for 30 days, so a re-exported GLB would
@@ -219,8 +284,16 @@ function onLoaded(gltf) {
   });
 
   const clips = gltf.animations || [];
+  let comboClip = null;
   if (clips.length > 0) {
-    comboAction = mixer.clipAction(clips[0]);
+    comboClip = clips[0];
+    // Trim the initial idle/loading phase so the first punch starts sooner.
+    // The combo clips have ~1s of pre-punch setup; we cut roughly half of it.
+    const trimStart = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.0;
+    if (trimStart > 0 && comboClip.duration > trimStart + 0.5) {
+      comboClip = trimClipStart(comboClip, trimStart);
+    }
+    comboAction = mixer.clipAction(comboClip);
   }
 
   // CRITICAL: Keep animation playing during setup so the character never
@@ -245,17 +318,18 @@ function onLoaded(gltf) {
   }
 
   // Compute framing with the union of several samples across the combo
-  if (comboAction && clips[0]) {
+  if (comboAction && comboClip) {
+    const clipDur = comboClip.duration;
     const union = [];
     const n = 12;
     for (let k = 0; k < n; k++) {
-      mixer.setTime(((k + 0.5) / n) * clips[0].duration);
+      mixer.setTime(((k + 0.5) / n) * clipDur);
       mixer.update(0); // apply without advancing
       model.updateMatrixWorld(true);
       union.push(...samplePose(model, 1200));
     }
-    // Return to idle stance (0.5s) for the initial view
-    mixer.setTime(0.5);
+    // Return to start of the trimmed clip for the initial view
+    mixer.setTime(0.1);
     mixer.update(0);
     model.updateMatrixWorld(true);
     homeFraming = computeFraming(union.length > 0 ? union : pts);
