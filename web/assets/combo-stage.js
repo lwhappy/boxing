@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 /**
  * Create a sub-clip by trimming the first `startSec` seconds off the source clip.

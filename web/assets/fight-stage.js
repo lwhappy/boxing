@@ -31,7 +31,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 /* ---------- config ---------- */
 const CFG = window.FIGHT || {};

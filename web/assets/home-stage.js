@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 const GLB_URL = new URL('../media/glb/index.glb', import.meta.url).href;
 const IDLE_CLIP = 'idle';
@@ -42,7 +42,7 @@ const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 
 /* ---------- renderer / scene ---------- */
-// 手机降档策略见 assets/perf-tier.js：DPR 上限 1.5、关掉 MSAA
+// 手机降档策略见 assets/perf-tier.js：DPR 上限 1.5（低端 1.25），MSAA 保持开启
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY.antialias, alpha: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.dprMax));
 const dprCtl = attachAdaptiveDpr(renderer);

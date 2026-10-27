@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 /* ------------------------------------------------------------------ *
  * 1.glb 里有两条独立骨架：
@@ -570,7 +570,8 @@ key.shadow.camera.right = 3.2;
 key.shadow.camera.top = 3.2;
 key.shadow.camera.bottom = -3.2;
 key.shadow.bias = -0.0007;
-key.shadow.normalBias = 0.02;
+// 1024 阴影贴图比 2048 粗糙，normalBias 要加大一倍，否则角色身上会出现条纹状阴影痤疮
+key.shadow.normalBias = QUALITY.shadow === 'high' ? 0.02 : 0.05;
 scene.add(key);
 
 const rimBlue = new THREE.DirectionalLight('#5aa9ff', 1.5);
