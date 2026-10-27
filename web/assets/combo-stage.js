@@ -11,7 +11,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 /**
  * Create a sub-clip by trimming the first `startSec` seconds off the source clip.
@@ -86,9 +85,8 @@ const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 
 /* ---------- renderer / scene ---------- */
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY.antialias, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.dprMax));
-const dprCtl = attachAdaptiveDpr(renderer);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 
@@ -404,5 +402,4 @@ renderer.setAnimationLoop(() => {
   if (mixer) mixer.update(dt);
   controls.update();
   renderer.render(scene, camera);
-  dprCtl.update(dt);
 });

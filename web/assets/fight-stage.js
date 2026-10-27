@@ -31,7 +31,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { QUALITY, attachAdaptiveDpr } from './perf-tier.js?v=2';
 
 /* ---------- config ---------- */
 const CFG = window.FIGHT || {};
@@ -60,9 +59,8 @@ const nextBtn = document.getElementById('fight-next');
 const soundBtn = document.getElementById('fight-sound');
 
 /* ---------- renderer / scene ---------- */
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY.antialias, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.dprMax));
-const dprCtl = attachAdaptiveDpr(renderer);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 
@@ -713,7 +711,6 @@ renderer.setAnimationLoop(() => {
   updateEffects(dt);
   controls.update();
   renderer.render(scene, camera);
-  dprCtl.update(dt);
 });
 
 /* ---------- start ---------- */
