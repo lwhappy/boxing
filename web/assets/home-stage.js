@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
 
 const GLB_URL = new URL('../media/glb/index.glb', import.meta.url).href;
 const IDLE_CLIP = 'idle';
@@ -41,8 +42,10 @@ const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 
 /* ---------- renderer / scene ---------- */
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// 手机降档策略见 assets/perf-tier.js：DPR 上限 1.5、关掉 MSAA
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY.antialias, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.dprMax));
+const dprCtl = attachAdaptiveDpr(renderer);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 
@@ -75,6 +78,7 @@ function resize() {
   const w = canvas.clientWidth || canvas.parentElement.clientWidth;
   const h = canvas.clientHeight || canvas.parentElement.clientHeight;
   renderer.setSize(w, h, false);
+  dprCtl.apply();
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -419,4 +423,5 @@ renderer.setAnimationLoop(() => {
 
   controls.update();
   renderer.render(scene, camera);
+  dprCtl.update(dt);
 });

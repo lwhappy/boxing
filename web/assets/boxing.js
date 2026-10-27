@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { QUALITY, attachAdaptiveDpr } from './perf-tier.js';
 
 /* ------------------------------------------------------------------ *
  * 1.glb 里有两条独立骨架：
@@ -77,11 +78,18 @@ const errorEl = document.getElementById('error');
 const briefEl = document.getElementById('brief');
 
 /* ---------- renderer / scene ---------- */
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+/* ---------- 设备档位 ----------
+ * 具体判据与自适应策略见 assets/perf-tier.js（四个引擎共用一套）。
+ */
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: QUALITY.antialias,
+  powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.dprMax));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = QUALITY.shadow !== 'off';
+renderer.shadowMap.type = QUALITY.shadow === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -552,8 +560,9 @@ scene.add(hemi);
 
 const key = new THREE.DirectionalLight('#fff3e2', 2.6);
 key.position.set(2.4, 4.2, 3.0);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
+key.castShadow = QUALITY.shadow !== 'off';
+const shadowSize = QUALITY.shadow === 'high' ? 2048 : 1024;
+key.shadow.mapSize.set(shadowSize, shadowSize);
 key.shadow.camera.near = 0.5;
 key.shadow.camera.far = 14;
 key.shadow.camera.left = -3.2;
@@ -699,7 +708,7 @@ function onLoaded(gltf) {
         for (const m of mats) {
           forceOpaque(m);
           m.envMapIntensity = 0.6;
-          if (m.map) m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          if (m.map) m.map.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), QUALITY.aniso);
         }
       }
     }
@@ -816,6 +825,9 @@ function onLoaded(gltf) {
   contentBox = measureContentEnvelope();
   restBox = measureSceneBox();
   frameCamera();
+
+  // 预编译着色器：否则第一次出拳/受击时才编译，手机上会有 100–300ms 的白帧卡顿
+  try { renderer.compile(scene, camera); } catch (e) { console.warn('[perf] 着色器预编译失败', e); }
 
   loaderEl.classList.add('hidden');
 
@@ -1339,12 +1351,15 @@ addEventListener('keydown', (e) => {
   if (e.key === 'r' || e.key === 'R') resetView();
 });
 
+/* ---------- 自适应分辨率（实现见 perf-tier.js） ---------- */
+const dprCtl = attachAdaptiveDpr(renderer);
+
 /* ---------- resize ---------- */
 addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  dprCtl.apply();
   refitCamera();
 });
 
@@ -1409,6 +1424,7 @@ function tick() {
   updateImpacts(dt);
   updateFloaters(dt);
   renderer.render(scene, camera);
+  dprCtl.update(dt);
 }
 /* ---------- 启动 ---------- */
 startScene();
