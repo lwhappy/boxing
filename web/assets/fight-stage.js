@@ -1,16 +1,32 @@
-/* SilentJab — Fight page stage (two characters, dynamic GLB switching)
+/* SilentJab — Fight page stage (attack vs defence, config-driven demo)
  *
- * Reads window.FIGHT config:
- *   scenes   — array of scene configs; each has { glb, active, label, description }
- *   index    — starting scene index (default 0)
+ * Reads window.FIGHT from ./assets/fight-config.js (single config file):
+ *   glb       — model path, or an array of paths (the Next button cycles
+ *               through them; a single path is simply re-fetched)
+ *   active    — enabled punch names, e.g. ['jab']; all other buttons disabled
+ *   message   — caption shown above the stage
+ *   fps       — authored frame rate of the clips (30 for these Blender exports)
+ *   hitFrame  — { move: frame } impact triggers at (frame - 1) / fps seconds
+ *               into the attack clip, e.g. jab frame 13 -> 0.4s
+ *   hitDelay  — fallback seconds AFTER the clip finishes (moves without a
+ *               hitFrame entry)
+ *   camera    — { position, target, fov } or useGlbCamera: true for the
+ *               init-camera pose from the GLB
+ *   controls  — { rotate, zoom, pan, minDistance, maxDistance }
  *
- * The GLB contains two characters (defence + attack) with separate skeletons.
- * Clip naming: "defence-idle", "attack-idle", "attack-{punchName}".
- * Initial state: defence plays defence-idle, attack plays attack-idle.
- * Clicking a punch button plays "attack-{punchName}" on the attack mixer,
- * then fades back to attack-idle when finished.
+ * Model contract (from Blender export):
+ *   - armature nodes named `attack-armature` / `defence-armature` at their
+ *     exported positions (the page never moves them)
+ *   - clips named `attack-*` / `defence-*` (ownership by name prefix)
+ *   - an empty named `ancher1` on the defender (impact effect position)
  *
- * The Refresh button advances to the next scene in the list.
+ * Flow: both characters idle on load. Clicking an enabled punch plays
+ * `attack-{name}` once; at the configured hit moment the defender plays
+ * `defence-hit` once and an impact effect flashes on `ancher1` (it follows
+ * the anchor as the head snaps back). Everything settles back to the idles.
+ * The scene can be orbited by mouse drag. The "Next" button at the top-right
+ * of the stage loads the next entry of the glb list (cache-busted), so a
+ * freshly exported animation shows up without a page reload.
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -18,36 +34,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* ---------- config ---------- */
 const CFG = window.FIGHT || {};
-const SCENES = CFG.scenes || [];
-let sceneIdx = CFG.index || 0;
+const FPS = Math.max(1, Number(CFG.fps) || 30) || 30;
+const HIT_DELAY = Math.max(0, Number(CFG.hitDelay ?? 1) || 0);
 
-/* 6 punch buttons — number → punch key + label.
- * The clip name is constructed as "attack-" + punch key.
- * e.g. button 1 (jab) → clip "attack-jab" */
+/* The 6 punch buttons. `key` builds the clip name: "attack-" + key.
+ * `match` are the config aliases accepted in window.FIGHT.active. */
 const PUNCHES = [
-  { num: 1, label: 'Jab',           key: 'jab' },
-  { num: 2, label: 'Cross',         key: 'cross' },
-  { num: 3, label: 'Lead Hook',     key: 'lead-hook' },
-  { num: 4, label: 'Rear Hook',     key: 'rear-hook' },
-  { num: 5, label: 'Lead Uppercut', key: 'lead-uppercut' },
-  { num: 6, label: 'Rear Uppercut', key: 'rear-uppercut' },
+  { key: 'jab',           label: 'Jab',           match: ['jab'] },
+  { key: 'cross',         label: 'Cross',         match: ['cross'] },
+  { key: 'lead-hook',     label: 'Lead Hook',     match: ['lead hook', 'lead-hook', 'leadhook'] },
+  { key: 'rear-hook',     label: 'Rear Hook',     match: ['rear hook', 'rear-hook', 'rearhook'] },
+  { key: 'lead-uppercut', label: 'Lead Uppercut', match: ['lead uppercut', 'lead-uppercut', 'leaduppercut'] },
+  { key: 'rear-uppercut', label: 'Rear Uppercut', match: ['rear uppercut', 'rear-uppercut', 'rearuppercut'] },
 ];
-
-/* Character config: bone count is the stable identifier (Blender re-exports
- * rename the tripo mesh nodes), meshKey is only a fallback hint.
- *   defence = 41-bone skeleton (tripo_node_5cd6af71)
- *   attack  = 33-bone skeleton (tripo_node_7b87a507 / ....003)
- *
- * `offset` is a per-character world-space nudge applied AFTER the GLB is
- * loaded, in units of the model's own world scale. It exists so the spacing
- * between the two fighters can be tuned from the page config without
- * re-exporting the GLB from Blender:
- *   offset: { x: -0.12 }  →  pull the defence 0.12 closer to the attack
- * A negative x on defence (and/or positive x on attack) closes the gap. */
-const CHARACTERS = {
-  defence: { meshKey: 'tripo_node_5cd6af71', bones: 41, idleClip: 'defence-idle' },
-  attack:  { meshKey: 'tripo_node_7b87a507',  bones: 33, idleClip: 'attack-idle' },
-};
 
 /* ---------- DOM ---------- */
 const canvas = document.getElementById('fight-canvas');
@@ -55,8 +54,9 @@ const barEl = document.getElementById('fight-bar');
 const loadingEl = document.getElementById('fight-loading');
 const loadingText = document.getElementById('fight-loading-text');
 const errorEl = document.getElementById('fight-error');
-const descEl = document.getElementById('fight-description');
-const sceneLabelEl = document.getElementById('fight-scene-label');
+const msgEl = document.getElementById('fight-message');
+const nextBtn = document.getElementById('fight-next');
+const soundBtn = document.getElementById('fight-sound');
 
 /* ---------- renderer / scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -65,16 +65,19 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
-camera.position.set(0.9, 1.1, 3.2);
 
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
+
+/* mouse orbit — enabled once the camera pose is known */
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
-controls.enablePan = false;
-controls.minDistance = 0.8;
-controls.maxDistance = 6;
-controls.maxPolarAngle = Math.PI * 0.55;
+controls.enablePan = CFG.controls?.pan !== undefined ? !!CFG.controls.pan : false;
+controls.enableZoom = CFG.controls?.zoom !== undefined ? !!CFG.controls.zoom : true;
+controls.enableRotate = CFG.controls?.rotate !== undefined ? !!CFG.controls.rotate : true;
+if (CFG.controls?.minDistance) controls.minDistance = CFG.controls.minDistance;
+if (CFG.controls?.maxDistance) controls.maxDistance = CFG.controls.maxDistance;
+controls.update();
 
 /* lights — same setup as home-stage.js for visual consistency */
 scene.add(new THREE.HemisphereLight(0xd9e8ff, 0x3a3630, 2.0));
@@ -100,15 +103,16 @@ new ResizeObserver(resize).observe(canvas.parentElement);
 resize();
 
 /* ---------- state ---------- */
-/* Per-character state: root, mixer, actions map, current clip */
-const chars = {};           // 'defence' | 'attack' → { root, mixer, actions: {}, current: null, currentAction: null }
-let gltfScene = null;       // current loaded scene root
-let userMoved = false;
-let homeFraming = null;
-let posedPts = null;
-let sceneZoom = 1;          // per-scene camera zoom multiplier (config `zoom`)
+let model = null;               // gltf.scene
+let ancher1 = null;             // defender's impact anchor
+let bodySize = 0.9;             // fighting height (effect scaling)
+let phase = 'idle';             // idle → attacking → hitting
+let settleTimer = 0;
+let pendingHit = null;          // { action, at } — fires when action.time >= at
+let loadingToken = 0;           // invalidates stale GLB loads after a refresh
+const chars = {};               // 'attack' | 'defence' → { root, mixer, actions }
 
-/* ---------- material fix: force opaque (same as home-stage.js) ---------- */
+/* ---------- helpers ---------- */
 function forceOpaque(mat) {
   if (!mat || !mat.transparent) return;
   mat.transparent = false;
@@ -117,564 +121,6 @@ function forceOpaque(mat) {
   mat.needsUpdate = true;
 }
 
-/* ---------- camera framing (same algorithm as home-stage.js) ---------- */
-const _tv = new THREE.Vector3();
-/* Side-on "fight camera": the two fighters are squared up along the X axis
- * (defence at -X facing +X, attack at +X facing -X), so the camera sits on
- * the -Z side looking back along +Z. That gives the classic profile face-off
- * read instead of the awkward three-quarter view you get from +Z, where one
- * fighter's back is turned to the lens.
- * Slight downward tilt keeps the camera at chest height, not floor level. */
-const VIEW_DIR = new THREE.Vector3(0, 0.06, -1).normalize();
-
-function samplePose(model, budget = 9000) {
-  model.updateMatrixWorld(true);
-  const meshes = [];
-  let total = 0;
-  model.traverse((o) => {
-    if (!o.isMesh || !o.geometry) return;
-    const pos = o.geometry.attributes && o.geometry.attributes.position;
-    if (!pos || !pos.count) return;
-    meshes.push(o);
-    total += pos.count;
-  });
-  const step = Math.max(1, Math.floor(total / budget));
-  const pts = [];
-  for (const o of meshes) {
-    const pos = o.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i += step) {
-      _tv.fromBufferAttribute(pos, i);
-      if (o.isSkinnedMesh) o.applyBoneTransform(i, _tv);
-      _tv.applyMatrix4(o.matrixWorld);
-      pts.push(_tv.clone());
-    }
-  }
-  return pts;
-}
-
-function computeFraming(pts, zoom = 1) {
-  if (!pts || !pts.length) return null;
-  const stageW = canvas.clientWidth || 480;
-  const stageH = canvas.clientHeight || 480;
-  const cRect = canvas.getBoundingClientRect();
-  const bRect = barEl.getBoundingClientRect();
-  /* The button bar is still hidden while the model loads, so fall back to an
-   * estimate of where it will sit (stage bottom + gap) rather than treating
-   * the whole lower stage as free space. */
-  const barTop = bRect.height > 0
-    ? bRect.top - cRect.top
-    : stageH + 56;
-  const topPad = stageH * 0.04;
-  const bottomPad = Math.min(stageH * 0.38, Math.max(stageH * 0.07, stageH - barTop + stageH * 0.025));
-  const sidePad = stageW * (stageW < 620 ? 0.03 : 0.06);
-
-  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, minZ = 1e9, maxZ = -1e9;
-  for (const p of pts) {
-    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
-    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
-    if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
-  }
-  const center = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
-  const target = center.clone();
-  let dist = Math.max(1.0, (maxY - minY) * 1.8);
-
-  const wantCx = stageW / 2;
-  const wantCy = (topPad + (stageH - bottomPad)) / 2;
-  const wantW = stageW - sidePad * 2;
-  const wantH = stageH - bottomPad - topPad;
-  const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-
-  /* Screen-space correction.
-   * The camera may sit on either side of the model (VIEW_DIR decides) and the
-   * world axis that maps to screen-right flips with it, so the correction is
-   * expressed in the camera's own right/up basis rather than in world X/Y.
-   *
-   * To keep the loop stable, the target is moved in the *plane through the
-   * current target that is perpendicular to the view ray*. Moving along the
-   * camera's up axis would tilt the camera and feed back into the next
-   * iteration, so vertical correction is applied to a world-up vector that
-   * has been projected perpendicular to the view direction. */
-  const camRight = new THREE.Vector3();
-  const worldUp = new THREE.Vector3(0, 1, 0);
-  const camUp = new THREE.Vector3();
-  const viewRay = new THREE.Vector3();
-
-  for (let iter = 0; iter < 8; iter++) {
-    camera.position.copy(target).addScaledVector(VIEW_DIR, dist);
-    camera.lookAt(target);
-    camera.updateMatrixWorld(true);
-
-    camRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
-    // Camera up, made perpendicular to the view ray so the target can be
-    // slid vertically without tilting the camera.
-    viewRay.copy(VIEW_DIR);
-    camUp.copy(worldUp).addScaledVector(viewRay, -worldUp.dot(viewRay));
-    if (camUp.lengthSq() < 1e-8) camUp.set(0, 0, 1);
-    camUp.normalize();
-
-    let pMinX = 1e9, pMaxX = -1e9, pMinY = 1e9, pMaxY = -1e9;
-    for (const p of pts) {
-      _tv.copy(p).project(camera);
-      const sx = (_tv.x * 0.5 + 0.5) * stageW;
-      const sy = (-_tv.y * 0.5 + 0.5) * stageH;
-      if (sx < pMinX) pMinX = sx; if (sx > pMaxX) pMaxX = sx;
-      if (sy < pMinY) pMinY = sy; if (sy > pMaxY) pMaxY = sy;
-    }
-    const need = Math.max((pMaxX - pMinX) / wantW, (pMaxY - pMinY) / wantH) * 1.01;
-    const dx = (wantCx - (pMinX + pMaxX) / 2);
-    const dy = (wantCy - (pMinY + pMaxY) / 2);
-    // World units per screen pixel at the target plane
-    const wpp = (2 * dist * halfTan) / stageH;
-    /* Sign notes:
-     *  - sx grows to the right. The camera's own right axis (camRight)
-     *    points the way screen-right corresponds to in world space, so
-     *    moving the target along -camRight slides the content right.
-     *  - sy grows downward. Moving the target along +camUp (world up)
-     *    pushes the content down on screen, so a positive dy (content should
-     *    move up) needs the target moved along +camUp as well — both use
-     *    the same sign because dy is measured in the "content must travel"
-     *    direction. */
-    target.addScaledVector(camRight, -dx * wpp);
-    target.addScaledVector(camUp, dy * wpp);
-    // `zoom` < 1 pulls the camera in (bigger fighters), > 1 pushes it out.
-    dist = THREE.MathUtils.clamp(dist * need * zoom, controls.minDistance, controls.maxDistance);
-    if (Math.abs(need - 1) < 0.002 && Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) break;
-  }
-  return { target, dist };
-}
-
-function applyFraming(f) {
-  if (!f) return;
-  controls.target.copy(f.target);
-  camera.position.copy(f.target).addScaledVector(VIEW_DIR, f.dist);
-  camera.lookAt(f.target);
-  controls.update();
-}
-
-/* ---------- load GLB ---------- */
-function resolveGlbUrl(path) {
-  if (!path) return null;
-  try { return new URL(path, document.baseURI).href; } catch { return path; }
-}
-
-function clearScene() {
-  // Remove old model from scene, keep lights
-  if (gltfScene) {
-    scene.remove(gltfScene);
-    gltfScene.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
-      if (o.material) {
-        for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
-      }
-    });
-    gltfScene = null;
-  }
-  // Clear per-character state
-  for (const k in chars) delete chars[k];
-}
-
-function loadScene(idx) {
-  if (!SCENES.length) {
-    showError('No fight scenes configured. Add scenes to window.FIGHT.');
-    return;
-  }
-  const cfg = SCENES[idx % SCENES.length];
-  const glbUrl = resolveGlbUrl(cfg.glb);
-  if (!glbUrl) {
-    showError('Scene ' + idx + ' has no glb path.');
-    return;
-  }
-
-  // UI: show loading
-  loadingEl.classList.remove('hidden');
-  errorEl.hidden = true;
-  loadingText.textContent = `Loading ${cfg.label || 'fight'} model…`;
-  barEl.hidden = true;
-
-  // Camera zoom multiplier for this scene (1 = auto-fit, < 1 = closer)
-  sceneZoom = typeof cfg.zoom === 'number' && cfg.zoom > 0 ? cfg.zoom : 1;
-
-  // Description text
-  if (descEl) {
-    descEl.textContent = cfg.description || '';
-    descEl.style.display = cfg.description ? '' : 'none';
-  }
-  if (sceneLabelEl) {
-    sceneLabelEl.textContent = cfg.label || '';
-  }
-
-  // Clear previous model
-  clearScene();
-
-  // Determine which buttons are active for this scene
-  const activeSet = new Set((cfg.active || []).map((n) => Number(n)));
-
-  new GLTFLoader().load(
-    glbUrl,
-    (gltf) => onLoaded(gltf, cfg, activeSet),
-    (e) => {
-      if (!e.total) return;
-      loadingText.textContent = `Loading ${cfg.label || 'fight'} model — ${Math.min(100, (e.loaded / e.total) * 100).toFixed(0)}%`;
-    },
-    (err) => {
-      loadingEl.classList.add('hidden');
-      errorEl.hidden = false;
-      errorEl.textContent = 'Failed to load: ' + cfg.glb + '\n' + (err && err.message ? err.message : err);
-      console.error('[fight-stage]', err);
-    }
-  );
-}
-
-/* ---------- skeleton resolution ----------
- * Two independent ways to find each character, because Blender re-exports
- * rename meshes arbitrarily (tripo_node_7b87a507 -> ...007b87a507.003 ...):
- *   1. bone count — stable: defence 41 joints, attack 33 joints
- *   2. mesh name prefix — only a hint
- * Both skeletons share the same bone names (mixamorig:*), so each character
- * needs its own AnimationMixer rooted at its own Armature node. */
-function resolveRig(cfg, skinnedMeshes, sceneRoot) {
-  // Bone count is the reliable discriminator
-  let mesh = skinnedMeshes.find((m) => m.skeleton && m.skeleton.bones.length === cfg.bones);
-  if (!mesh && cfg.meshKey) {
-    mesh = skinnedMeshes.find((m) => (m.name || '').includes(cfg.meshKey));
-  }
-  if (!mesh) return null;
-
-  // Walk up to the direct child of scene root (the Armature group)
-  let root = mesh;
-  while (root.parent && root.parent !== sceneRoot) root = root.parent;
-
-  let bones = 0;
-  root.traverse((o) => { if (o.isBone) bones++; });
-  return { mesh, root, bones };
-}
-
-/* ---------- clip -> character mapping ----------
- * three.js AnimationClip does NOT expose its channels, so we read the raw
- * glTF JSON (gltf.parser.json) where every animation lists its channel
- * target node indices.
- *
- * Matching strategy: a clip drives a character if the bones it animates
- * belong to that character's skeleton. We identify skeletons by their joint
- * count, which is stable across Blender re-exports (defence 41, attack 33)
- * and independent of node names (three.js sanitizes "Armature.002" into
- * "Armature002", so name matching is fragile).
- *
- * glTF node indices align with the JSON `nodes` array, and the JSON `skins`
- * array lists each skeleton's joint node indices — so we can tell which
- * joints a clip touches and therefore which skeleton it belongs to. */
-function buildClipOwnerMap(gltf, rigRoots) {
-  const json = gltf.parser && gltf.parser.json;
-  const map = {};           // clip name -> rig key
-  if (!json || !json.animations || !json.nodes || !json.skins) return map;
-
-  // joint node indices per skin
-  const skinJoints = json.skins.map((s) => new Set(s.joints || []));
-
-  // For each rig, find which skin matches it by joint count
-  const rigSkinIndex = {};
-  for (const [key, rig] of Object.entries(rigRoots)) {
-    let count = 0;
-    rig.root.traverse((o) => { if (o.isBone) count++; });
-    // skinJoints.size equals the joint count
-    const idx = skinJoints.findIndex((set) => set.size === count);
-    if (idx >= 0) rigSkinIndex[key] = idx;
-  }
-
-  for (const anim of json.animations) {
-    const channels = anim.channels || [];
-    const counts = new Map();
-    for (const ch of channels) {
-      const t = ch.target || {};
-      if (t.node === undefined || t.node === null) continue;
-      // Which skin owns this node?
-      for (const [key, skinIdx] of Object.entries(rigSkinIndex)) {
-        if (skinJoints[skinIdx].has(t.node)) {
-          counts.set(key, (counts.get(key) || 0) + 1);
-        }
-      }
-    }
-    if (counts.size === 1) {
-      map[anim.name] = [...counts.keys()][0];
-    } else if (counts.size > 1) {
-      // Mixed clip: assign to the character with the most channels
-      map[anim.name] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    } else {
-      console.warn('[fight] clip with unmapped channels:', anim.name);
-    }
-  }
-  return map;
-}
-
-function onLoaded(gltf, cfg, activeSet) {
-  gltfScene = gltf.scene;
-
-  // Fix materials
-  gltfScene.traverse((o) => {
-    if (o.isMesh && o.material) {
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-        forceOpaque(m);
-        m.envMapIntensity = 0.6;
-      }
-    }
-  });
-  scene.add(gltfScene);
-
-  const allClips = gltf.animations || [];
-
-  // Collect skinned meshes
-  const skinnedMeshes = [];
-  gltfScene.traverse((o) => { if (o.isSkinnedMesh) skinnedMeshes.push(o); });
-
-  // Resolve each character's rig first, so we can map clips to characters
-  const rigs = {};
-  for (const [key, charCfg] of Object.entries(CHARACTERS)) {
-    const rig = resolveRig(charCfg, skinnedMeshes, gltfScene);
-    if (!rig) {
-      console.warn('[fight] skeleton not found for', key, charCfg.bones, 'bones');
-      continue;
-    }
-    rigs[key] = rig;
-  }
-
-  /* Apply per-character position offsets.
-   * The GLB carries Blender's own spacing between the two Armatures. A scene
-   * can override that with `offsets: { defence: {x: -0.12}, attack: {...} }`
-   * in the config, which is applied here as a world-space nudge on the rig
-   * root. Offsets are expressed in the model's own world units (1 unit ≈
-   * one metre for these exports). */
-  const offsets = (cfg && cfg.offsets) || {};
-  for (const [key, rig] of Object.entries(rigs)) {
-    const off = offsets[key];
-    if (!off) continue;
-    rig.root.position.x += Number(off.x || 0);
-    rig.root.position.y += Number(off.y || 0);
-    rig.root.position.z += Number(off.z || 0);
-    if (off.yaw) {
-      rig.root.rotation.y += (Number(off.yaw) * Math.PI) / 180;
-    }
-  }
-  gltfScene.updateMatrixWorld(true);
-
-  // Map clip name -> character key, using the raw glTF channel data
-  const clipOwner = buildClipOwnerMap(gltf, rigs);
-
-  // Build per-character mixers
-  for (const [key, charCfg] of Object.entries(CHARACTERS)) {
-    const rig = rigs[key];
-    if (!rig) continue;
-
-    const mixer = new THREE.AnimationMixer(rig.root);
-
-    // Clips belonging to this character
-    const charClips = allClips.filter((clip) => clipOwner[clip.name] === key);
-
-    const state = {
-      root: rig.root,
-      mesh: rig.mesh,
-      mixer,
-      actions: {},         // clipName → Action
-      current: null,       // currently playing clip name
-      currentAction: null,
-    };
-
-    // Create actions for all clips assigned to this character
-    for (const clip of charClips) {
-      const action = mixer.clipAction(clip);
-      state.actions[clip.name] = action;
-    }
-
-    // Play idle clip
-    const idleName = charCfg.idleClip;
-    if (state.actions[idleName]) {
-      state.actions[idleName].play();
-      state.current = idleName;
-      state.currentAction = state.actions[idleName];
-    } else {
-      console.warn('[fight] idle clip not found for', key, idleName);
-    }
-
-    // Finished event: attack one-shots fade back to attack-idle
-    mixer.addEventListener('finished', (e) => {
-      if (e.action !== state.currentAction) return;
-      const clipName = e.action.getClip().name;
-
-      // Only attack one-shots need to return to idle
-      if (key === 'attack' && clipName.startsWith('attack-') && clipName !== 'attack-idle') {
-        const dur = 0.24;
-        e.action.fadeOut(dur);
-        if (state.actions['attack-idle']) {
-          state.actions['attack-idle'].reset().fadeIn(dur).play();
-        }
-        state.current = 'attack-idle';
-        state.currentAction = state.actions['attack-idle'];
-        setActiveButton('attack-idle');
-      }
-    });
-
-    chars[key] = state;
-  }
-
-  // Sample one frame of each idle so the characters settle into their pose
-  for (const s of Object.values(chars)) {
-    if (s.currentAction) s.mixer.setTime(0.5);
-  }
-  gltfScene.updateMatrixWorld(true);
-
-  /* Note on orientation: the exported GLB already carries the Blender
-   * Z-up -> Y-up conversion on each Armature root (root.rotation.x ≈ +90°),
-   * so the fighters arrive standing. Do NOT add another 90° X rotation here
-   * — that flips them onto their backs. */
-
-  // Drop to ground: the model may sit below y=0 in Blender's exported frame
-  const pts = samplePose(gltfScene);
-  let soleY = 1e9;
-  for (const p of pts) if (p.y < soleY) soleY = p.y;
-  if (soleY < -1e-4) {
-    const dy = -soleY;
-    gltfScene.position.y += dy;
-    for (const p of pts) p.y += dy;
-    gltfScene.updateMatrixWorld(true);
-  }
-
-  posedPts = pts;
-  homeFraming = computeFraming(pts, sceneZoom);
-  applyFraming(homeFraming);
-
-  // Build buttons
-  buildButtons(activeSet);
-
-  loadingEl.classList.add('hidden');
-  barEl.hidden = false;
-
-  // Debug
-  const clipNames = allClips.map((c) => c.name);
-  console.log('[fight] loaded', cfg.glb, 'clips:', clipNames);
-  console.log('[fight] clip owners:', clipOwner);
-  for (const [k, s] of Object.entries(chars)) {
-    console.log(`  ${k}:`, Object.keys(s.actions));
-  }
-
-  // Debug handle for browser console inspection
-  window.__fight = {
-    chars,
-    clipOwner,
-    allClips: allClips.map((c) => c.name),
-    gltfScene,
-    camera,
-    controls,
-    scene,
-    renderer,
-  };
-}
-
-/* ---------- buttons ---------- */
-function buildButtons(activeSet) {
-  barEl.innerHTML = '';
-
-  for (const punch of PUNCHES) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'fight-btn';
-    btn.dataset.num = String(punch.num);
-
-    const numSpan = document.createElement('span');
-    numSpan.className = 'fight-btn-num';
-    numSpan.textContent = String(punch.num);
-
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'fight-btn-label';
-    labelSpan.textContent = punch.label;
-
-    btn.append(numSpan, labelSpan);
-
-    // The clip name for this button: "attack-" + punch key
-    const clipName = 'attack-' + punch.key;
-
-    // Check if this clip exists in the attack character's actions
-    const attackChar = chars['attack'];
-    const isActive = activeSet.has(punch.num) && attackChar && attackChar.actions[clipName];
-
-    if (!isActive) {
-      btn.classList.add('disabled');
-      btn.disabled = true;
-      btn.title = 'Not available in this scene';
-    } else {
-      btn.dataset.clip = clipName;
-      btn.title = `${punch.num}: ${punch.label}`;
-      btn.addEventListener('click', () => playAttackClip(clipName));
-    }
-
-    barEl.appendChild(btn);
-  }
-
-  // Refresh button
-  const refresh = document.createElement('button');
-  refresh.type = 'button';
-  refresh.className = 'fight-btn fight-refresh';
-  refresh.innerHTML = '\u27F3';
-  refresh.title = 'Load next fight scene';
-  refresh.addEventListener('click', () => {
-    sceneIdx = (sceneIdx + 1) % SCENES.length;
-    loadScene(sceneIdx);
-  });
-  barEl.appendChild(refresh);
-}
-
-function setActiveButton(clip) {
-  for (const btn of barEl.children) {
-    if (!btn.dataset.clip) continue;
-    btn.classList.toggle('active', btn.dataset.clip === clip);
-  }
-}
-
-/* ---------- play attack clip ---------- */
-function playAttackClip(name) {
-  const attack = chars['attack'];
-  if (!attack || !attack.actions[name]) return;
-
-  // If currently playing a one-shot (not idle), fade it out
-  if (attack.current && attack.current !== 'attack-idle' && attack.currentAction) {
-    attack.currentAction.fadeOut(0.14);
-  }
-
-  const action = attack.actions[name];
-  action.reset();
-  action.setLoop(THREE.LoopOnce, 1);
-  action.clampWhenFinished = true;
-  action.fadeIn(0.14).play();
-  attack.current = name;
-  attack.currentAction = action;
-  setActiveButton(name);
-}
-
-/* ---------- render loop ---------- */
-const clock = new THREE.Clock();
-
-renderer.setAnimationLoop(() => {
-  const dt = clock.getDelta();
-  for (const s of Object.values(chars)) {
-    if (s.mixer) s.mixer.update(dt);
-  }
-  controls.update();
-  renderer.render(scene, camera);
-});
-
-/* ---------- user interaction: stop auto-framing on drag ---------- */
-controls.addEventListener('start', () => { userMoved = true; });
-
-/* ---------- resize handler: reframe ---------- */
-let reframeTimer = 0;
-window.addEventListener('resize', () => {
-  if (userMoved || !posedPts || !homeFraming) return;
-  clearTimeout(reframeTimer);
-  reframeTimer = setTimeout(() => {
-    homeFraming = computeFraming(posedPts, sceneZoom);
-    if (homeFraming) applyFraming(homeFraming);
-  }, 180);
-});
-
-/* ---------- error helper ---------- */
 function showError(msg) {
   loadingEl.classList.add('hidden');
   errorEl.hidden = false;
@@ -682,5 +128,596 @@ function showError(msg) {
   console.error('[fight]', msg);
 }
 
+/* play a one-shot clip on a character, then blend back to its idle.
+ * Invariant: the character's total animation weight must stay at 1 —
+ * if it ever dips below 1 the mixer blends toward the BIND POSE, which
+ * for these Tripo exports is the model lying flat on the ground. */
+function playOnce(charKey, clipName, onDone) {
+  const c = chars[charKey];
+  if (!c || !c.actions[clipName]) return false;
+  const action = c.actions[clipName];
+  const idle = c.actions[c.idleClip];
+  if (c.currentAction && c.currentAction !== action) c.currentAction.fadeOut(0.12);
+  action.reset();
+  action.setLoop(THREE.LoopOnce, 1);
+  /* hold the final frame after finishing (weight stays 1) so the blend
+   * back to idle never exposes the bind pose */
+  action.clampWhenFinished = true;
+  action.fadeIn(0.12).play();
+  c.currentAction = action;
+  c.current = clipName;
+  c.onShotDone = () => {
+    /* cross-fade: action 1→0 while idle 0→1, weights sum to 1 throughout.
+     * (fadeIn schedules an absolute 0→1 ramp, so no manual weight reset —
+     * setEffectiveWeight(0) would zero the BASE weight and pin the idle
+     * at zero forever since fadeIn multiplies into it.) */
+    action.fadeOut(0.22);
+    if (idle) {
+      idle.reset();
+      idle.fadeIn(0.22).play();
+      c.currentAction = idle;
+      c.current = c.idleClip;
+    }
+    if (onDone) onDone();
+  };
+  return true;
+}
+
+/* one-shot completion: fire when the mixer stops (weight 0 after fade-out) */
+function wireFinished(charKey) {
+  const c = chars[charKey];
+  if (!c) return;
+  c.mixer.addEventListener('finished', () => {
+    if (c.onShotDone) { const f = c.onShotDone; c.onShotDone = null; f(); }
+  });
+}
+
+/* real skinned bounds — Box3.setFromObject only uses bind-pose geometry,
+ * which is flat for these tripo exports. Sample deformed vertices instead. */
+const _sv = new THREE.Vector3();
+function sampleBounds(root, budget = 6000) {
+  root.updateMatrixWorld(true);
+  const meshes = [];
+  let total = 0;
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const pos = o.geometry.attributes && o.geometry.attributes.position;
+    if (!pos || !pos.count) return;
+    meshes.push(o);
+    total += pos.count;
+  });
+  const step = Math.max(1, Math.floor(total / budget));
+  const box = new THREE.Box3();
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const o of meshes) {
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i += step) {
+      _sv.fromBufferAttribute(pos, i);
+      if (o.isSkinnedMesh) o.applyBoneTransform(i, _sv);
+      _sv.applyMatrix4(o.matrixWorld);
+      min.min(_sv); max.max(_sv);
+    }
+  }
+  box.set(min, max);
+  return box;
+}
+
+/* ---------- camera ---------- */
+function setupCamera(root, center, bodySize) {
+  const cfgCam = CFG.camera || {};
+  const target = new THREE.Vector3(...(cfgCam.target || [center.x, center.y, center.z]));
+
+  if (!CFG.useGlbCamera && Array.isArray(cfgCam.position) && cfgCam.position.length === 3) {
+    /* config camera wins */
+    camera.position.set(...cfgCam.position);
+    if (cfgCam.fov) { camera.fov = cfgCam.fov; camera.updateProjectionMatrix(); }
+  } else {
+    /* GLB init-camera: keep its position, focal length and clipping planes,
+     * aim at the fighters (the authored rotation points away from them) */
+    const camNode = root.getObjectByName('init-camera');
+    if (camNode && camNode.isCamera) {
+      camNode.updateWorldMatrix(true, false);
+      camera.position.setFromMatrixPosition(camNode.matrixWorld);
+      if (camNode.isPerspectiveCamera && !cfgCam.fov) {
+        camera.fov = camNode.fov;
+        camera.near = camNode.near;
+        camera.far = camNode.far;
+      }
+      camera.updateProjectionMatrix();
+    } else {
+      console.warn('[fight] no init-camera node in the GLB; using a front fallback view');
+      camera.fov = 30;
+      camera.position.set(center.x + bodySize * 0.5, center.y + bodySize * 0.6, center.z + bodySize * 2.2);
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  camera.updateMatrixWorld(true);
+  controls.target.copy(target);
+  controls.update();
+  console.log('[fight] camera at', camera.position.toArray().map((n) => +n.toFixed(2)).join(', '),
+    'target', target.toArray().map((n) => +n.toFixed(2)).join(', '), 'fov', +camera.fov.toFixed(1));
+}
+
+/* ---------- load / next GLB ---------- */
+/* CFG.glb may be a single path or an array; the Next button cycles it. */
+const GLBS = (Array.isArray(CFG.glb) ? CFG.glb : [CFG.glb]).filter(Boolean);
+let glbIndex = 0;
+function disposeModel() {
+  pendingHit = null;
+  for (const e of effects) {
+    scene.remove(e.sprite); scene.remove(e.light);
+    e.sprite.material.dispose();
+  }
+  effects.length = 0;
+  for (const c of Object.values(chars)) c.mixer.stopAllAction();
+  for (const k of Object.keys(chars)) delete chars[k];
+  if (model) {
+    scene.remove(model);
+    model.traverse((o) => {
+      if (o.isMesh) {
+        o.geometry?.dispose();
+        const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+        for (const m of mats) { for (const tex of Object.values(m)) if (tex && tex.isTexture) tex.dispose(); m.dispose(); }
+      }
+    });
+    model = null;
+  }
+  ancher1 = null;
+}
+
+function load(cacheBust) {
+  const src = GLBS[glbIndex];
+  if (!src) { showError('No glb configured. Set window.FIGHT.glb in assets/fight-config.js.'); return; }
+  let glbUrl;
+  try { glbUrl = new URL(src, document.baseURI).href; } catch { glbUrl = src; }
+  if (cacheBust) glbUrl += (glbUrl.includes('?') ? '&' : '?') + 'r=' + Date.now();
+  console.log('[fight] loading', src, `(${glbIndex + 1}/${GLBS.length})`);
+
+  const token = ++loadingToken;
+  loadingEl.classList.remove('hidden');
+  errorEl.hidden = true;
+  loadingText.textContent = 'Loading 3D model…';
+
+  new GLTFLoader().load(
+    glbUrl,
+    (gltf) => { if (token === loadingToken) onLoaded(gltf); },
+    (e) => {
+      if (token !== loadingToken || !e.total) return;
+      loadingText.textContent = `Loading 3D model — ${(Math.min(1, e.loaded / e.total) * 100).toFixed(0)}%`;
+    },
+    (err) => {
+      if (token !== loadingToken) return;
+      showError('Failed to load: ' + src + '\n' + (err && err.message ? err.message : err));
+    }
+  );
+}
+
+function onLoaded(gltf) {
+  disposeModel();
+  model = gltf.scene;
+  model.traverse((o) => {
+    if (o.isMesh && o.material) {
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        forceOpaque(m);
+        m.envMapIntensity = 0.6;
+      }
+    }
+  });
+  scene.add(model);
+
+  /* 1. find the two armatures by node name (positions stay untouched) */
+  const atkRoot = model.getObjectByName('attack-armature') ||
+    model.children.find((c) => /^attack[-_.]/i.test(c.name || ''));
+  const defRoot = model.getObjectByName('defence-armature') ||
+    model.children.find((c) => /^defence[-_.]/i.test(c.name || ''));
+  if (!atkRoot || !defRoot) {
+    showError('Expected "attack-armature" and "defence-armature" nodes in the GLB, found: '
+      + model.children.map((c) => c.name).join(', '));
+    return;
+  }
+
+  /* 2. clips: ownership by name prefix (attack-* / defence-*) */
+  const clips = gltf.animations || [];
+  const take = (root, re) => clips.filter((c) => re.test(c.name));
+  const mkChar = (root, key, idleClip, re) => {
+    const mixer = new THREE.AnimationMixer(root);
+    const actions = {};
+    for (const clip of take(root, re)) actions[clip.name] = mixer.clipAction(clip);
+    const idle = actions[idleClip];
+    if (idle) { idle.play(); }
+    else console.warn('[fight] missing idle clip', idleClip, 'for', key);
+    chars[key] = { root, mixer, actions, idleClip, current: idleClip, currentAction: idle, onShotDone: null };
+    wireFinished(key);
+    return chars[key];
+  };
+  mkChar(atkRoot, 'attack', 'attack-idle', /^attack[-_.]/i);
+  mkChar(defRoot, 'defence', 'defence-idle', /^defence[-_.]/i);
+
+  /* 3. impact anchor on the defender */
+  model.traverse((o) => { if (!ancher1 && /^ancher/i.test(o.name || '')) ancher1 = o; });
+  if (!ancher1) console.warn('[fight] no ancher* node found — impact effect skipped');
+
+  /* Settle one idle frame before measuring anything: skinning matrices are
+   * only valid after the mixer has run once, otherwise the sampled bounds
+   * are computed from unposed bones. */
+  for (const c of Object.values(chars)) c.mixer.update(0.05);
+  model.updateMatrixWorld(true);
+
+  /* 4. camera (config pose, or GLB init-camera) + orbit controls target */
+  const bounds = sampleBounds(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  bodySize = Math.max(0.4, bounds.max.y - bounds.min.y);
+  setupCamera(model, center, bodySize);
+
+  /* 5. UI: message + buttons from config */
+  if (msgEl && CFG.message) {
+    msgEl.textContent = CFG.message;
+    msgEl.hidden = false;
+  }
+  buildButtons();
+  if (nextBtn) nextBtn.hidden = false;
+
+  loadingEl.classList.add('hidden');
+  barEl.hidden = false;
+
+  /* debug handle */
+  window.__fight = {
+    ready: true,
+    model, camera, chars, ancher1, controls,
+    phase: () => phase,
+    clips: clips.map((c) => c.name),
+    playPunch: (key) => clickPunch(PUNCHES.find((p) => p.key === key)),
+    spawnHit: () => { if (ancher1) spawnHit(ancher1); },
+    next: () => nextAnimation(),
+    effects: () => effects.length,
+    sound: () => SFX.stats()
+  };
+  console.log('[fight] clips:', clips.map((c) => c.name).join(', '));
+}
+
+/* ---------- impact effect (white core + orange ring flash on ancher1) ---------- */
+const effects = [];
+let sparkTex = null;
+
+function getSparkTexture() {
+  if (sparkTex) return sparkTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const cx = 64;
+  /* soft core — warm enough to read against the pale stage */
+  const rad = g.createRadialGradient(cx, cx, 2, cx, cx, 42);
+  rad.addColorStop(0, 'rgba(255,255,255,1)');
+  rad.addColorStop(0.28, 'rgba(255,206,140,1)');
+  rad.addColorStop(0.62, 'rgba(255,132,48,0.85)');
+  rad.addColorStop(1, 'rgba(255,110,30,0)');
+  g.fillStyle = rad;
+  g.fillRect(0, 0, 128, 128);
+  /* star rays */
+  g.strokeStyle = 'rgba(255,190,120,0.95)';
+  g.lineWidth = 4;
+  g.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.35;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * 10, cx + Math.sin(a) * 10);
+    g.lineTo(cx + Math.cos(a) * 54, cx + Math.sin(a) * 54);
+    g.stroke();
+  }
+  /* ring */
+  g.strokeStyle = 'rgba(255,120,36,1)';
+  g.lineWidth = 7;
+  g.beginPath();
+  g.arc(cx, cx, 46, 0, Math.PI * 2);
+  g.stroke();
+  sparkTex = new THREE.CanvasTexture(c);
+  return sparkTex;
+}
+
+function spawnHit(anchorObj) {
+  const mat = new THREE.SpriteMaterial({
+    map: getSparkTexture(), transparent: true, depthTest: false, depthWrite: false
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.renderOrder = 20;
+  scene.add(sprite);
+
+  const light = new THREE.PointLight(0xffb066, 0, bodySize * 1.2);
+  scene.add(light);
+
+  /* the effect follows the anchor: the defender's head snaps back during
+   * defence-hit, so a fixed world position would drift off the head */
+  effects.push({ sprite, light, follow: anchorObj, t: 0, dur: 0.5, size: bodySize });
+}
+
+function updateEffects(dt) {
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const e = effects[i];
+    e.t += dt;
+    const k = e.t / e.dur;
+    if (k >= 1) {
+      scene.remove(e.sprite); scene.remove(e.light);
+      e.sprite.material.dispose();
+      effects.splice(i, 1);
+      continue;
+    }
+    if (e.follow) {
+      e.follow.updateWorldMatrix(true, false);
+      e.sprite.position.setFromMatrixPosition(e.follow.matrixWorld);
+      e.light.position.copy(e.sprite.position);
+    }
+    const ease = 1 - Math.pow(1 - k, 2);
+    e.sprite.scale.setScalar(e.size * (0.20 + ease * 0.40));
+    e.sprite.material.opacity = 1 - k * k;
+    e.light.intensity = (1 - k) * e.size * 8;
+  }
+}
+
+/* ---------- impact sound ---------- */
+/* One decoded sample through WebAudio. The context is created and the buffer
+ * decoded eagerly (allowed while it is still suspended), but playback only
+ * becomes audible after the first user gesture resumes it — so clickPunch()
+ * calls unlock() from inside the click handler. The mute choice is stored in
+ * localStorage, therefore `sound.on` in the config only sets the first-visit
+ * default. */
+const SFX = (() => {
+  const cfg = CFG.sound || {};
+  const src = cfg.impact || './media/audio/punch-impact.wav';
+  const volume = Math.min(1, Math.max(0, Number(cfg.volume ?? 0.85)));
+  const KEY = 'silentjab.fight.muted';
+
+  let ctx = null, buffer = null, ready = null, failed = false, plays = 0;
+  let muted = readMuted();
+
+  function readMuted() {
+    try {
+      const v = localStorage.getItem(KEY);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (e) { /* storage blocked — fall back to the config default */ }
+    return cfg.on === false;
+  }
+
+  function audioContext() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { failed = true; return null; }
+    try { ctx = new AC(); } catch (e) { failed = true; return null; }
+    return ctx;
+  }
+
+  function markUnavailable() {
+    if (!soundBtn) return;
+    soundBtn.disabled = true;
+    soundBtn.title = 'Impact sound unavailable in this browser';
+  }
+
+  /* create + decode up front so the very first hit is not silent */
+  function warm() {
+    if (ready || failed) return ready;
+    const c = audioContext();
+    if (!c) { markUnavailable(); return null; }
+    ready = fetch(src)
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then((raw) => c.decodeAudioData(raw))
+      .then((b) => { buffer = b; return b; })
+      .catch((err) => {
+        failed = true;
+        console.warn('[fight] impact sound unavailable:', (err && err.message) || err);
+        markUnavailable();
+        return null;
+      });
+    return ready;
+  }
+
+  /* browsers suspend audio until a gesture — call this from a click handler */
+  function unlock() {
+    warm();
+    const c = audioContext();
+    if (c && c.state === 'suspended') c.resume().catch(() => {});
+  }
+
+  function play() {
+    if (muted || failed) return;
+    const c = audioContext();
+    if (!c || !buffer) { warm(); return; }
+    if (c.state === 'suspended') c.resume().catch(() => {});
+    const node = c.createBufferSource();
+    node.buffer = buffer;
+    /* slight random detune + level: repeated hits must not sound machine-gunned */
+    node.playbackRate.value = 0.94 + Math.random() * 0.12;
+    const gain = c.createGain();
+    gain.gain.value = volume * (0.82 + Math.random() * 0.18);
+    node.connect(gain).connect(c.destination);
+    node.start();
+    plays++;
+  }
+
+  function setMuted(v) {
+    muted = !!v;
+    try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) {}
+    if (!soundBtn) return;
+    soundBtn.classList.toggle('is-muted', muted);
+    soundBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+    soundBtn.title = muted ? 'Hit sound is off — click to turn it on'
+                           : 'Hit sound is on — click to mute';
+    const label = soundBtn.querySelector('.txt');
+    if (label) label.textContent = muted ? 'Muted' : 'Sound';
+  }
+
+  return {
+    warm, unlock, play, setMuted,
+    isMuted: () => muted,
+    available: () => !failed,
+    stats: () => ({
+      muted, failed, plays,
+      decoded: !!buffer,
+      ctxState: ctx ? ctx.state : null
+    })
+  };
+})();
+
+/* ---------- buttons ---------- */
+function normName(s) { return String(s || '').trim().toLowerCase(); }
+
+/* normalize a config key to a punch key: "lead hook" -> "lead-hook" */
+function normKey(s) { return normName(s).replace(/\s+/g, '-'); }
+
+function buildButtons() {
+  const activeCfg = new Set((Array.isArray(CFG.active) ? CFG.active : []).map(normName));
+  const attack = chars['attack'];
+  barEl.innerHTML = '';
+
+  for (let i = 0; i < PUNCHES.length; i++) {
+    const punch = PUNCHES[i];
+    const clipName = 'attack-' + punch.key;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fight-btn';
+    btn.dataset.key = punch.key;
+
+    const num = document.createElement('span');
+    num.className = 'fight-btn-num';
+    num.textContent = String(i + 1);
+    const label = document.createElement('span');
+    label.className = 'fight-btn-label';
+    label.textContent = punch.label;
+    btn.append(num, label);
+
+    const inConfig = punch.match.some((m) => activeCfg.has(normName(m)));
+    const hasClip = attack && attack.actions[clipName];
+    if (inConfig && hasClip) {
+      btn.classList.add('active');
+      btn.dataset.clip = clipName;
+      btn.title = `${i + 1}: ${punch.label}`;
+      btn.addEventListener('click', () => clickPunch(punch));
+    } else {
+      btn.classList.add('disabled');
+      btn.disabled = true;
+      btn.title = hasClip ? 'Disabled in this demo (edit active in assets/fight-config.js)'
+                          : 'Clip not found in the GLB';
+      if (inConfig && !hasClip) console.warn('[fight] config enables "%s" but clip %s is missing', punch.label, clipName);
+    }
+    barEl.appendChild(btn);
+  }
+}
+
+function lockButtons(locked) {
+  for (const btn of barEl.querySelectorAll('.fight-btn:not(.disabled)')) {
+    btn.disabled = locked;
+  }
+  barEl.classList.toggle('locked', locked);
+}
+
+function nextAnimation() {
+  phase = 'idle';
+  lockButtons(false);
+  if (nextBtn) nextBtn.hidden = true;
+  barEl.hidden = true;
+  if (GLBS.length > 1) glbIndex = (glbIndex + 1) % GLBS.length;
+  load(true);
+}
+
+/* the stage's top-right "Next" button */
+if (nextBtn) nextBtn.addEventListener('click', () => nextAnimation());
+
+/* the stage's top-left "Sound" toggle */
+if (soundBtn) {
+  soundBtn.hidden = false;
+  SFX.setMuted(SFX.isMuted());
+  soundBtn.addEventListener('click', () => {
+    const turnOff = !SFX.isMuted();
+    SFX.setMuted(turnOff);
+    /* turning it back on plays one sample so the visitor hears the change */
+    if (!turnOff) { SFX.unlock(); SFX.play(); }
+    soundBtn.blur();
+  });
+}
+
+/* ---------- hit timing ---------- */
+/* Config hitFrame accepts both "jab" and "lead hook" spellings.
+ * Time = (frame - 1) / fps. jab frame 13 @30fps -> 0.4s into the clip. */
+function hitTimeFor(punch) {
+  const table = CFG.hitFrame || {};
+  for (const alias of punch.match) {
+    const f = Number(table[alias] ?? table[normKey(alias)]);
+    if (f >= 2) return (f - 1) / FPS;
+  }
+  return null; /* fall back to hitDelay after the clip finishes */
+}
+
+/* ---------- click flow ---------- */
+function clickPunch(punch) {
+  if (!punch || phase !== 'idle') return;
+  const clipName = 'attack-' + punch.key;
+  const attack = chars['attack'];
+  if (!attack || !attack.actions[clipName]) return;
+
+  phase = 'attacking';
+  lockButtons(true);
+  if (msgEl && CFG.message) msgEl.textContent = CFG.message;
+
+  /* this runs inside a click handler → the one place audio can be unlocked */
+  SFX.unlock();
+
+  const hitAt = hitTimeFor(punch);
+  const action = attack.actions[clipName];
+
+  playOnce('attack', clipName, () => {
+    /* no hitFrame configured → old behaviour: hit after the clip finishes */
+    if (hitAt == null) {
+      setTimeout(() => { if (phase === 'attacking') fireHit(); }, HIT_DELAY * 1000);
+    }
+    /* else: pendingHit in the render loop fires mid-clip at hitAt */
+  });
+
+  if (hitAt != null) {
+    pendingHit = { action, at: hitAt, fired: false };
+    console.log('[fight] %s: frame %s @%sfps → hit at %ss into the clip',
+      punch.key, Math.round(hitAt * FPS) + 1, FPS, hitAt.toFixed(2));
+  }
+}
+
+/* impact moment: the defender reacts and the effect flashes on the anchor */
+function fireHit() {
+  pendingHit = null;
+  phase = 'hitting';
+  if (ancher1) spawnHit(ancher1);
+  SFX.play();
+  playOnce('defence', 'defence-hit', () => {
+    /* done — settle and unlock */
+    phase = 'idle';
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { if (phase === 'idle') lockButtons(false); }, 250);
+  });
+}
+
+/* ---------- render loop ---------- */
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  for (const c of Object.values(chars)) c.mixer.update(dt);
+
+  /* mid-clip impact: fire when the attack action reaches the hit frame */
+  if (pendingHit && !pendingHit.fired) {
+    if (pendingHit.action.time >= pendingHit.at) {
+      pendingHit.fired = true;
+      fireHit();
+    }
+  }
+
+  updateEffects(dt);
+  controls.update();
+  renderer.render(scene, camera);
+});
+
 /* ---------- start ---------- */
-loadScene(sceneIdx);
+load(false);
+/* Warm the impact sample on the first gesture instead of at load time: an
+ * AudioContext created without one is born suspended (and some browsers log a
+ * warning), while decoding 47 KB takes a few ms — well inside the 0.4 s that
+ * separates the click from the first hit. */
+window.addEventListener('pointerdown', () => SFX.warm(), { once: true });
+window.addEventListener('keydown', () => SFX.warm(), { once: true });

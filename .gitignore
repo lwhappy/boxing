@@ -12,11 +12,16 @@ animations-red/
 resources/
 _archive/
 
-# Fight page source assets (Blender sources + source GLB copies)
-# Only the web-served copy in web/fight/glb/ is tracked.
+# Fight page source assets (Blender sources + source GLB copies).
+# Only the web-served copy in web/media/glb/ is tracked.
 fight/blend/
-fight/glb/*.glb.bak
+fight/glb/
+fight/*.glb
+fight/*.html
 fight/.DS_Store
+
+# Local scratch demo (duplicates assets that live elsewhere)
+web/demo/
 
 # Source material for the combo pipeline (360 MB, incl. a 132 MB index.blend).
 # Only the Python sources are tracked; the .blend/.fbx stay local.

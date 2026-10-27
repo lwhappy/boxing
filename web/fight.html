@@ -4,49 +4,46 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="data:," />
-<title>Fight — Interactive 3D Boxing Scene | SilentJab</title>
-<meta name="description" content="Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation — jab, cross, hooks, uppercuts. Refresh to load a new fight scene." />
-<meta name="keywords" content="boxing fight, 3D boxing, boxing animation, boxing punches, interactive boxing, boxing scene" />
-<link rel="canonical" href="https://silentjab.com/fight.html" />
-<meta property="og:url" content="https://silentjab.com/fight.html" />
+<title>Fight — 3D Sparring Demo | SilentJab</title>
+<meta name="description" content="Interactive 3D sparring demo: throw a jab against a live defender, watch the punch land and the reaction that follows." />
+<link rel="canonical" href="https://silentjab.com/fight" />
+<meta property="og:url" content="https://silentjab.com/fight" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SilentJab" />
-<meta property="og:title" content="Fight — Interactive 3D Boxing Scene | SilentJab" />
-<meta property="og:description" content="Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation." />
+<meta property="og:title" content="Fight — 3D Sparring Demo | SilentJab" />
+<meta property="og:description" content="Interactive 3D sparring demo: throw a jab against a live defender, watch the punch land and the reaction that follows." />
 <meta name="twitter:card" content="summary_large_image" />
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "name": "Fight — Interactive 3D Boxing Scene",
-  "description": "Watch and control a 3D fighter in real-time. Press a punch button to trigger the corresponding animation.",
+  "name": "Fight — 3D Sparring Demo | SilentJab",
+  "description": "Interactive 3D sparring demo: throw a jab against a live defender, watch the punch land and the reaction that follows.",
   "inLanguage": "en",
-  "isPartOf": { "@type": "WebSite", "name": "SilentJab", "url": "https://silentjab.com/" },
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab" },
   "breadcrumb": {
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
-      { "@type": "ListItem", "position": 2, "name": "Fight", "item": "https://silentjab.com/fight.html" }
+      { "@type": "ListItem", "position": 2, "name": "Fight", "item": "https://silentjab.com/fight" }
     ]
   }
 }
 </script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "./vendor/three/three.module.min.js",
-    "three/addons/": "./vendor/three/addons/"
-  }
-}
-</script>
 <link rel="stylesheet" href="./assets/home.css?v=3" />
-<link rel="stylesheet" href="./assets/fight.css?v=2" />
+<link rel="stylesheet" href="./assets/fight.css?v=8" />
 <script>
-window.PAGE = { section: 'fight', depth: 0 };
+window.PAGE = { section: 'fight', depth: 0, breadcrumb: [{ label: 'Fight' }] };
 </script>
+
+<!-- ======================================================================
+     All demo settings live in ./assets/fight-config.js (single file):
+       glb, active buttons, message, hit frame timing, camera, controls.
+     ====================================================================== -->
+<script src="./assets/fight-config.js"></script>
+
 <script src="./assets/site-config.js"></script>
 <script src="./assets/site-head.js"></script>
-
 </head>
 <body>
 
@@ -65,7 +62,6 @@ window.PAGE = { section: 'fight', depth: 0 };
     </nav>
   </div>
 </header>
-<script src="./assets/site-nav.js"></script>
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
   <div class="wrap">
@@ -76,60 +72,61 @@ window.PAGE = { section: 'fight', depth: 0 };
     </ol>
   </div>
 </nav>
+<script src="./assets/site-nav.js"></script>
 
-<main class="wrap fight-main">
+<main class="fight-main">
+  <p class="fight-message" id="fight-message" hidden></p>
 
-  <div class="fight-scene-label" id="fight-scene-label"></div>
-
-  <div class="fight-stage" id="fight-stage" aria-label="3D fight scene">
+  <div class="fight-stage" aria-label="3D fight demo">
     <canvas id="fight-canvas"></canvas>
+
+    <!-- Sound toggle — top-left of the stage. State is remembered in
+         localStorage under "silentjab.fight.muted". -->
+    <button class="fight-sound" id="fight-sound" type="button"
+            title="Toggle hit sound" aria-label="Hit sound" aria-pressed="true" hidden>
+      <svg class="ico ico-on" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6.6 8.9H3.4v6.2h3.2L11 19z"/>
+        <path d="M15.2 9.1a4.3 4.3 0 0 1 0 5.8"/>
+        <path d="M18 6.4a8.2 8.2 0 0 1 0 11.2"/>
+      </svg>
+      <svg class="ico ico-off" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6.6 8.9H3.4v6.2h3.2L11 19z"/>
+        <path d="m15.6 9.6 5 5m0-5-5 5"/>
+      </svg>
+      <span class="txt">Sound</span>
+    </button>
+
+    <button class="fight-next" id="fight-next" type="button"
+            title="Load the next animation"
+            aria-label="Next animation" hidden>
+      <span class="ico" aria-hidden="true">→</span><span class="txt">Next</span>
+    </button>
+    <div class="fight-orbit-hint" aria-hidden="true">Drag to rotate · Scroll to zoom</div>
     <div class="fight-loading" id="fight-loading">
       <div class="ring"></div>
-      <span id="fight-loading-text">Loading fight model…</span>
+      <span id="fight-loading-text">Loading 3D model…</span>
     </div>
     <div class="fight-error" id="fight-error" hidden></div>
   </div>
 
-  <p class="fight-description" id="fight-description"></p>
-
   <div class="fight-bar" id="fight-bar" role="toolbar" aria-label="Punch buttons" hidden></div>
-
 </main>
 
-<!-- Fight page config: scenes are dynamic — add/edit scenes here.
-     Each scene:
-       glb:          path to the GLB file (relative to this page)
-       label:        short scene name shown above the stage
-       active:       array of button numbers that are enabled (1-6)
-       description:  explanatory text shown below the stage
-       zoom:         camera zoom multiplier (optional). 1 = auto-fit the
-                     frame; < 1 pulls the camera in so the fighters fill
-                     more of the stage; > 1 pulls back.
-       offsets:      optional per-character position nudges, in model world
-                     units. The GLB carries Blender's own spacing; use this to
-                     tighten the gap between the two fighters without
-                     re-exporting. A positive x on 'defence' pulls it toward
-                     the attacker. Optional 'yaw' (degrees) rotates a fighter.
-     GLB clip naming:
-       defence-idle   — defence character idle loop
-       attack-idle    — attack character idle loop
-       attack-{key}  — attack punch (e.g. attack-jab, attack-cross) -->
-<script>
-window.FIGHT = {
-  scenes: [
-    {
-      glb: 'fight/glb/med-head-jab.glb',
-      label: 'Medium Head Jab',
-      active: [1],
-      zoom: 0.86,
-      description: 'A focused drill on the jab to the head. The defender holds guard while the attacker throws the jab — press the Jab button to fire it.',
-      offsets: {
-        defence: { x: 0.28 }
-      }
-    }
-  ]
-};
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="./index.html">Home</a> · <a href="./moves/">Moves</a> · <a href="./combos/">Combos</a> · <a href="./training/">Training</a></span>
+</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
 </script>
-<script type="module" src="./assets/fight-stage.js?v=10"></script>
+<script type="module" src="./assets/fight-stage.js?v=8"></script>
 </body>
 </html>

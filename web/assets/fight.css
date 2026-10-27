@@ -2,8 +2,8 @@
 
 /* Layout: full-width main with stage centered top, buttons centered bottom */
 .fight-main {
-  padding-top: 20px;
-  padding-bottom: 30px;
+  padding: 20px 16px 30px;
+  box-sizing: border-box;
   min-height: calc(100vh - 62px - 37px);  /* header + breadcrumb */
   display: flex;
   flex-direction: column;
@@ -11,16 +11,18 @@
   justify-content: flex-start;
 }
 
-/* Scene label above the stage */
-.fight-scene-label {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted-2);
-  margin-bottom: 14px;
+/* Caption above the stage — the only title line (from window.FIGHT.message) */
+.fight-message {
+  margin: 0 0 16px;
+  max-width: 620px;
   text-align: center;
+  font-size: clamp(17px, 2.4vw, 23px);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text);
 }
+
+.fight-message[hidden] { display: none; }
 
 /* 3D stage — top center, large */
 .fight-stage {
@@ -72,16 +74,25 @@
   color: var(--muted-2);
 }
 
-/* Button bar — bottom center */
+/* Button bar — bottom center: 6 punch buttons in a 2-column × 3-row pad */
 .fight-bar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 230px));
   justify-content: center;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 10px 14px;
   margin-top: 16px;
   padding: 0 11px;
   max-width: 100%;
+}
+
+/* author display:flex would defeat the hidden attribute */
+.fight-bar[hidden] { display: none; }
+
+/* buttons locked while a punch sequence is playing */
+.fight-bar.locked .fight-btn:not(.disabled) {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 /* Individual punch buttons */
@@ -111,16 +122,55 @@
   transform: translateY(-1px);
 }
 
+/* Enabled ("active") punch buttons — warm gradient with an orange edge,
+ * clearly distinguished from the grey disabled ones */
 .fight-btn.active {
-  color: #ffd9ae;
-  border-color: rgba(255, 154, 77, 0.65);
-  background: rgba(46, 28, 12, 0.85);
-  box-shadow: 0 0 18px rgba(255, 154, 77, 0.25);
+  background: linear-gradient(180deg, #2a1a0b, #17110a);
+  border: 1px solid rgba(255, 154, 77, 0.75);
+  color: #ffe2c4;
+  box-shadow:
+    0 0 0 1px rgba(255, 138, 60, 0.18),
+    0 4px 16px rgba(255, 138, 60, 0.22),
+    inset 0 1px 0 rgba(255, 190, 130, 0.25);
+}
+
+.fight-btn.active:hover {
+  background: linear-gradient(180deg, #3a2410, #1d150c);
+  border-color: rgba(255, 178, 110, 0.95);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 138, 60, 0.28),
+    0 6px 22px rgba(255, 138, 60, 0.35),
+    inset 0 1px 0 rgba(255, 190, 130, 0.35);
+}
+
+.fight-btn.active:active { transform: translateY(0); }
+
+/* gentle breathing glow so the enabled punch reads as "click me" */
+@media (prefers-reduced-motion: no-preference) {
+  .fight-btn.active { animation: fight-btn-glow 2.6s ease-in-out infinite; }
+}
+
+@keyframes fight-btn-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 138, 60, 0.18),
+      0 4px 16px rgba(255, 138, 60, 0.20),
+      inset 0 1px 0 rgba(255, 190, 130, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 138, 60, 0.32),
+      0 6px 24px rgba(255, 138, 60, 0.38),
+      inset 0 1px 0 rgba(255, 190, 130, 0.35);
+  }
 }
 
 .fight-btn.disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  filter: grayscale(0.6);
 }
 
 .fight-btn-num {
@@ -131,7 +181,9 @@
   line-height: 1;
 }
 
-.fight-btn.active .fight-btn-num { color: rgba(255, 200, 150, 0.8); }
+.fight-btn.active .fight-btn-num {
+  color: #ffb374;
+}
 
 .fight-btn-label {
   font-size: 11px;
@@ -141,29 +193,120 @@
   white-space: nowrap;
 }
 
-/* Refresh button — circular, stands out from punch buttons */
-.fight-refresh {
-  min-width: 40px;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: 700;
+/* Next button — top-right of the stage; loads the next GLB in the config
+ * list (a freshly exported animation shows up without a page reload) */
+.fight-next {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 154, 77, 0.45);
+  background: rgba(18, 12, 6, 0.82);
+  color: #ffdcb8;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   line-height: 1;
-  color: #9ec7ff;
-  border-style: dashed;
-  border-color: rgba(120, 180, 255, 0.45);
-  background: rgba(18, 28, 44, 0.78);
-  margin-left: 6px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color .16s ease, border-color .16s ease, background .16s ease;
 }
 
-.fight-refresh:hover {
-  color: #cfe3ff;
-  border-color: rgba(120, 180, 255, 0.8);
-  border-style: solid;
-  transform: rotate(180deg);
-  transition: transform .5s ease, color .16s ease, border-color .16s ease;
+.fight-next:hover {
+  color: #fff2e2;
+  border-color: rgba(255, 178, 110, 0.9);
+  background: rgba(44, 27, 12, 0.9);
+}
+
+.fight-next .ico {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform .18s ease;
+}
+
+.fight-next:hover .ico { transform: translateX(3px); }
+
+.fight-next[hidden] { display: none; }
+
+/* Sound toggle — top-left of the stage (mirrors the Next pill on the right) */
+.fight-sound {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(14, 20, 30, 0.8);
+  color: #dfe8f4;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color .16s ease, border-color .16s ease, background .16s ease, opacity .16s ease;
+}
+
+.fight-sound:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(22, 30, 44, 0.9);
+}
+
+.fight-sound .ico {
+  display: block;
+  flex: none;
+  transition: transform .18s ease;
+}
+
+/* only one of the two icons is visible at a time */
+.fight-sound .ico-off { display: none; }
+
+/* muted state: dimmed pill + crossed-out speaker */
+.fight-sound.is-muted {
+  color: #93a1b6;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(14, 20, 30, 0.62);
+}
+
+.fight-sound.is-muted .ico-on { display: none; }
+.fight-sound.is-muted .ico-off { display: block; }
+
+.fight-sound:hover .ico { transform: scale(1.08); }
+
+.fight-sound[hidden] { display: none; }
+
+.fight-sound:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Orbit hint — bottom-right inside the stage */
+.fight-orbit-hint {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  z-index: 2;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(60, 76, 100, 0.75);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  user-select: none;
+  pointer-events: none;
 }
 
 /* Loading overlay */
@@ -223,13 +366,41 @@
   }
 
   .fight-btn-num { font-size: 9px; }
-  .fight-btn-label { font-size: 9.5px; }
+  .fight-btn-label { font-size: 10px; }
 
-  .fight-refresh {
-    width: 34px;
-    height: 34px;
-    font-size: 16px;
+  /* same 2-column pad on phones, tighter */
+  .fight-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 9px;
+    width: 100%;
+    max-width: 320px;
+    padding: 0;
   }
 
-  .fight-bar { gap: 5px; }
+  .fight-btn { width: 100%; }
+
+  .fight-next {
+    top: 8px;
+    right: 8px;
+    padding: 6px 10px 5px;
+    font-size: 11px;
+  }
+
+  .fight-next .ico { font-size: 12px; }
+
+  .fight-sound {
+    top: 8px;
+    left: 8px;
+    gap: 5px;
+    padding: 6px 10px 5px;
+    font-size: 11px;
+  }
+
+  .fight-sound .ico { width: 13px; height: 13px; }
+
+  .fight-orbit-hint {
+    right: 10px;
+    bottom: 7px;
+    font-size: 10px;
+  }
 }
