@@ -24,9 +24,7 @@
  * `attack-{name}` once; at the configured hit moment the defender plays
  * `defence-hit` once and an impact effect flashes on `ancher1` (it follows
  * the anchor as the head snaps back). Everything settles back to the idles.
- * The scene can be orbited by mouse drag. The "Next" button at the top-right
- * of the stage loads the next entry of the glb list (cache-busted), so a
- * freshly exported animation shows up without a page reload.
+ * The scene can be orbited by mouse drag.
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -65,7 +63,6 @@ const loadingEl = document.getElementById('fight-loading');
 const loadingText = document.getElementById('fight-loading-text');
 const errorEl = document.getElementById('fight-error');
 const msgEl = document.getElementById('fight-message');
-const nextBtn = document.getElementById('fight-next');
 const soundBtn = document.getElementById('fight-sound');
 
 /* ---------- renderer / scene ---------- */
@@ -291,10 +288,8 @@ function setupCamera(root, center, bodySize) {
     'target', target.toArray().map((n) => +n.toFixed(2)).join(', '), 'fov', +camera.fov.toFixed(1));
 }
 
-/* ---------- load / next GLB ---------- */
-/* CFG.glb may be a single path or an array; the Next button cycles it. */
-const GLBS = (Array.isArray(CFG.glb) ? CFG.glb : [CFG.glb]).filter(Boolean);
-let glbIndex = 0;
+/* ---------- load GLB ---------- */
+const GLB_SRC = Array.isArray(CFG.glb) ? CFG.glb[0] : CFG.glb;
 function disposeModel() {
   pendingHit = null;
   for (const e of effects) {
@@ -318,13 +313,12 @@ function disposeModel() {
   ancher1 = null;
 }
 
-function load(cacheBust) {
-  const src = GLBS[glbIndex];
+function load() {
+  const src = GLB_SRC;
   if (!src) { showError('No glb configured. Set window.FIGHT.glb in assets/fight-config.js.'); return; }
   let glbUrl;
   try { glbUrl = new URL(src, document.baseURI).href; } catch { glbUrl = src; }
-  if (cacheBust) glbUrl += (glbUrl.includes('?') ? '&' : '?') + 'r=' + Date.now();
-  console.log('[fight] loading', src, `(${glbIndex + 1}/${GLBS.length})`);
+  console.log('[fight] loading', src);
 
   const token = ++loadingToken;
   loadingEl.classList.remove('hidden');
@@ -408,31 +402,21 @@ function onLoaded(gltf) {
     console.warn('[fight] attackPoses.stance is malformed — attacker keeps the exported pose');
   }
 
-  /* 3. impact anchor on the defender. ancher1 is the contract, but some
-   * exports (all.glb 2026-10-28) ship it misplaced — e.g. floating 0.4
-   * behind the head with a negative scale. If a head bone exists and the
-   * anchor is far off it, prefer the head bone so the spark stays on the
-   * face. */
+  /* 3. impact anchor on the defender. The contract is the empty named
+   * `ancher1`, authored on the defender's neck bone in Blender and placed
+   * at the impact point — hit effects and their follow target use it
+   * directly. The head bone is only a fallback for exports without it. */
   let ancherNode = null;
   model.traverse((o) => { if (!ancherNode && /^ancher/i.test(o.name || '')) ancherNode = o; });
-  let headBone = null;
-  defRoot.traverse((o) => { if (!headBone && o.isBone && /mixamorigHead(_\d+)?$/.test(o.name || '')) headBone = o; });
-  if (ancherNode && headBone) {
-    ancherNode.updateWorldMatrix(true, false);
-    headBone.updateWorldMatrix(true, false);
-    const d = new THREE.Vector3().setFromMatrixPosition(ancherNode.matrixWorld)
-      .distanceTo(new THREE.Vector3().setFromMatrixPosition(headBone.matrixWorld));
-    if (d > bodySize * 0.35) {
-      ancher1 = headBone;
-      console.warn(`[fight] ancher1 is ${d.toFixed(2)} off the head (misplaced export) — using the head bone as impact anchor`);
-    } else {
-      ancher1 = ancherNode;
-    }
-  } else if (ancherNode) {
+  if (ancherNode) {
     ancher1 = ancherNode;
-  } else if (headBone) {
-    ancher1 = headBone;
-    console.log('[fight] no ancher* node — using defender head bone as impact anchor');
+  } else {
+    let headBone = null;
+    defRoot.traverse((o) => { if (!headBone && o.isBone && /mixamorigHead(_\d+)?$/.test(o.name || '')) headBone = o; });
+    if (headBone) {
+      ancher1 = headBone;
+      console.log('[fight] no ancher* node — using defender head bone as impact anchor');
+    }
   }
   if (!ancher1) console.warn('[fight] no ancher* node found — impact effect skipped');
 
@@ -454,7 +438,6 @@ function onLoaded(gltf) {
     msgEl.hidden = false;
   }
   buildButtons();
-  if (nextBtn) nextBtn.hidden = false;
 
   loadingEl.classList.add('hidden');
   barEl.hidden = false;
@@ -467,7 +450,6 @@ function onLoaded(gltf) {
     clips: clips.map((c) => c.name),
     playPunch: (key) => clickPunch(PUNCHES.find((p) => p.key === key)),
     spawnHit: () => { if (ancher1) spawnHit(ancher1); },
-    next: () => nextAnimation(),
     effects: () => effects.length,
     sound: () => SFX.stats()
   };
@@ -707,18 +689,6 @@ function lockButtons(locked) {
   barEl.classList.toggle('locked', locked);
 }
 
-function nextAnimation() {
-  phase = 'idle';
-  lockButtons(false);
-  if (nextBtn) nextBtn.hidden = true;
-  barEl.hidden = true;
-  if (GLBS.length > 1) glbIndex = (glbIndex + 1) % GLBS.length;
-  load(true);
-}
-
-/* the stage's top-right "Next" button */
-if (nextBtn) nextBtn.addEventListener('click', () => nextAnimation());
-
 /* the stage's top-left "Sound" toggle */
 if (soundBtn) {
   soundBtn.hidden = false;
@@ -828,7 +798,7 @@ renderer.setAnimationLoop(() => {
 });
 
 /* ---------- start ---------- */
-load(false);
+load();
 /* Warm the impact sample on the first gesture instead of at load time: an
  * AudioContext created without one is born suspended (and some browsers log a
  * warning), while decoding 47 KB takes a few ms — well inside the 0.4 s that

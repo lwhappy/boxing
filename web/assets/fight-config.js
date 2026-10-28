@@ -2,14 +2,12 @@
  * Fight page — SINGLE CONFIG FILE
  * ----------------------------------------------------------------------
  * Everything the fight demo needs is defined here. Edit this file and
- * refresh the page (or click the "Next" button at the top-right of the
- * stage to load the next GLB / re-pull the current one from disk).
+ * refresh the page to see the changes.
  * ====================================================================== */
 window.FIGHT = {
 
   /* ---- model ---- */
-  /* Path to the GLB — a single path, or an array of paths that the
-   * "Next" button cycles through. Each GLB must contain:
+  /* Path to the GLB. Each GLB must contain:
    *   - nodes "attack-armature" and "defence-armature"
    *   - clips "attack-*" / "defence-*" (attack-idle, attack-jab, ...)
    *   - an empty "ancher1" on the defender (impact point)
