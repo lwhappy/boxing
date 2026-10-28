@@ -75,6 +75,39 @@ const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
 
+/* ---------- aspect-aware framing ----------
+ * The shot is composed for the desktop stage (16 / 9.5): two fighters side by
+ * side, filling ~88% of the frame width. A phone stage is 4 / 3.2, so the very
+ * same vertical lens covers much less width — the pair then overflows both
+ * edges and reads as "too big". Keep the horizontal coverage identical to the
+ * desktop shot by widening the lens on narrow viewports.
+ * Widening the FOV is used instead of dollying back on purpose: OrbitControls
+ * owns the camera distance, so moving it here would reset the visitor's zoom
+ * every time the mobile URL bar collapses. */
+const REF_ASPECT = 16 / 9.5;      // aspect the camera pose was composed for
+const MAX_FIT_FOV = 46;           // stop before the perspective gets fish-eyed
+let baseFov = camera.fov;         // lens before fitting (config / GLB / 30)
+let fitAspectRef = 0;             // aspect the current FOV was fitted to
+
+function fittedFov(aspect) {
+  if (CFG.fitNarrow === false || !(aspect > 0) || aspect >= REF_ASPECT) return baseFov;
+  const spread = (REF_ASPECT / aspect) * (CFG.narrowExtra || 1);
+  const halfTan = Math.tan((baseFov * Math.PI) / 360) * spread;
+  return Math.min(MAX_FIT_FOV, (2 * Math.atan(halfTan) * 180) / Math.PI);
+}
+
+function applyFraming() {
+  const aspect = camera.aspect;
+  /* only re-fit when the aspect really changed (>4%): the mobile URL bar
+   * collapsing resizes the canvas by a few percent and must not nudge the lens */
+  if (!fitAspectRef || Math.abs(aspect - fitAspectRef) / fitAspectRef > 0.04) {
+    fitAspectRef = aspect;
+    const fov = fittedFov(aspect);
+    if (Math.abs(fov - camera.fov) > 0.01) camera.fov = fov;
+  }
+  camera.updateProjectionMatrix();
+}
+
 /* mouse orbit — enabled once the camera pose is known */
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -103,8 +136,8 @@ function resize() {
   const w = canvas.clientWidth || canvas.parentElement.clientWidth;
   const h = canvas.clientHeight || canvas.parentElement.clientHeight;
   renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+  camera.aspect = w / Math.max(1, h);
+  applyFraming();
 }
 new ResizeObserver(resize).observe(canvas.parentElement);
 resize();
@@ -259,7 +292,7 @@ function setupCamera(root, center, bodySize) {
   if (!CFG.useGlbCamera && Array.isArray(cfgCam.position) && cfgCam.position.length === 3) {
     /* config camera wins */
     camera.position.set(...cfgCam.position);
-    if (cfgCam.fov) { camera.fov = cfgCam.fov; camera.updateProjectionMatrix(); }
+    if (cfgCam.fov) baseFov = cfgCam.fov;
   } else {
     /* GLB init-camera: keep its position, focal length and clipping planes,
      * aim at the fighters (the authored rotation points away from them) */
@@ -268,7 +301,7 @@ function setupCamera(root, center, bodySize) {
       camNode.updateWorldMatrix(true, false);
       camera.position.setFromMatrixPosition(camNode.matrixWorld);
       if (camNode.isPerspectiveCamera && !cfgCam.fov) {
-        camera.fov = camNode.fov;
+        baseFov = camNode.fov;
         camera.near = camNode.near;
         camera.far = camNode.far;
       }
@@ -278,18 +311,23 @@ function setupCamera(root, center, bodySize) {
       /* Side-on view matching the reference shot: both fighters seen from
        * the side (defender left / attacker right), camera at chest height
        * looking straight along -Z, both bodies fully in frame. */
-      camera.fov = 30;
+      baseFov = 30;
       camera.position.set(center.x, center.y + bodySize * 0.08, center.z + bodySize * 1.62);
       target.set(center.x, center.y - bodySize * 0.02, center.z);
       camera.updateProjectionMatrix();
     }
   }
 
+  /* re-fit the lens to the current viewport (a phone gets a wider one) */
+  fitAspectRef = 0;
+  applyFraming();
+
   camera.updateMatrixWorld(true);
   controls.target.copy(target);
   controls.update();
   console.log('[fight] camera at', camera.position.toArray().map((n) => +n.toFixed(2)).join(', '),
-    'target', target.toArray().map((n) => +n.toFixed(2)).join(', '), 'fov', +camera.fov.toFixed(1));
+    'target', target.toArray().map((n) => +n.toFixed(2)).join(', '),
+    'fov', +camera.fov.toFixed(1), '(base', +baseFov.toFixed(1) + ')');
 }
 
 /* ---------- load GLB ---------- */

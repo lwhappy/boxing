@@ -73,6 +73,12 @@ window.FIGHT = {
     target: [0.11, 0.46, 0.05],
     fov: null
   },
+  /* Narrow screens (portrait phones) get a wider lens so the pair keeps the
+   * same horizontal coverage as the desktop shot — without it the fighters
+   * overflow both edges and look oversized. Set false for the raw fov.
+   * narrowExtra: 1 = same framing as desktop, >1 = fighters even smaller. */
+  fitNarrow: true,
+  narrowExtra: 1,
 
   /* ---- impact sound ---- */
   /* Plays the moment the punch lands (same instant as the effect).
