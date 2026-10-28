@@ -37,16 +37,26 @@ const CFG = window.FIGHT || {};
 const FPS = Math.max(1, Number(CFG.fps) || 30) || 30;
 const HIT_DELAY = Math.max(0, Number(CFG.hitDelay ?? 1) || 0);
 
-/* The 6 punch buttons. `key` builds the clip name: "attack-" + key.
- * `match` are the config aliases accepted in window.FIGHT.active. */
+/* The 6 punch buttons. `clips` are candidate clip names tried in order —
+ * exports name them inconsistently ("attack-cross" vs "attack-cross2"),
+ * so the first clip that exists in the GLB wins. `match` are the config
+ * aliases accepted in window.FIGHT.active. */
 const PUNCHES = [
-  { key: 'jab',           label: 'Jab',           match: ['jab'] },
-  { key: 'cross',         label: 'Cross',         match: ['cross'] },
-  { key: 'lead-hook',     label: 'Lead Hook',     match: ['lead hook', 'lead-hook', 'leadhook'] },
-  { key: 'rear-hook',     label: 'Rear Hook',     match: ['rear hook', 'rear-hook', 'rearhook'] },
-  { key: 'lead-uppercut', label: 'Lead Uppercut', match: ['lead uppercut', 'lead-uppercut', 'leaduppercut'] },
-  { key: 'rear-uppercut', label: 'Rear Uppercut', match: ['rear uppercut', 'rear-uppercut', 'rearuppercut'] },
+  { key: 'jab',           label: 'Jab',           match: ['jab'],           clips: ['attack-jab'] },
+  { key: 'cross',         label: 'Cross',         match: ['cross'],         clips: ['attack-cross', 'attack-cross2'] },
+  { key: 'lead-hook',     label: 'Lead Hook',     match: ['lead hook', 'lead-hook', 'leadhook'], clips: ['attack-lead-hook'] },
+  { key: 'rear-hook',     label: 'Rear Hook',     match: ['rear hook', 'rear-hook', 'rearhook'], clips: ['attack-rear-hook', 'attack-rear-hook2'] },
+  { key: 'lead-uppercut', label: 'Lead Uppercut', match: ['lead uppercut', 'lead-uppercut', 'leaduppercut'], clips: ['attack-lead-uppercut'] },
+  { key: 'rear-uppercut', label: 'Rear Uppercut', match: ['rear uppercut', 'rear-uppercut', 'rearuppercut'], clips: ['attack-rear-uppercut'] },
 ];
+
+/* first clip of `punch` that exists on the attack character (null if none) */
+function clipFor(punch) {
+  const a = chars['attack'];
+  if (!a) return null;
+  for (const name of punch.clips) if (a.actions[name]) return name;
+  return null;
+}
 
 /* ---------- DOM ---------- */
 const canvas = document.getElementById('fight-canvas');
@@ -170,6 +180,47 @@ function wireFinished(charKey) {
   c.mixer.addEventListener('finished', () => {
     if (c.onShotDone) { const f = c.onShotDone; c.onShotDone = null; f(); }
   });
+}
+
+/* ---------- attacker root poses ----------
+ * Each punch is authored in Blender at its own armature transform (that is
+ * what makes the fist reach the defender's head). CFG.attackPoses holds the
+ * converted glTF transforms; we tween the attack ROOT between poses — the
+ * mixer only drives bones under the root, so both can run at once. */
+const POSES = CFG.attackPoses || {};
+let poseTween = null;           // { root, fromP, toP, fromQ, toQ, t, dur, then }
+
+function poseOk(pose) {
+  return !!(pose && Array.isArray(pose.t) && Array.isArray(pose.q));
+}
+
+function applyPose(root, pose) {
+  if (!poseOk(pose)) return false;
+  root.position.set(pose.t[0], pose.t[1], pose.t[2]);
+  root.quaternion.set(pose.q[0], pose.q[1], pose.q[2], pose.q[3]);
+  return true;
+}
+
+function tweenPose(root, pose, dur, then) {
+  if (!poseOk(pose)) { if (then) then(); return; }
+  poseTween = {
+    root,
+    fromP: root.position.clone(),
+    toP: new THREE.Vector3(pose.t[0], pose.t[1], pose.t[2]),
+    fromQ: root.quaternion.clone(),
+    toQ: new THREE.Quaternion(pose.q[0], pose.q[1], pose.q[2], pose.q[3]),
+    t: 0, dur: Math.max(0.01, dur), then
+  };
+}
+
+function updatePoseTween(dt) {
+  if (!poseTween) return;
+  poseTween.t += dt;
+  const k = Math.min(1, poseTween.t / poseTween.dur);
+  const e = k * k * (3 - 2 * k);            /* smoothstep */
+  poseTween.root.position.lerpVectors(poseTween.fromP, poseTween.toP, e);
+  poseTween.root.quaternion.slerpQuaternions(poseTween.fromQ, poseTween.toQ, e);
+  if (k >= 1) { const done = poseTween; poseTween = null; if (done.then) done.then(); }
 }
 
 /* real skinned bounds — Box3.setFromObject only uses bind-pose geometry,
@@ -307,15 +358,31 @@ function onLoaded(gltf) {
   });
   scene.add(model);
 
-  /* 1. find the two armatures by node name (positions stay untouched) */
+  /* 1. find the two armatures. Exports use "attack-armature" /
+   * "defence-armature"; the combined Tripo export names them plainly
+   * "attack" / "defence", so fall back to a prefix match on root children. */
   const atkRoot = model.getObjectByName('attack-armature') ||
-    model.children.find((c) => /^attack[-_.]/i.test(c.name || ''));
+    model.children.find((c) => /^attack/i.test(c.name || ''));
   const defRoot = model.getObjectByName('defence-armature') ||
-    model.children.find((c) => /^defence[-_.]/i.test(c.name || ''));
+    model.children.find((c) => /^defence/i.test(c.name || ''));
   if (!atkRoot || !defRoot) {
     showError('Expected "attack-armature" and "defence-armature" nodes in the GLB, found: '
       + model.children.map((c) => c.name).join(', '));
     return;
+  }
+
+  /* Layout contract: the red defender stands on the LEFT of the stage and
+   * the black attacker on the RIGHT (i.e. defence.x < attack.x in world
+   * space, camera looking down -Z). The Blender export already places them
+   * so; this is a guard that swaps their X positions if an export flips it.
+   * (We move whole roots — clips stay bound to their own armature.) */
+  model.updateMatrixWorld(true);
+  const atkX = new THREE.Vector3().setFromMatrixPosition(atkRoot.matrixWorld).x;
+  const defX = new THREE.Vector3().setFromMatrixPosition(defRoot.matrixWorld).x;
+  if (defX > atkX) {
+    console.warn('[fight] defence/attack are flipped — swapping X positions');
+    atkRoot.position.setX(defX);
+    defRoot.position.setX(atkX);
   }
 
   /* 2. clips: ownership by name prefix (attack-* / defence-*) */
@@ -335,8 +402,38 @@ function onLoaded(gltf) {
   mkChar(atkRoot, 'attack', 'attack-idle', /^attack[-_.]/i);
   mkChar(defRoot, 'defence', 'defence-idle', /^defence[-_.]/i);
 
-  /* 3. impact anchor on the defender */
-  model.traverse((o) => { if (!ancher1 && /^ancher/i.test(o.name || '')) ancher1 = o; });
+  /* put the attacker on its idle stance (exports leave the root wherever
+   * Blender had it — usually the last-punched pose, not the guard) */
+  if (!applyPose(atkRoot, POSES.stance) && POSES.stance) {
+    console.warn('[fight] attackPoses.stance is malformed — attacker keeps the exported pose');
+  }
+
+  /* 3. impact anchor on the defender. ancher1 is the contract, but some
+   * exports (all.glb 2026-10-28) ship it misplaced — e.g. floating 0.4
+   * behind the head with a negative scale. If a head bone exists and the
+   * anchor is far off it, prefer the head bone so the spark stays on the
+   * face. */
+  let ancherNode = null;
+  model.traverse((o) => { if (!ancherNode && /^ancher/i.test(o.name || '')) ancherNode = o; });
+  let headBone = null;
+  defRoot.traverse((o) => { if (!headBone && o.isBone && /mixamorigHead(_\d+)?$/.test(o.name || '')) headBone = o; });
+  if (ancherNode && headBone) {
+    ancherNode.updateWorldMatrix(true, false);
+    headBone.updateWorldMatrix(true, false);
+    const d = new THREE.Vector3().setFromMatrixPosition(ancherNode.matrixWorld)
+      .distanceTo(new THREE.Vector3().setFromMatrixPosition(headBone.matrixWorld));
+    if (d > bodySize * 0.35) {
+      ancher1 = headBone;
+      console.warn(`[fight] ancher1 is ${d.toFixed(2)} off the head (misplaced export) — using the head bone as impact anchor`);
+    } else {
+      ancher1 = ancherNode;
+    }
+  } else if (ancherNode) {
+    ancher1 = ancherNode;
+  } else if (headBone) {
+    ancher1 = headBone;
+    console.log('[fight] no ancher* node — using defender head bone as impact anchor');
+  }
   if (!ancher1) console.warn('[fight] no ancher* node found — impact effect skipped');
 
   /* Settle one idle frame before measuring anything: skinning matrices are
@@ -567,12 +664,11 @@ function normKey(s) { return normName(s).replace(/\s+/g, '-'); }
 
 function buildButtons() {
   const activeCfg = new Set((Array.isArray(CFG.active) ? CFG.active : []).map(normName));
-  const attack = chars['attack'];
   barEl.innerHTML = '';
 
   for (let i = 0; i < PUNCHES.length; i++) {
     const punch = PUNCHES[i];
-    const clipName = 'attack-' + punch.key;
+    const clipName = clipFor(punch);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'fight-btn';
@@ -587,8 +683,7 @@ function buildButtons() {
     btn.append(num, label);
 
     const inConfig = punch.match.some((m) => activeCfg.has(normName(m)));
-    const hasClip = attack && attack.actions[clipName];
-    if (inConfig && hasClip) {
+    if (inConfig && clipName) {
       btn.classList.add('active');
       btn.dataset.clip = clipName;
       btn.title = `${i + 1}: ${punch.label}`;
@@ -596,9 +691,10 @@ function buildButtons() {
     } else {
       btn.classList.add('disabled');
       btn.disabled = true;
-      btn.title = hasClip ? 'Disabled in this demo (edit active in assets/fight-config.js)'
-                          : 'Clip not found in the GLB';
-      if (inConfig && !hasClip) console.warn('[fight] config enables "%s" but clip %s is missing', punch.label, clipName);
+      btn.title = clipName ? 'Disabled in this demo (edit active in assets/fight-config.js)'
+                           : `Clip not found in the GLB (tried: ${punch.clips.join(', ')})`;
+      if (inConfig && !clipName) console.warn('[fight] config enables "%s" but no clip matched (tried: %s)',
+        punch.label, punch.clips.join(', '));
     }
     barEl.appendChild(btn);
   }
@@ -651,9 +747,9 @@ function hitTimeFor(punch) {
 /* ---------- click flow ---------- */
 function clickPunch(punch) {
   if (!punch || phase !== 'idle') return;
-  const clipName = 'attack-' + punch.key;
+  const clipName = clipFor(punch);
+  if (!clipName) return;
   const attack = chars['attack'];
-  if (!attack || !attack.actions[clipName]) return;
 
   phase = 'attacking';
   lockButtons(true);
@@ -665,33 +761,50 @@ function clickPunch(punch) {
   const hitAt = hitTimeFor(punch);
   const action = attack.actions[clipName];
 
-  playOnce('attack', clipName, () => {
-    /* no hitFrame configured → old behaviour: hit after the clip finishes */
-    if (hitAt == null) {
-      setTimeout(() => { if (phase === 'attacking') fireHit(); }, HIT_DELAY * 1000);
-    }
-    /* else: pendingHit in the render loop fires mid-clip at hitAt */
-  });
+  const startClip = () => {
+    playOnce('attack', clipName, () => {
+      /* back to the guard stance while the idle blend runs */
+      tweenPose(attack.root, POSES.stance, 0.32);
+      /* no hitFrame configured → old behaviour: hit after the clip finishes */
+      if (hitAt == null) {
+        setTimeout(() => { if (phase === 'attacking') fireHit(); }, HIT_DELAY * 1000);
+      }
+      /* else: pendingHit in the render loop fires mid-clip at hitAt */
+    });
 
-  if (hitAt != null) {
-    pendingHit = { action, at: hitAt, fired: false };
-    console.log('[fight] %s: frame %s @%sfps → hit at %ss into the clip',
-      punch.key, Math.round(hitAt * FPS) + 1, FPS, hitAt.toFixed(2));
-  }
+    if (hitAt != null) {
+      pendingHit = { action, at: hitAt, fired: false };
+      console.log('[fight] %s: frame %s @%sfps → hit at %ss into the clip',
+        punch.key, Math.round(hitAt * FPS) + 1, FPS, hitAt.toFixed(2));
+    }
+  };
+
+  /* step into the authored pose first, then throw (short tween — the clip
+   * itself starts from its guard so the blend reads as a setup step) */
+  if (!poseOk(POSES[punch.key])) startClip();
+  else tweenPose(attack.root, POSES[punch.key], 0.16, startClip);
 }
 
-/* impact moment: the defender reacts and the effect flashes on the anchor */
+/* impact moment: the defender reacts and the effect flashes on the anchor.
+ * If the GLB has no `defence-hit` clip (e.g. the combined Tripo export),
+ * the spark + sound still fire and the page just settles back to idle. */
+function settleAfterHit() {
+  phase = 'idle';
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => { if (phase === 'idle') lockButtons(false); }, 250);
+}
+
 function fireHit() {
   pendingHit = null;
   phase = 'hitting';
   if (ancher1) spawnHit(ancher1);
   SFX.play();
-  playOnce('defence', 'defence-hit', () => {
-    /* done — settle and unlock */
-    phase = 'idle';
-    clearTimeout(settleTimer);
-    settleTimer = setTimeout(() => { if (phase === 'idle') lockButtons(false); }, 250);
-  });
+  const def = chars['defence'];
+  if (def && def.actions['defence-hit']) {
+    playOnce('defence', 'defence-hit', settleAfterHit);
+  } else {
+    settleAfterHit();
+  }
 }
 
 /* ---------- render loop ---------- */
@@ -699,6 +812,7 @@ const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   for (const c of Object.values(chars)) c.mixer.update(dt);
+  updatePoseTween(dt);
 
   /* mid-clip impact: fire when the attack action reaches the hit frame */
   if (pendingHit && !pendingHit.fired) {

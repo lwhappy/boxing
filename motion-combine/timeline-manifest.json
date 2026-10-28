@@ -1,0 +1,70 @@
+{
+  "blendFile": "/Users/justrun/project/boxing-3/motion-combine/index.blend",
+  "fps": 30.0,
+  "frameStart": 1,
+  "frameEnd": 250,
+  "durationSec": 8.3,
+  "nla": [
+    {
+      "object": "Armature",
+      "track": "back-hand-hook",
+      "strip": "back-hand-hook",
+      "action": "back-hand-hook",
+      "frameStart": 1.0,
+      "frameEnd": 66.0,
+      "startSec": 0.0333,
+      "endSec": 2.2
+    },
+    {
+      "object": "Armature",
+      "track": "back-hand-uppercut",
+      "strip": "back-hand-uppercut",
+      "action": "back-hand-uppercut",
+      "frameStart": 1.0,
+      "frameEnd": 67.0,
+      "startSec": 0.0333,
+      "endSec": 2.2333
+    },
+    {
+      "object": "Armature",
+      "track": "cross",
+      "strip": "cross",
+      "action": "cross",
+      "frameStart": 1.0,
+      "frameEnd": 65.0,
+      "startSec": 0.0333,
+      "endSec": 2.1667
+    },
+    {
+      "object": "Armature",
+      "track": "jab",
+      "strip": "jab",
+      "action": "jab",
+      "frameStart": 1.0,
+      "frameEnd": 53.0,
+      "startSec": 0.0333,
+      "endSec": 1.7667
+    },
+    {
+      "object": "Armature",
+      "track": "lead-hand-hook",
+      "strip": "lead-hand-hook",
+      "action": "lead-hand-hook",
+      "frameStart": 1.0,
+      "frameEnd": 61.0,
+      "startSec": 0.0333,
+      "endSec": 2.0333
+    },
+    {
+      "object": "Armature",
+      "track": "lead-hand-uppercut",
+      "strip": "lead-hand-uppercut",
+      "action": "lead-hand-uppercut",
+      "frameStart": 1.0,
+      "frameEnd": 67.0,
+      "startSec": 0.0333,
+      "endSec": 2.2333
+    }
+  ],
+  "audio": []
+}

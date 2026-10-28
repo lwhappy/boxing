@@ -39,3 +39,8 @@ node_modules/
 !.dev.vars.example
 .env*
 !.env.example
+
+# Blender source files: oversized (>100MB GitHub limit) or backup junk
+move-train/**/*.blend
+*.blend1
+move-train/
