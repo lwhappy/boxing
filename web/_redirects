@@ -1,23 +1,20 @@
 # Cloudflare Pages redirects
 # Docs: https://developers.cloudflare.com/pages/configuration/redirects/
 #
-# The site was restructured into three directories (/moves/, /combos/, /training/).
-# Pages' built-in "pretty URLs" would send /jab.html -> /jab, which no longer
-# exists, so every old flat URL gets an explicit 301 to its new home.
+# The site is organised into the /moves/ and /combos/ directories plus the flat
+# /training demo page. Pages' built-in "pretty URLs" would send /jab.html -> /jab,
+# which no longer exists, so every old flat URL gets an explicit 301 to its new
+# home.
 # Explicit rules win over the built-in redirect (redirects run before headers),
 # so the nested .html addresses also get a permanent 301 instead of a 307.
-
 /index.html    /    301
+/fight.html    /training    301
+/fight    /training    301
 /moves    /moves/    301
 /combos    /combos/    301
-/training    /training/    301
-/fight.html    /fight    301
 /moves/index.html    /moves/    301
 /combos/index.html    /combos/    301
-/training/index.html    /training/    301
-
 # --- legacy flat URLs -> new nested addresses ---
-/training.html    /training/    301
 /jab.html    /moves/jab    301
 /jab    /moves/jab    301
 /cross.html    /moves/cross    301
@@ -50,7 +47,6 @@
 /combo_jab_jab_cross    /combos/combo_jab_jab_cross    301
 /combo_jab_rearuppercut_leadhook.html    /combos/combo_jab_rearuppercut_leadhook    301
 /combo_jab_rearuppercut_leadhook    /combos/combo_jab_rearuppercut_leadhook    301
-
 # --- nested .html -> extension-less (upgrades the built-in 307 to 301) ---
 /moves/jab.html    /moves/jab    301
 /moves/cross.html    /moves/cross    301
@@ -68,5 +64,3 @@
 /combos/combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
 /combos/combo_jab_jab_cross.html    /combos/combo_jab_jab_cross    301
 /combos/combo_jab_rearuppercut_leadhook.html    /combos/combo_jab_rearuppercut_leadhook    301
-/training/jab.html    /training/jab    301
-/training/jab-cross.html    /training/jab-cross    301

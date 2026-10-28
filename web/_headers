@@ -37,10 +37,8 @@
 /combos/*
   Cache-Control: public, max-age=0, must-revalidate
 
-/training/*
-  Cache-Control: public, max-age=0, must-revalidate
 
-/fight
+/training
   Cache-Control: public, max-age=0, must-revalidate
 
 /contact/*

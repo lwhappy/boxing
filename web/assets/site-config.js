@@ -41,7 +41,7 @@ window.SITE = {
   nav: [
     { label: 'Moves',     href: '/moves/',     section: 'moves' },
     { label: 'Combos',    href: '/combos/',    section: 'combos' },
-    { label: 'Training',  href: '/training/',  section: 'training' },
+    { label: 'Training',  href: '/training.html',  section: 'training' },
     { label: 'Contact',   href: '/contact/',   section: 'contact' },
   ],
 
@@ -52,7 +52,7 @@ window.SITE = {
       { label: 'Home',     href: '/' },
       { label: 'Moves',    href: '/moves/' },
       { label: 'Combos',   href: '/combos/' },
-      { label: 'Training', href: '/training/' },
+      { label: 'Training', href: '/training.html' },
       { label: 'Guides',   href: '/guides/' },
       { label: 'Contact',  href: '/contact/' },
       { label: 'About',    href: '/about/' },
