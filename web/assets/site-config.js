@@ -42,6 +42,7 @@ window.SITE = {
     { label: 'Moves',     href: '/moves/',     section: 'moves' },
     { label: 'Combos',    href: '/combos/',    section: 'combos' },
     { label: 'Training',  href: '/training/',  section: 'training' },
+    { label: 'Contact',   href: '/contact/',   section: 'contact' },
   ],
 
   // ── Footer ──────────────────────────────────────
@@ -52,6 +53,7 @@ window.SITE = {
       { label: 'Moves',    href: '/moves/' },
       { label: 'Combos',   href: '/combos/' },
       { label: 'Training', href: '/training/' },
+      { label: 'Contact',  href: '/contact/' },
     ],
   },
 };
