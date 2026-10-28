@@ -274,9 +274,13 @@ function setupCamera(root, center, bodySize) {
       }
       camera.updateProjectionMatrix();
     } else {
-      console.warn('[fight] no init-camera node in the GLB; using a front fallback view');
+      console.warn('[fight] no init-camera node in the GLB; using the side fallback view');
+      /* Side-on view matching the reference shot: both fighters seen from
+       * the side (defender left / attacker right), camera at chest height
+       * looking straight along -Z, both bodies fully in frame. */
       camera.fov = 30;
-      camera.position.set(center.x + bodySize * 0.5, center.y + bodySize * 0.6, center.z + bodySize * 2.2);
+      camera.position.set(center.x, center.y + bodySize * 0.08, center.z + bodySize * 1.62);
+      target.set(center.x, center.y - bodySize * 0.02, center.z);
       camera.updateProjectionMatrix();
     }
   }

@@ -67,8 +67,10 @@ window.FIGHT = {
    * init-camera pose from the GLB instead. */
   useGlbCamera: false,
   camera: {
-    position: [0.85, 0.92, 2.35],
-    target: [0, 0.56, 0],
+    /* side-on view: defender left / attacker right, both fully in frame,
+     * camera level at mid-body height (matches the Blender reference shot) */
+    position: [0.11, 0.48, 1.98],
+    target: [0.11, 0.46, 0.05],
     fov: null
   },
 
