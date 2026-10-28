@@ -373,6 +373,7 @@ function onLoaded(gltf) {
 
   // 调试句柄
   window.__homeStage = { mixer, idleAction, oneShots, playClip, model, camera, controls,
+    isRunning: () => loopRunning, isVisible: () => stageVisible,
     camDbg: homeFraming && { ...homeFraming.dbg, dist: +homeFraming.dist.toFixed(3),
       target: homeFraming.target.toArray().map((n) => +n.toFixed(2)) },
     clipFraming, frameCamera: () => { homeFraming = computeFraming(posedPts); applyFraming(homeFraming); }, samplePose };
@@ -402,7 +403,8 @@ window.addEventListener('resize', () => {
 
 /* ---------- 渲染循环 ---------- */
 const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
+
+function frame() {
   const dt = clock.getDelta();
   if (mixer) mixer.update(dt);
 
@@ -419,4 +421,40 @@ renderer.setAnimationLoop(() => {
 
   controls.update();
   renderer.render(scene, camera);
-});
+}
+
+/* 只在这个舞台真的可见时渲染。
+   之前是常驻 60fps：用户滚到下面看招式卡时，首屏那个 canvas 还在每帧重绘，
+   手机（尤其 Android）滚动时要不停重新合成这一层，滚起来就是一顿一顿的。
+   滚出视口就停，滚回来再开；切后台也停。 */
+let stageVisible = true;
+let loopRunning = false;
+
+function startLoop() {
+  if (loopRunning) return;
+  clock.getDelta();            // 丢掉暂停期间累积的时长，避免恢复瞬间动画跳帧
+  renderer.setAnimationLoop(frame);
+  loopRunning = true;
+}
+
+function stopLoop() {
+  if (!loopRunning) return;
+  renderer.setAnimationLoop(null);
+  loopRunning = false;
+}
+
+function syncLoop() {
+  if (stageVisible && !document.hidden) startLoop();
+  else stopLoop();
+}
+
+
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([entry]) => {
+    stageVisible = entry.isIntersecting;
+    syncLoop();
+  }, { rootMargin: '120px' }).observe(canvas.parentElement);
+}
+
+document.addEventListener('visibilitychange', syncLoop);
+syncLoop();
