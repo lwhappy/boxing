@@ -40,8 +40,8 @@
 /combo_jab_cross_hook    /combos/combo_jab_cross_hook    301
 /combo_jab_cross_leadhook_cross.html    /combos/combo_jab_cross_leadhook_cross    301
 /combo_jab_cross_leadhook_cross    /combos/combo_jab_cross_leadhook_cross    301
-/combo_jab_cross_leadhook_cross_dup.html    /combos/combo_jab_cross_leadhook_cross_dup    301
-/combo_jab_cross_leadhook_cross_dup    /combos/combo_jab_cross_leadhook_cross_dup    301
+/combo_jab_cross_leadhook_cross_dup.html    /combos/combo_jab_cross_leadhook_cross_alt    301
+/combo_jab_cross_leadhook_cross_dup    /combos/combo_jab_cross_leadhook_cross_alt    301
 /combo_jab_cross_leadhook_rearhook.html    /combos/combo_jab_cross_leadhook_rearhook    301
 /combo_jab_cross_leadhook_rearhook    /combos/combo_jab_cross_leadhook_rearhook    301
 /combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
@@ -63,7 +63,7 @@
 /combos/combo_jab_cross.html    /combos/combo_jab_cross    301
 /combos/combo_jab_cross_hook.html    /combos/combo_jab_cross_hook    301
 /combos/combo_jab_cross_leadhook_cross.html    /combos/combo_jab_cross_leadhook_cross    301
-/combos/combo_jab_cross_leadhook_cross_dup.html    /combos/combo_jab_cross_leadhook_cross_dup    301
+/combos/combo_jab_cross_leadhook_cross_alt.html    /combos/combo_jab_cross_leadhook_cross_alt    301
 /combos/combo_jab_cross_leadhook_rearhook.html    /combos/combo_jab_cross_leadhook_rearhook    301
 /combos/combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
 /combos/combo_jab_jab_cross.html    /combos/combo_jab_jab_cross    301

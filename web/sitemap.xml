@@ -37,6 +37,30 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://silentjab.com/guides/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://silentjab.com/guides/jab-vs-cross</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://silentjab.com/guides/read-the-guard</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://silentjab.com/guides/land-punches-in-a-fight</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://silentjab.com/moves/</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>weekly</changefreq>
@@ -121,7 +145,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://silentjab.com/combos/combo_jab_cross_leadhook_cross_dup</loc>
+    <loc>https://silentjab.com/combos/combo_jab_cross_leadhook_cross_alt</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
