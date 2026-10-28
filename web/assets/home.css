@@ -786,3 +786,46 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   .stage-bar::-webkit-scrollbar { display: none; }
   .stage-btn { flex: 0 0 auto; }
 }
+
+/* ---- card move figures (cut from the boxing number system sheet) ---- */
+.card .ico-fig {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+}
+
+.card .ico-fig img {
+  display: block;
+  width: 52px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.card .fig-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 50px;
+}
+
+.card .fig-strip img {
+  width: 36px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.card .fig-strip i {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+@media (max-width: 520px) {
+  .card .ico-fig { width: 54px; height: 54px; border-radius: 14px; }
+  .card .ico-fig img { width: 46px; height: 50px; }
+  .card .fig-strip { gap: 3px; height: 44px; }
+  .card .fig-strip img { width: 30px; height: 40px; }
+  .card .fig-strip i { font-size: 10px; }
+}
