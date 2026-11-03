@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0b0b0f" />
+    <title>Dual Impact</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preload" href="./fonts/ManusCC0-Bold.ttf" as="font" type="font/ttf" crossorigin />
+    <script type="module" crossorigin src="./assets/index-Cd2FgfA2.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DiI6grk_.css">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0SCT9KVVQ6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0SCT9KVVQ6');
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <main id="stage">
+        <canvas id="game" tabindex="-1" aria-label="Boxing ring: drag to orbit, scroll or pinch to zoom, double-click to reset view"></canvas>
+        <div class="loader" role="status" aria-live="polite">
+          <img src="./favicon.svg" alt="" />
+          <div class="wordmark">Dual<b>/</b>Impact</div>
+          <div class="bar"><i></i></div>
+          <div class="status">Loading fighters</div>
+          <button type="button" class="slab tool retry" hidden><span class="label">Retry</span></button>
+        </div>
+      </main>
+      <nav id="controls" aria-label="Controls"></nav>
+    </div>
+  </body>
+</html>

@@ -270,6 +270,8 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   margin-top: 26px;
   display: flex;
   justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .cta-btn {
   display: inline-flex;
