@@ -1,36 +1,124 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#0b0b0f" />
-    <title>Dual Impact</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="preload" href="./fonts/ManusCC0-Bold.ttf" as="font" type="font/ttf" crossorigin />
-    <script type="module" crossorigin src="./assets/index-Cd2FgfA2.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DiI6grk_.css">
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0SCT9KVVQ6"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-0SCT9KVVQ6');
-    </script>
-  </head>
-  <body>
-    <div id="app">
-      <main id="stage">
-        <canvas id="game" tabindex="-1" aria-label="Boxing ring: drag to orbit, scroll or pinch to zoom, double-click to reset view"></canvas>
-        <div class="loader" role="status" aria-live="polite">
-          <img src="./favicon.svg" alt="" />
-          <div class="wordmark">Dual<b>/</b>Impact</div>
-          <div class="bar"><i></i></div>
-          <div class="status">Loading fighters</div>
-          <button type="button" class="slab tool retry" hidden><span class="label">Retry</span></button>
-        </div>
-      </main>
-      <nav id="controls" aria-label="Controls"></nav>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="../assets/img/glove-512.png" />
+<title>Boxing Fights in 3D — Watch Full Matches | SilentJab</title>
+<meta name="description" content="Watch full boxing fights in interactive 3D — real punches, blocks and footwork between two fighters in the ring. Orbit the camera, zoom in, and study how a match actually flows." />
+<meta name="keywords" content="boxing fight, full boxing match, watch boxing fight, 3d boxing, women boxing, boxing demo, boxing techniques in a fight, boxing match simulation" />
+<link rel="canonical" href="https://silentjab.com/fight/" />
+<meta property="og:url" content="https://silentjab.com/fight/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Boxing Fights in 3D — Watch Full Matches" />
+<meta property="og:description" content="Watch full boxing fights in interactive 3D — real punches, blocks and footwork between two fighters in the ring." />
+<meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Boxing Fights in 3D",
+  "description": "Full boxing fights in interactive 3D — watch two fighters trade real punches, blocks and footwork in the ring.",
+  "inLanguage": "en",
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab", "url": "https://silentjab.com/" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Fight", "item": "https://silentjab.com/fight/" }
+    ]
+  },
+  "hasPart": [
+    { "@type": "WebPage", "name": "Two Women Boxing in 3D — Full Fight", "url": "https://silentjab.com/fight/fight1/" }
+  ]
+}
+</script>
+<link rel="stylesheet" href="../assets/home.css?v=6" />
+<script>
+window.PAGE = { section: 'fight', depth: 1 };
+</script>
+<script src="../assets/site-config.js"></script>
+<script src="../assets/site-head.js"></script>
+
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="../index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <img src="../assets/img/glove.png" srcset="../assets/img/glove.png 1x, ../assets/img/glove@2x.png 2x, ../assets/img/glove@3x.png 3x" alt="" width="30" height="20">
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="../moves/" data-section="moves">Moves</a>
+      <a href="../combos/" data-section="combos">Combos</a>
+      <a href="../training.html" data-section="training">Training</a>
+      <a href="../fight/" data-section="fight">Fight</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="wrap">
+    <ol>
+      <li><a href="../index.html">Home</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><span aria-current="page">Fight</span></li>
+    </ol>
+  </div>
+</nav>
+<script src="../assets/site-nav.js"></script>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="kicker">Full fights · 3D matches</div>
+      <h1>Watch a fight, <em>not just a punch</em></h1>
+      <p>
+        Two fighters in the ring, trading real punches, blocks and footwork — a full boxing
+        match in interactive 3D. Orbit the camera, zoom into the exchange, and see how the
+        moves from the basics page fit together when someone is punching back.
+      </p>
+      <div class="quick">
+        <a class="chip" href="./fight1/">Women's boxing — full fight</a>
+      </div>
     </div>
-  </body>
+  </section>
+
+  <section class="section" id="fights">
+    <div class="section-head">
+      <div>
+        <h2>Pick a fight</h2>
+        <p>Each card opens a full 3D match. Drag to orbit, scroll to zoom, double-click to reset the view.</p>
+      </div>
+      <div class="count">01 fight</div>
+    </div>
+
+    <div class="grid">
+
+      <a class="card" href="./fight1/">
+        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <h3>Two Women Boxing <span class="arrow">→</span></h3>
+        <p>A full fight between two women boxers — jabs, crosses, hooks, blocks and ring movement, all in interactive 3D.</p>
+        <div class="meta"><span class="tag">3D fight</span><span>full match · 2 fighters</span></div>
+      </a>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — technique reference for striking sports.</span>
+  <span><a href="../index.html">Home</a> · <a href="../moves/">Moves</a> · <a href="../combos/">Combos</a> · <a href="../training.html">Training</a> · <a href="../guides/">Guides</a> · <a href="../contact/">Contact</a> · <a href="../about/">About</a> · <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></span>
+</footer>
+
+</body>
 </html>
