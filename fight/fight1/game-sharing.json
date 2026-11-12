@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "title": "Dual Impact",
+  "description": "A 3D boxing sparring duel in your browser: throw jabs, crosses, hooks and uppercuts as the black fighter against an automated red robot, with bone-bound hit anchors, impact sparks and punch sounds.",
+  "defaultCaptions": {
+    "x": "Step into the ring in Dual Impact: jab, hook and uppercut a red robot boxer in 3D, right in the browser.",
+    "facebook": "Dual Impact is a browser 3D boxing duel. Control the black fighter, trade punches with an automated red robot, and feel every hit with sparks and punch sounds.",
+    "reddit": "Made a small 3D boxing sparring game: you control the black fighter, a robot controls the red one, and every fist-to-bone-anchor contact triggers a hit effect.",
+    "discord": "Dual Impact: a quick 3D boxing duel against a robot opponent. Jab, cross, hook, uppercut."
+  },
+  "assets": { "og": "assets/share/og.png", "favicon": "assets/share/favicon.png" }
+}

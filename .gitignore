@@ -18,7 +18,11 @@ fight/blend/
 fight/glb/
 fight/*.glb
 fight/*.html
+fight/*.zip
 fight/.DS_Store
+# Vite build output of fight/fight1 — the shipped copy lives in web/fight/fight1/
+fight/fight1/dist/
+fight/fight1/node_modules/
 
 # Local scratch demo (duplicates assets that live elsewhere)
 web/demo/
