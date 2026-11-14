@@ -2,7 +2,7 @@
  *
  * Assets: ../media/glb/boxer-man.glb + boxer-woman.glb
  *   each = 1 skinned boxer + 25 clips, exported from Blender at 30fps.
- *   clip: idle guard block hit-head hit-body ko win taunt
+ *   clip: idle guard block hit-head hit-body defeat win taunt
  *         jab cross jab-cross combo1 lead-hook rear-hook
  *         lead-uppercut rear-uppercut elbow knee headbutt
  *         combo2-knee combo2-elbow (step clips are exported but unused: WASD
@@ -200,7 +200,11 @@ class FX {
 
 const BONE_KEYS = ['Hips', 'Spine2', 'Head', 'Neck', 'LeftHand', 'RightHand',
   'LeftForeArm', 'RightForeArm', 'LeftLeg', 'RightLeg', 'LeftFoot', 'RightFoot'];
-const ONE_SHOT = new Set(['block', 'hit-head', 'hit-body', 'ko', 'win', 'taunt']);
+// loops continuously instead of holding the last frame: the defeated
+// boxer's beat-down loop and the winner's celebration both start and end
+// on the same pose, so they cycle seamlessly
+const LOOPING = new Set(['defeat', 'win']);
+const ONE_SHOT = new Set(['block', 'hit-head', 'hit-body', 'taunt']);
 
 /**
  * Screen-relative movement, since the camera sits on +Z looking towards -Z:
@@ -318,9 +322,10 @@ class Fighter {
     const hips = this.bones.Hips;
     for (const clip of gltf.animations) {
       const c = clip.clone();
-      if (c.name !== 'ko' && hips) stripDrift(c, hips);
+      if (c.name !== 'defeat' && hips) stripDrift(c, hips);
       const a = this.mixer.clipAction(c);
       if (ONE_SHOT.has(c.name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+      else if (LOOPING.has(c.name)) a.setLoop(THREE.LoopRepeat, Infinity);
       this.actions[c.name] = a;
     }
     this.current = this.actions.idle;
@@ -395,8 +400,10 @@ class Fighter {
   playKO() {
     this.state = 'ko';
     this.guarding = false;
-    const a = this.fade('ko', 0.12, 1);
-    a.clampWhenFinished = true;
+    // the defeat clip is a loopable beat-down pose: let it keep cycling
+    const a = this.fade('defeat', 0.12, 1);
+    a.clampWhenFinished = false;
+    a.setLoop(THREE.LoopRepeat, Infinity);
   }
 
   playWin() {

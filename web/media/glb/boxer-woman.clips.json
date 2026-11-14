@@ -32,10 +32,10 @@
    "dur": 1.333
   },
   {
-   "name": "ko",
+   "name": "defeat",
    "start": 1.0,
-   "end": 149.0,
-   "dur": 4.933
+   "end": 144.0,
+   "dur": 4.767
   },
   {
    "name": "win",
