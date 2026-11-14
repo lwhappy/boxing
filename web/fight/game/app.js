@@ -541,11 +541,18 @@ class AI {
     this.tauntT = 9 + Math.random() * 6;
     this.offT = 0;
     this.lastBlockCheck = 0;
+    // flipped the first time the foe takes a hit: from then on it fights back
+    // for real — hands up, no taunts, no standing around off the centre line
+    this.engaged = false;
+    this.guardCycle = 0;
+    this.guardUp = false;
   }
 
   update(dt, foe) {
     const f = this.f;
     if (f.state === 'ko' || f.state === 'win' || game.over) return;
+
+    if (f.hp < HP_MAX) this.engaged = true;
 
     const gap = Math.abs(foe.root.position.x - f.root.position.x);
     const dz = Math.abs(foe.root.position.z - f.root.position.z);
@@ -554,11 +561,12 @@ class AI {
     this.dirT -= dt;
     this.blockT -= dt;
 
-    // --- off the centre line: nothing can land, so stop fighting -----------
-    // The pair only ever faces along X, so a lateral (Z) offset means every
-    // punch would whiff. Just idle and throw the occasional taunt instead of
-    // shadow-boxing forever.
-    if (dz > SAME_LINE_Z) {
+    // --- off the centre line ----------------------------------------------
+    // While the fight hasn't really started the pair only ever faces along X,
+    // so a lateral (Z) offset means every punch would whiff — the old behaviour
+    // was to idle and taunt. Once it has been hit the foe stops playing around:
+    // it walks back onto the line and keeps throwing, even from a bad angle.
+    if (dz > SAME_LINE_Z && !this.engaged) {
       f.move(null);
       if (f.guarding) f.setGuard(false);
       if (f.state === 'idle' || f.state === 'guard' || f.state === 'taunt') {
@@ -579,16 +587,34 @@ class AI {
       const info = ATTACKS[foe.attackName];
       if (a && info) {
         const timeToHit = info.t[0] / ATTACK_SPEED - a.time;
-        if (timeToHit > 0 && timeToHit < this.p.react && Math.random() < this.p.block * 0.6) {
+        // a cornered/wounded foe reads punches far better than a fresh one
+        const chance = this.engaged ? Math.min(0.95, this.p.block * 1.35) : this.p.block * 0.6;
+        if (timeToHit > 0 && timeToHit < this.p.react && Math.random() < chance) {
           f.setGuard(true);
           this.blockT = 0.5;
         }
       }
     }
-    if (this.blockT <= 0 && f.guarding && f.state === 'guard') f.setGuard(false);
+    if (this.blockT <= 0 && !this.engaged && f.guarding && f.state === 'guard') f.setGuard(false);
+
+    // --- defensive mode: hands stay up between exchanges --------------------
+    // Guard is held for a couple of seconds, then dropped for a beat so the
+    // player still has a window to land something.
+    if (this.engaged) {
+      this.guardCycle -= dt;
+      if (this.guardCycle <= 0) {
+        this.guardUp = !this.guardUp;
+        this.guardCycle = this.guardUp ? 1.6 + Math.random() * 1.0 : 0.45 + Math.random() * 0.3;
+      }
+      if (f.state === 'idle' && this.guardUp) f.setGuard(true);
+      else if (f.state === 'guard' && !this.guardUp && this.blockT <= 0) f.setGuard(false);
+    }
 
     // --- positioning
-    if (this.dirT <= 0) {
+    if (this.engaged && dz > SAME_LINE_Z) {
+      // engaged and off the centre line: walk back onto it, don't just stand there
+      this.dir = foe.root.position.z > f.root.position.z ? 'sideL' : 'sideR';
+    } else if (this.dirT <= 0) {
       this.dirT = 0.35 + Math.random() * 0.35;
       if (gap > 1.05) this.dir = 'approach';
       else if (gap < 0.62) this.dir = 'retreat';
@@ -596,13 +622,15 @@ class AI {
     }
     // The AI must never wander off the line on its own (that would freeze it
     // into permanent taunting), so cap its lateral drift; only the player's
-    // movement should ever put the pair off line.
-    if ((this.dir === 'sideL' && f.root.position.z > 0.28) ||
-        (this.dir === 'sideR' && f.root.position.z < -0.28)) this.dir = null;
+    // movement should ever put the pair off line. Once engaged the cap is off —
+    // walking back onto the line is the whole point.
+    if (!this.engaged &&
+        ((this.dir === 'sideL' && f.root.position.z > 0.28) ||
+         (this.dir === 'sideR' && f.root.position.z < -0.28))) this.dir = null;
     f.move(f.state === 'idle' || f.state === 'guard' ? this.dir : null);
 
     // --- offence
-    if (this.cool <= 0 && gap < 1.32 && (f.state === 'idle' || f.state === 'guard')) {
+    if (this.cool <= 0 && gap < (this.engaged ? 1.45 : 1.32) && (f.state === 'idle' || f.state === 'guard')) {
       const pool = Math.random() < this.p.combo
         ? ['combo1', 'combo2-knee', 'combo2-elbow', 'jab-cross']
         : ['jab', 'jab', 'cross', 'cross', 'lead-hook', 'rear-hook', 'lead-uppercut', 'rear-uppercut', 'elbow', 'knee'];
@@ -611,8 +639,8 @@ class AI {
       if (f.attack(pick)) this.cool = this.p.cd * (0.8 + Math.random() * 0.5);
     }
 
-    // --- taunt when the rival is far away
-    if (this.tauntT <= 0 && gap > 1.6) {
+    // --- taunt when the rival is far away (never once the fight is real)
+    if (!this.engaged && this.tauntT <= 0 && gap > 1.6) {
       this.tauntT = 14 + Math.random() * 10;
       f.playTaunt();
     }
