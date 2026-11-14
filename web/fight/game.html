@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Boxing Training Game — 3D Sparring | Boxing Training Online</title>
+<meta name="description" content="A 3D boxing training game: pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and headbutts — every punch tracked, every hit landed." />
+<link rel="canonical" href="https://silentjab.com/fight/game" />
+<meta name="theme-color" content="#0b0d10" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Boxing Training Game — 3D Sparring" />
+<meta property="og:description" content="Pick a fighter, choose a difficulty and spar in 3D. Jab, cross, hooks, uppercuts, elbows, knees and headbutts." />
+<style>
+  :root{
+    --bg:#0a0c0f; --panel:#12161b; --line:rgba(255,255,255,.10);
+    --ink:#f2f4f7; --dim:#93a0ad; --red:#e23b3b; --red-dim:#8f2222;
+    --blue:#3f8cff; --ok:#38d178;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden;overscroll-behavior:none}
+  button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;
+       padding:max(12px,env(safe-area-inset-top)) 14px 0;gap:6px;opacity:0;transition:opacity .35s}
+  #hud.on{opacity:1}
+  .bars{display:flex;align-items:flex-start;gap:14px}
+  .bar{flex:1;min-width:0}
+  .bar .nm{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+  .bar .track{height:9px;border-radius:5px;background:rgba(255,255,255,.10);overflow:hidden;
+    border:1px solid var(--line)}
+  .bar .fill{height:100%;width:100%;border-radius:4px;transition:width .22s ease}
+  .bar.me .fill{background:linear-gradient(90deg,#ff5a5a,#e23b3b)}
+  .bar.foe .fill{background:linear-gradient(90deg,#5aa9ff,#3f8cff)}
+  .bar.foe .nm{flex-direction:row-reverse}
+  .bar.foe .track{transform:scaleX(-1)}
+  #center{position:absolute;top:8px;left:50%;transform:translateX(-50%);text-align:center;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+  #center b{display:block;font-size:13px;letter-spacing:.3em;color:#fff;margin-top:2px}
+
+  /* ---------- overlays ---------- */
+  .screen{position:fixed;inset:0;display:none;place-items:center;padding:20px;
+    background:radial-gradient(120% 80% at 50% 0%,rgba(38,46,58,.92),rgba(8,10,13,.97));
+    backdrop-filter:blur(6px);z-index:20;overflow:auto}
+  .screen.on{display:grid}
+  .card{width:min(680px,94vw);background:linear-gradient(180deg,#14181e,#0e1116);
+    border:1px solid var(--line);border-radius:18px;padding:26px 26px 22px;
+    box-shadow:0 30px 80px rgba(0,0,0,.55)}
+  .kicker{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--red)}
+  h1{margin:8px 0 6px;font-size:clamp(22px,4.2vw,32px);letter-spacing:-.02em;line-height:1.15}
+  .sub{color:var(--dim);font-size:14px;line-height:1.6;margin:0 0 16px}
+  .rules{display:grid;gap:7px;margin:14px 0 16px;font-size:13.5px;color:#c9d3dd}
+  .rules div{display:flex;gap:10px;align-items:baseline}
+  .rules span{color:var(--dim);min-width:96px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .rules b{color:#fff;font-weight:600}
+  .seg{display:flex;gap:8px;margin:4px 0 18px}
+  .seg button{flex:1;padding:11px 8px;border-radius:11px;border:1px solid var(--line);
+    background:#0e1217;color:var(--dim);font-size:13px;letter-spacing:.04em;transition:.18s}
+  .seg button.on{border-color:var(--red);background:rgba(226,59,59,.14);color:#fff}
+  .seg button small{display:block;font-size:10.5px;color:#7f8c99;margin-top:3px;letter-spacing:0}
+  .cta{width:100%;padding:15px;border-radius:12px;background:var(--red);color:#fff;
+    font-weight:600;letter-spacing:.06em;font-size:15px;transition:.18s}
+  .cta:hover{filter:brightness(1.08)}
+  .cta:disabled{opacity:.45;cursor:default}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;
+    font-size:12px;color:#6f7c89}
+  .foot a{color:#93a0ad;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.16)}
+
+  .picks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px}
+  .pick{padding:18px 12px;border-radius:14px;border:1px solid var(--line);background:#0e1217;text-align:center;transition:.18s}
+  .pick:hover{border-color:rgba(255,255,255,.3)}
+  .pick.on{border-color:var(--red);background:rgba(226,59,59,.13)}
+  .pick .ico{font-size:26px;line-height:1}
+  .pick .t{font-weight:600;margin-top:8px}
+  .pick .d{font-size:12px;color:var(--dim);margin-top:3px}
+
+  /* ---------- touch ---------- */
+  #touch{position:fixed;inset:0;display:none;pointer-events:none;z-index:12}
+  #touch.on{display:block}
+  .pad{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));pointer-events:auto}
+  #dpad{left:16px;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px}
+  #dpad button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+    border-radius:12px;font-size:18px;color:#dfe6ee;backdrop-filter:blur(4px)}
+  #dpad button:active{background:rgba(226,59,59,.5)}
+  #dpad .sp{visibility:hidden}
+  #acts{right:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(46vw,300px)}
+  #acts button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+    border-radius:10px;padding:9px 2px;font-size:10.5px;line-height:1.15;color:#dfe6ee;
+    letter-spacing:.02em;backdrop-filter:blur(4px)}
+  #acts button:active{background:rgba(226,59,59,.55)}
+  #acts button.wide{grid-column:span 2}
+  #rotate{position:fixed;inset:0;z-index:40;display:none;place-items:center;text-align:center;
+    background:#0a0c0f;color:#dfe6ee;padding:30px;font-size:15px;line-height:1.7}
+  #rotate.on{display:grid}
+  #rotate .ico{font-size:42px;margin-bottom:10px;animation:spin 3s ease-in-out infinite}
+  @keyframes spin{0%,60%{transform:rotate(0)}80%,100%{transform:rotate(90deg)}}
+  #hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);font-size:12px;
+    color:#6f7c89;letter-spacing:.06em;pointer-events:none;z-index:11}
+  @media (max-width:560px){ .rules span{min-width:78px} .card{padding:20px 18px} }
+</style>
+<!-- Google AdSense -->
+<meta name="google-adsense-account" content="ca-pub-8470399807799168" />
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="hud">
+  <div class="bars">
+    <div class="bar me"><div class="nm"><span id="meName">You</span><span id="meHp">200</span></div>
+      <div class="track"><div class="fill" id="meBar"></div></div></div>
+    <div class="bar foe"><div class="nm"><span id="foeName">Rival</span><span id="foeHp">200</span></div>
+      <div class="track"><div class="fill" id="foeBar"></div></div></div>
+  </div>
+  <div id="center">round 1<b id="clock">0:00</b></div>
+</div>
+
+<div id="touch">
+  <div class="pad" id="dpad">
+    <div class="sp"></div><button data-move="fwd">▲</button><div class="sp"></div>
+    <button data-move="left">◀</button><div class="sp"></div><button data-move="right">▶</button>
+    <div class="sp"></div><button data-move="back">▼</button><div class="sp"></div>
+  </div>
+  <div class="pad" id="acts"></div>
+</div>
+
+<div id="rotate"><div><div class="ico">📱</div>Turn your phone sideways<br /><small style="color:#6f7c89">this game is played in landscape</small></div></div>
+<div id="hint">WASD move · Y U I O P H J K L N M , . attack · ; guard · ' taunt</div>
+
+<!-- intro -->
+<div class="screen on" id="intro">
+  <div class="card">
+    <div class="kicker">Boxing Training Game</div>
+    <h1>Spar in 3D. Land clean, block smart.</h1>
+    <p class="sub">Two fighters, one ring, 200 points each. Every punch is tracked frame by frame — hit the head, hit the body, or get caught on the gloves.</p>
+
+    <div class="rules">
+      <div><span>Basic punches</span><b>jab · cross · hook · uppercut · elbow · knee · headbutt — 5 points</b></div>
+      <div><span>Combo 1</span><b>jab → cross → hook — 10 points</b></div>
+      <div><span>Combo 2</span><b>knee jabs / punch-to-elbow — 15 points</b></div>
+      <div><span>Blocked</span><b>lands on the gloves — no damage</b></div>
+      <div><span>Health</span><b>200 points each, first to zero hits the canvas</b></div>
+    </div>
+
+    <div class="kicker" style="margin-bottom:8px">Difficulty</div>
+    <div class="seg" id="diffSeg">
+      <button data-diff="0">Beginner<small>slow hands</small></button>
+      <button data-diff="1" class="on">Amateur<small>even match</small></button>
+      <button data-diff="2">Pro<small>sharp counters</small></button>
+    </div>
+
+    <button class="cta" id="startBtn">Start training</button>
+    <div class="foot">
+      <span id="loadState">loading fighters…</span>
+      <a href="/fight/">← back to fight</a>
+    </div>
+  </div>
+</div>
+
+<!-- character select -->
+<div class="screen" id="select">
+  <div class="card">
+    <div class="kicker">Choose your fighter</div>
+    <h1>Who steps in the ring?</h1>
+    <p class="sub">Your opponent takes the other corner.</p>
+    <div class="picks" id="picks">
+      <button class="pick" data-sex="man"><div class="ico">🥊</div><div class="t">Marcus</div><div class="d">male · orthodox</div></button>
+      <button class="pick" data-sex="woman"><div class="ico">🥊</div><div class="t">Nadia</div><div class="d">female · orthodox</div></button>
+    </div>
+    <button class="cta" id="goBtn" disabled>Enter the ring</button>
+    <div class="foot"><span id="pickState">pick one to continue</span><a href="#" id="backIntro">← back</a></div>
+  </div>
+</div>
+
+<!-- end -->
+<div class="screen" id="over">
+  <div class="card" style="text-align:center">
+    <div class="kicker" id="overKicker">fight over</div>
+    <h1 id="overTitle">Knockout</h1>
+    <p class="sub" id="overText" style="margin-bottom:20px">—</p>
+    <button class="cta" id="againBtn">Fight again</button>
+    <div class="foot" style="justify-content:center"><a href="/fight/">back to fight</a></div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three/three.module.min.js",
+    "three/addons/": "../vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./game/app.js"></script>
+</body>
+</html>
