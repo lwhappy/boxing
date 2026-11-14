@@ -71,6 +71,18 @@
     font-size:12px;color:#6f7c89}
   .foot a{color:#93a0ad;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.16)}
 
+  /* result panel: nearly transparent and docked to the bottom, so the final
+     tableaux (winner celebrating, loser on the canvas) stays visible behind */
+  #over{align-items:end;justify-items:center;backdrop-filter:none;
+    background:linear-gradient(180deg,rgba(6,8,11,0) 42%,rgba(6,8,11,.42))}
+  #over .card{width:min(560px,94vw);margin-bottom:max(10px,env(safe-area-inset-bottom));
+    background:rgba(14,18,23,.34);border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(3px);box-shadow:0 14px 40px rgba(0,0,0,.28);
+    padding:16px 18px 13px}
+  #over h1{margin:4px 0 4px}
+  #over .sub{margin:0 0 12px;font-size:13px}
+  #over .cta{padding:12px}
+
   .picks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 18px}
   .pick{padding:18px 12px;border-radius:14px;border:1px solid var(--line);background:#0e1217;text-align:center;transition:.18s}
   .pick:hover{border-color:rgba(255,255,255,.3)}

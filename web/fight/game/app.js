@@ -26,6 +26,8 @@ const MIN_GAP = 0.8;
 const MAX_GAP = 3.0;
 const WALK = 1.45;          // m/s
 const ATTACK_SPEED = 1.28;  // clip time scale while attacking
+const RESULT_HOLD_MS = 3000;  // let the KO + victory animations play before the panel
+const SAME_LINE_Z = 0.35;     // beyond this lateral offset the pair is "off line"
 
 /** t = seconds from clip start to the moment the strike lands (measured in Blender). */
 const ATTACKS = {
@@ -529,6 +531,7 @@ class AI {
     this.dirT = 0;
     this.blockT = 0;
     this.tauntT = 9 + Math.random() * 6;
+    this.offT = 0;
     this.lastBlockCheck = 0;
   }
 
@@ -537,10 +540,30 @@ class AI {
     if (f.state === 'ko' || f.state === 'win' || game.over) return;
 
     const gap = Math.abs(foe.root.position.x - f.root.position.x);
+    const dz = Math.abs(foe.root.position.z - f.root.position.z);
     this.cool -= dt;
     this.tauntT -= dt;
     this.dirT -= dt;
     this.blockT -= dt;
+
+    // --- off the centre line: nothing can land, so stop fighting -----------
+    // The pair only ever faces along X, so a lateral (Z) offset means every
+    // punch would whiff. Just idle and throw the occasional taunt instead of
+    // shadow-boxing forever.
+    if (dz > SAME_LINE_Z) {
+      f.move(null);
+      if (f.guarding) f.setGuard(false);
+      if (f.state === 'idle' || f.state === 'guard' || f.state === 'taunt') {
+        this.offT -= dt;
+        if (this.offT <= 0) {
+          this.offT = 1.3 + Math.random() * 1.6;
+          if (f.state === 'taunt') f.toNeutral();
+          else if (Math.random() < 0.65) f.playTaunt();
+        }
+      }
+      return;
+    }
+    this.offT = 0;
 
     // --- defensive reaction: read the incoming punch
     if (foe.state === 'attack' && foe.attackName) {
@@ -563,6 +586,11 @@ class AI {
       else if (gap < 0.86) this.dir = 'retreat';
       else this.dir = Math.random() < 0.35 ? (Math.random() < 0.5 ? 'sideL' : 'sideR') : null;
     }
+    // The AI must never wander off the line on its own (that would freeze it
+    // into permanent taunting), so cap its lateral drift; only the player's
+    // movement should ever put the pair off line.
+    if ((this.dir === 'sideL' && f.root.position.z > 0.28) ||
+        (this.dir === 'sideR' && f.root.position.z < -0.28)) this.dir = null;
     f.move(f.state === 'idle' || f.state === 'guard' ? this.dir : null);
 
     // --- offence
@@ -817,8 +845,12 @@ function endFight(winner, loser) {
   game.over = true;
   loser.playKO();
   Sfx.ko();
+
+  // Hold the final tableaux on screen for a few seconds before the result
+  // panel: the loser drops first, the winner celebrates, then the (nearly
+  // transparent, bottom-docked) panel fades in over the still-running scene.
+  setTimeout(() => winner.playWin(), 900);
   setTimeout(() => {
-    winner.playWin();
     const won = winner === game.player;
     document.getElementById('overKicker').textContent = won ? 'you win' : 'you lose';
     document.getElementById('overTitle').textContent = won ? 'Knockout!' : 'You hit the canvas';
@@ -826,7 +858,7 @@ function endFight(winner, loser) {
       `${winner.name} wins with ${winner.hp} / ${HP_MAX} left. Difficulty: ${LEVELS[game.level].name}.`;
     document.getElementById('over').classList.add('on');
     document.getElementById('hud').classList.remove('on');
-  }, 1100);
+  }, RESULT_HOLD_MS);
 }
 
 function updateHUD() {
