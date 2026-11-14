@@ -22,7 +22,8 @@ const HP_MAX = 200;
 const TARGET_HEIGHT = 1.78;
 const ARENA_X = 2.35;
 const ARENA_Z = 1.0;
-const MIN_GAP = 0.8;
+let MIN_GAP = 0.55;         // closest the pair can stand — tight enough that knees
+                            // and uppercuts connect (verified per-attack at 0.55)
 const MAX_GAP = 3.0;
 const WALK = 1.45;          // m/s
 const ATTACK_SPEED = 1.28;  // clip time scale while attacking
@@ -589,8 +590,8 @@ class AI {
     // --- positioning
     if (this.dirT <= 0) {
       this.dirT = 0.35 + Math.random() * 0.35;
-      if (gap > 1.18) this.dir = 'approach';
-      else if (gap < 0.86) this.dir = 'retreat';
+      if (gap > 1.05) this.dir = 'approach';
+      else if (gap < 0.62) this.dir = 'retreat';
       else this.dir = Math.random() < 0.35 ? (Math.random() < 0.5 ? 'sideL' : 'sideR') : null;
     }
     // The AI must never wander off the line on its own (that would freeze it
@@ -606,7 +607,7 @@ class AI {
         ? ['combo1', 'combo2-knee', 'combo2-elbow', 'jab-cross']
         : ['jab', 'jab', 'cross', 'cross', 'lead-hook', 'rear-hook', 'lead-uppercut', 'rear-uppercut', 'elbow', 'knee'];
       const pick = pool[(Math.random() * pool.length) | 0];
-      if (pick === 'knee' || pick === 'combo2-knee') { if (gap > 1.05) { this.cool = 0.3; return; } }
+      if (pick === 'knee' || pick === 'combo2-knee') { if (gap > 0.72) { this.cool = 0.3; return; } }
       if (f.attack(pick)) this.cool = this.p.cd * (0.8 + Math.random() * 0.5);
     }
 
@@ -717,6 +718,7 @@ async function boot() {
 
     // ?demo=man|woman&level=0..2 jumps straight into the ring (used for QA screenshots)
     const q = new URLSearchParams(location.search);
+    if (q.get('gap')) MIN_GAP = Math.max(0.3, Math.min(1.2, Number(q.get('gap')) || MIN_GAP));
     if (q.get('demo')) {
       const sex = q.get('demo') === 'woman' ? 'woman' : 'man';
       const lv = Math.max(0, Math.min(2, Number(q.get('level') || 1)));
@@ -1112,3 +1114,6 @@ function tick() {
 
 boot();
 window.__game = game;   // debug handle (harmless in production)
+game.LOG = LOG;
+game.setGap = (v) => { MIN_GAP = Math.max(0.3, Math.min(1.2, Number(v))); };
+game.getGap = () => MIN_GAP;
