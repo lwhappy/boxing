@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex" />
+<style>
+  html,body{margin:0;background:transparent;overflow:hidden}
+  #c{display:block;width:512px;height:512px}
+</style>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three/three.module.min.js", "three/addons/": "../vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const sex = q.get('sex') === 'man' ? 'man' : 'woman';
+const clip = q.get('clip') || 'guard';
+const at = parseFloat(q.get('t') || '1.0');
+const yaw = parseFloat(q.get('yaw') || '0');
+const vis = parseFloat(q.get('vis') || '0.30');
+const dy = parseFloat(q.get('dy') || '0.055');
+const SIZE = parseInt(q.get('size') || '512', 10);
+
+const canvas = document.getElementById('c');
+canvas.style.width = canvas.style.height = SIZE + 'px';
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(SIZE, SIZE, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
+
+scene.add(new THREE.HemisphereLight(0xbfd4ea, 0x14181e, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(1.4, 2.2, 2.0); scene.add(key);
+const rim = new THREE.DirectionalLight(0xff8a6a, 1.1); rim.position.set(-1.6, 1.2, -1.4); scene.add(rim);
+const fill = new THREE.DirectionalLight(0x88aaff, 0.7); fill.position.set(-1.2, 0.4, 1.8); scene.add(fill);
+
+new GLTFLoader().load(`../media/glb/boxer-${sex}.glb`, (g) => {
+  const root = g.scene;
+  root.rotation.y = yaw;
+  scene.add(root);
+
+  const mixer = new THREE.AnimationMixer(root);
+  const c = g.animations.find(a => a.name === clip) || g.animations[0];
+  const action = mixer.clipAction(c);
+  action.play();
+  mixer.setTime(at);
+  root.updateMatrixWorld(true);
+
+  // head bone world position
+  let head = null;
+  root.traverse(o => { if (!head && /^(mixamorig)?Head$/i.test(o.name)) head = o; });
+  root.updateMatrixWorld(true);
+
+  // true bounds of the posed skinned mesh
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  root.traverse(o => {
+    if (o.isSkinnedMesh) {
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 3) {
+        v.fromBufferAttribute(pos, i);
+        o.applyBoneTransform(i, v);
+        o.localToWorld(v);
+        box.expandByPoint(v);
+      }
+    }
+  });
+  const H = box.max.y - box.min.y;
+
+  const headPos = new THREE.Vector3();
+  if (head) head.getWorldPosition(headPos); else headPos.set(0, box.max.y - 0.09 * H, 0);
+
+  const visible = vis * H;                       // chin → upper chest
+  const target = headPos.clone().setY(headPos.y - dy * H);
+  const dist = (visible / 2) / Math.tan((camera.fov * Math.PI / 180) / 2);
+  camera.position.set(target.x, target.y + 0.012 * H, target.z + dist);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+
+  renderer.render(scene, camera);
+  window.__ready = true;
+});
+</script>
+</body>
+</html>

@@ -636,7 +636,10 @@ function loadGLB(url, onProgress) {
 async function boot() {
   const stage = document.getElementById('stage');
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  // phones run at a slightly lower internal resolution — fill rate matters more
+  // than sharpness there, and 1.5x keeps the fight smooth on mid-range GPUs
+  const coarse = window.matchMedia('(pointer:coarse)').matches;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 1.75));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
@@ -792,6 +795,8 @@ game.resolveStrike = function (att) {
 
   def.hp = Math.max(0, def.hp - info.dmg);
   def.playHit(zone);
+  // haptic feedback when you're the one getting hit
+  if (def === game.player && navigator.vibrate) { try { navigator.vibrate(zone === 'head' ? 45 : 30); } catch (e) {} }
   if (zone === 'head') { Sfx.punch(1.15); game.fx.ring(head, 0xffd76a, 1); }
   else { Sfx.body(); game.fx.ring(chest, 0xff9d6a, 1.1); }
   game.fx.spark(p, 0xffffff);
@@ -917,8 +922,13 @@ function onKey(e, down) {
 /* ---------- ui ---------- */
 
 function bindUI() {
-  let pickedSex = null;
+  let pickedSex = 'woman'; // woman pre-selected
   let level = 1;
+
+  // reflect the default pick (Nadia) in the UI
+  document.getElementById('pickState').textContent =
+    'Nadia in the ring — rival takes the far corner';
+  document.getElementById('goBtn').disabled = false;
 
   const intro = document.getElementById('intro');
   const select = document.getElementById('select');
