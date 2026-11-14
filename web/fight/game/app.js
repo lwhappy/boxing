@@ -221,6 +221,22 @@ class Fighter {
     // normalise height and drop the feet on the floor.
     // Skinned-mesh bounding boxes are unreliable here, so measure the
     // height from the skeleton itself (HeadTop_End minus lowest foot).
+    // Tripo/Blender exports the whole body material as BLEND even though the
+    // base colour alpha is fully opaque, which causes ghost-limb transparency
+    // artifacts. Force it opaque at runtime as a safety net.
+    this.model.traverse((o) => {
+      if (o.isMesh || o.isSkinnedMesh) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of mats) {
+          if (!m) continue;
+          m.transparent = false;
+          m.alphaTest = 0;
+          m.depthWrite = true;
+          m.opacity = 1;
+          m.needsUpdate = true;
+        }
+      }
+    });
     this.model.traverse((o) => {
       if (o.isMesh) { o.frustumCulled = false; o.castShadow = false; o.receiveShadow = false; }
     });
@@ -249,9 +265,6 @@ class Fighter {
     this.model.position.y -= yFoot2;
     this.model.updateMatrixWorld(true);
     this.dbg = { rawH: +h.toFixed(3), scale: +s.toFixed(3) };
-    this.root.add(this.model);
-    this.root.position.set(x, 0, 0);
-    this.root.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
     this.root.add(this.model);
     this.root.position.set(x, 0, 0);
     this.root.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
