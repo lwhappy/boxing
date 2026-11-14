@@ -5,7 +5,8 @@
  *   clip: idle guard block hit-head hit-body ko win taunt
  *         jab cross jab-cross combo1 lead-hook rear-hook
  *         lead-uppercut rear-uppercut elbow knee headbutt
- *         combo2-knee combo2-elbow step-forward step-back step-left step-right
+ *         combo2-knee combo2-elbow (step clips are exported but unused: WASD
+ *         translates the fighter directly, no locomotion clips)
  *
  * Impact times (seconds inside each clip) were measured in Blender by sampling the
  * striking bone's forward extension frame by frame — see /Users/justrun/project/boxing-game/build.
@@ -198,7 +199,31 @@ class FX {
 const BONE_KEYS = ['Hips', 'Spine2', 'Head', 'Neck', 'LeftHand', 'RightHand',
   'LeftForeArm', 'RightForeArm', 'LeftLeg', 'RightLeg', 'LeftFoot', 'RightFoot'];
 const ONE_SHOT = new Set(['block', 'hit-head', 'hit-body', 'ko', 'win', 'taunt']);
-const MOVES = { fwd: 'step-forward', back: 'step-back', left: 'step-left', right: 'step-right' };
+
+const _sv = new THREE.Vector3();
+
+/**
+ * Lowest world-space Y of the skinned mesh in its current pose.
+ * The ankle bone sits several centimetres above the sole, so aligning the
+ * skeleton to the floor buries the boots under the mat. Sampling the actual
+ * skinned vertices gives the real ground contact point.
+ */
+function lowestSkinnedPoint(root) {
+  let low = Infinity;
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isSkinnedMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 6000));   // sample ~6k verts
+    for (let i = 0; i < pos.count; i += step) {
+      _sv.fromBufferAttribute(pos, i);
+      o.applyBoneTransform(i, _sv);
+      o.localToWorld(_sv);
+      if (_sv.y < low) low = _sv.y;
+    }
+  });
+  return Number.isFinite(low) ? low : 0;
+}
 
 class Fighter {
   constructor(gltf, { sex, name, x, side }) {
@@ -258,13 +283,14 @@ class Fighter {
     const s = TARGET_HEIGHT / h;
     this.model.scale.multiplyScalar(s);
     this.model.updateMatrixWorld(true);
-    const yFoot2 = Math.min(
-      this.bones.LeftFoot.getWorldPosition(_w).y,
-      this.bones.RightFoot.getWorldPosition(_w).y,
-    );
-    this.model.position.y -= yFoot2;
+
+    // Ground the soles, not the ankle bones: the boots reach well below the
+    // foot bone, so bone alignment sinks the shoes into the mat and the feet
+    // look like they are missing.
+    const sole = lowestSkinnedPoint(this.model);
+    this.model.position.y -= sole - 0.003;
     this.model.updateMatrixWorld(true);
-    this.dbg = { rawH: +h.toFixed(3), scale: +s.toFixed(3) };
+    this.dbg = { rawH: +h.toFixed(3), scale: +s.toFixed(3), sole: +sole.toFixed(3) };
     this.root.add(this.model);
     this.root.position.set(x, 0, 0);
     this.root.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -399,11 +425,12 @@ class Fighter {
       }
     }
 
-    // locomotion (never while attacking / hit / ko)
-    const free = st === 'idle' || st === 'guard' || st === 'taunt';
-    if (free) {
+    // locomotion (never while attacking / hit / ko).
+    // No step clips: the whole fighter simply slides, keeping the idle/guard
+    // animation playing so movement never pops.
+    if (st === 'idle' || st === 'guard') {
       const d = this.moveDir;
-      if (d && (st === 'idle' || st === 'guard')) {
+      if (d) {
         const fwd = this.side < 0 ? 1 : -1;
         let vx = 0, vz = 0;
         if (d === 'fwd') vx = fwd;
@@ -412,12 +439,6 @@ class Fighter {
         else if (d === 'right') vz = -1;
         this.root.position.x += vx * WALK * dt;
         this.root.position.z += vz * WALK * dt;
-        const stepName = MOVES[d];
-        if (this.actions[stepName] && this.state !== 'attack') {
-          if (this.current !== this.actions[stepName]) { this.fade(stepName, 0.12, 1.05); this.state = 'move'; }
-        }
-      } else if (st === 'move') {
-        this.toNeutral();
       }
     }
 
@@ -523,10 +544,10 @@ class AI {
       else if (gap < 0.86) this.dir = 'back';
       else this.dir = Math.random() < 0.35 ? (Math.random() < 0.5 ? 'left' : 'right') : null;
     }
-    f.move(f.state === 'idle' || f.state === 'guard' || f.state === 'move' ? this.dir : null);
+    f.move(f.state === 'idle' || f.state === 'guard' ? this.dir : null);
 
     // --- offence
-    if (this.cool <= 0 && gap < 1.32 && (f.state === 'idle' || f.state === 'guard' || f.state === 'move')) {
+    if (this.cool <= 0 && gap < 1.32 && (f.state === 'idle' || f.state === 'guard')) {
       const pool = Math.random() < this.p.combo
         ? ['combo1', 'combo2-knee', 'combo2-elbow', 'jab-cross']
         : ['jab', 'jab', 'cross', 'cross', 'lead-hook', 'rear-hook', 'lead-uppercut', 'rear-uppercut', 'elbow', 'knee'];
