@@ -200,6 +200,22 @@ const BONE_KEYS = ['Hips', 'Spine2', 'Head', 'Neck', 'LeftHand', 'RightHand',
   'LeftForeArm', 'RightForeArm', 'LeftLeg', 'RightLeg', 'LeftFoot', 'RightFoot'];
 const ONE_SHOT = new Set(['block', 'hit-head', 'hit-body', 'ko', 'win', 'taunt']);
 
+/**
+ * Screen-relative movement, since the camera sits on +Z looking towards -Z:
+ *   W = into the screen (-Z)   S = towards the viewer (+Z)
+ *   A = screen left (-X)       D = screen right (+X)
+ * 'sideL'/'sideR' are the AI's lateral shuffle and 'approach'/'retreat'
+ * are resolved against the fighter's own facing inside update().
+ */
+const DIR_VEC = {
+  fwd: [0, -1],
+  back: [0, 1],
+  left: [-1, 0],
+  right: [1, 0],
+  sideL: [0, 1],
+  sideR: [0, -1],
+};
+
 const _sv = new THREE.Vector3();
 
 /**
@@ -426,17 +442,20 @@ class Fighter {
     }
 
     // locomotion (never while attacking / hit / ko).
-    // No step clips: the whole fighter simply slides, keeping the idle/guard
-    // animation playing so movement never pops.
+    // Movement is screen-relative so the keys always mean the same thing on
+    // screen: W pushes into the screen, S pulls out of it, A/D go left/right.
+    // No step clips: the whole fighter slides, idle/guard keeps playing.
     if (st === 'idle' || st === 'guard') {
       const d = this.moveDir;
       if (d) {
-        const fwd = this.side < 0 ? 1 : -1;
         let vx = 0, vz = 0;
-        if (d === 'fwd') vx = fwd;
-        else if (d === 'back') vx = -fwd;
-        else if (d === 'left') vz = 1;
-        else if (d === 'right') vz = -1;
+        if (d === 'approach' || d === 'retreat') {
+          const fwd = this.side < 0 ? 1 : -1;      // AI: close/open the gap
+          vx = d === 'approach' ? fwd : -fwd;
+        } else if (DIR_VEC[d]) {
+          vx = DIR_VEC[d][0];
+          vz = DIR_VEC[d][1];
+        }
         this.root.position.x += vx * WALK * dt;
         this.root.position.z += vz * WALK * dt;
       }
@@ -540,9 +559,9 @@ class AI {
     // --- positioning
     if (this.dirT <= 0) {
       this.dirT = 0.35 + Math.random() * 0.35;
-      if (gap > 1.18) this.dir = 'fwd';
-      else if (gap < 0.86) this.dir = 'back';
-      else this.dir = Math.random() < 0.35 ? (Math.random() < 0.5 ? 'left' : 'right') : null;
+      if (gap > 1.18) this.dir = 'approach';
+      else if (gap < 0.86) this.dir = 'retreat';
+      else this.dir = Math.random() < 0.35 ? (Math.random() < 0.5 ? 'sideL' : 'sideR') : null;
     }
     f.move(f.state === 'idle' || f.state === 'guard' ? this.dir : null);
 
