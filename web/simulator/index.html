@@ -29,7 +29,8 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
   body{overscroll-behavior:none}
-  #stage{position:fixed;inset:0;display:block;width:100%;height:100%}
+  #stage{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  #stage.dragging{cursor:grabbing}
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
     background:radial-gradient(115% 85% at 50% 44%,transparent 34%,rgba(0,0,0,.62) 100%)}
   #flash{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
@@ -45,6 +46,8 @@
     display:flex;align-items:center;gap:9px}
   .brand .dot{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red-dim)}
   .brand em{color:#5e6b76;font-style:normal}
+  .hud-left{display:flex;flex-direction:column;gap:8px}
+  .hint{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#6b7883;text-transform:uppercase}
   .stats{display:flex;gap:24px;font-family:var(--mono);text-align:right}
   .stats div{display:flex;flex-direction:column;gap:3px}
   .stats span{font-size:9px;letter-spacing:.22em;color:#5e6b76;text-transform:uppercase}
@@ -112,6 +115,7 @@
     .stats{gap:14px}
     .stats b{font-size:11px}
     .brand{font-size:9.5px;letter-spacing:.2em}
+    .hint{font-size:8px;letter-spacing:.1em}
     .panel{width:100%;left:0;right:0;top:auto;bottom:0;height:auto;max-height:47vh;
       padding:18px 18px calc(14px + env(safe-area-inset-bottom));justify-content:flex-start;
       background:linear-gradient(180deg,rgba(4,6,9,0) 0%,rgba(4,6,9,.9) 20%,rgba(4,6,9,.97) 100%);
@@ -139,7 +143,10 @@
 <div id="flash"></div>
 
 <header class="hud-top">
-  <div class="brand"><span class="dot"></span>SilentJab <em>/ rain yard</em></div>
+  <div class="hud-left">
+    <div class="brand"><span class="dot"></span>SilentJab <em>/ rain yard</em></div>
+    <div class="hint" id="hint">drag to look · scroll to zoom · double-click to reset</div>
+  </div>
   <div class="stats">
     <div><span>node</span><b id="stNode">00</b></div>
     <div><span>reach</span><b id="stReach">—</b></div>
@@ -167,6 +174,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=6"></script>
+<script type="module" src="./app.js?v=7"></script>
 </body>
 </html>

@@ -183,10 +183,10 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile() ? 1.5 : 1.8));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.32;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0a1017, 0.042);
+scene.fog = new THREE.FogExp2(0x121c26, 0.033);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
 camera.position.set(3, 1.8, -1.6);
@@ -196,7 +196,7 @@ camera.lookAt(0, 1.0, 0.8);
 {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const es = new THREE.Scene();
-  es.add(new THREE.Mesh(new THREE.SphereGeometry(12, 24, 16), new THREE.MeshBasicMaterial({ color: 0x18232f, side: THREE.BackSide })));
+  es.add(new THREE.Mesh(new THREE.SphereGeometry(12, 24, 16), new THREE.MeshBasicMaterial({ color: 0x223140, side: THREE.BackSide })));
   const skyPatch = new THREE.Mesh(new THREE.PlaneGeometry(9, 5), new THREE.MeshBasicMaterial({ color: 0x9fb8cc }));
   skyPatch.position.set(1, 7, -3); skyPatch.lookAt(0, 0, 0); es.add(skyPatch);
   const warm = new THREE.Mesh(new THREE.PlaneGeometry(3, 2), new THREE.MeshBasicMaterial({ color: 0xffa055 }));
@@ -227,11 +227,11 @@ const sky = new THREE.Mesh(
       void main(){
         vec3 d = normalize(vDir);
         float h = clamp(d.y, -0.15, 1.0);
-        vec3 col = mix(vec3(0.052,0.062,0.078), vec3(0.006,0.010,0.018), smoothstep(-0.02, 0.62, h));
+        vec3 col = mix(vec3(0.082,0.098,0.120), vec3(0.014,0.021,0.033), smoothstep(-0.02, 0.62, h));
         vec2 uv = d.xz / max(0.20, d.y * 1.35);
         float n1 = fbm(uv * 1.5 + vec2(uTime * 0.010, uTime * 0.004));
         float n2 = fbm(uv * 4.2 - vec2(uTime * 0.018, 0.0));
-        col += vec3(0.030,0.038,0.050) * (n1 * 0.9 + n2 * 0.35) * smoothstep(-0.05, 0.40, h);
+        col += vec3(0.044,0.055,0.070) * (n1 * 0.9 + n2 * 0.35) * smoothstep(-0.05, 0.40, h);
         float glow = pow(max(0.0, dot(d, uBoltDir)), 4.0);
         float low = smoothstep(0.62, 0.02, abs(d.y - 0.12));
         col += vec3(0.62,0.74,0.96) * uFlash * (0.30 + glow * 2.4 + low * 0.35) * (0.35 + n1 * 0.9);
@@ -273,10 +273,10 @@ const ground = new THREE.Mesh(
       void main(){
         vec2 p = vW.xz;
         float g1 = fbm(p * 1.05), g2 = fbm(p * 4.6);
-        vec3 col = vec3(0.020,0.024,0.029) + vec3(0.030,0.035,0.040) * (g1 * 0.7 + g2 * 0.35);
+        vec3 col = vec3(0.031,0.037,0.045) + vec3(0.042,0.049,0.057) * (g1 * 0.7 + g2 * 0.35);
         float pud = smoothstep(0.46, 0.66, g1);
         float rip = (ripples(p, 2.6, 0.0) + ripples(p, 1.55, 7.3)) * (0.12 + pud * 0.65);
-        col += vec3(0.16,0.21,0.27) * rip;
+        col += vec3(0.19,0.25,0.32) * rip;
         vec3 V = normalize(uCam - vW);
         float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 4.0);
         col += vec3(0.085,0.115,0.155) * (0.10 + fres) * (0.30 + pud * 0.9) * (0.22 + uFlash * 7.0);
@@ -291,22 +291,22 @@ ground.position.y = 0;
 scene.add(ground);
 
 /* ------------------------------------------------------------------ lights */
-const hemi = new THREE.HemisphereLight(0x24384c, 0x05070a, 0.42);
+const hemi = new THREE.HemisphereLight(0x48688a, 0x121a22, 0.95);
 scene.add(hemi);
-const stormKey = new THREE.DirectionalLight(0x9db6cc, 0.85);
+const stormKey = new THREE.DirectionalLight(0xa8c2d6, 1.45);
 stormKey.position.set(-3.5, 7, -4);
 scene.add(stormKey);
 const flashLight = new THREE.DirectionalLight(0xd6e9ff, 0);
 flashLight.position.set(-6, 8, 12);
 scene.add(flashLight);
-const practical = new THREE.PointLight(0xff9a52, 8, 11, 2);
+const practical = new THREE.PointLight(0xff9a52, 13, 13, 2);
 practical.position.set(4.4, 3.3, 3.4);
 scene.add(practical);
-const fill = new THREE.PointLight(0x7fa6c8, 2.2, 9, 2);
+const fill = new THREE.PointLight(0x8fb4d4, 3.6, 10, 2);
 fill.position.set(-2.6, 2.0, -2.4);
 scene.add(fill);
 /* soft cool fill on the bag's camera-facing side, so the leather reads at night */
-const bagFill = new THREE.PointLight(0x9fc0d8, 5.5, 6.5, 2);
+const bagFill = new THREE.PointLight(0xb2d2e8, 16, 9, 2);
 scene.add(bagFill);
 const contactLight = new THREE.PointLight(0xbfe0ff, 0, 4.5, 2);
 scene.add(contactLight);
@@ -418,7 +418,7 @@ scene.add(bagRoot);
 
 const steelMat = new THREE.MeshStandardMaterial({ color: 0x2e3740, roughness: 0.4, metalness: 0.88 });
 const leatherMat = new THREE.MeshPhysicalMaterial({
-  color: 0x33231d, roughness: 0.42, metalness: 0.05,
+  color: 0x4a342a, roughness: 0.42, metalness: 0.05,
   clearcoat: 0.55, clearcoatRoughness: 0.28, envMapIntensity: 0.8
 });
 const strapMat = new THREE.MeshPhysicalMaterial({
@@ -546,6 +546,7 @@ wave.rotation.x = -Math.PI / 2; wave.position.y = 0.012; wave.visible = false; s
 let waveLife = 0;
 
 /* a white ring at the contact point, on the bag surface */
+const RING_AXIS = new THREE.Vector3(0, 0, 1);
 const contactRing = new THREE.Mesh(
   new THREE.RingGeometry(0.055, 0.075, 48),
   new THREE.MeshBasicMaterial({ color: 0xf2fbff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
@@ -586,6 +587,7 @@ async function loadFighter() {
   const fores = { LeftHand: bone('LeftForeArm'), RightHand: bone('RightForeArm') };
 
   model.updateMatrixWorld(true);
+  window.__rig = { model, mixer, clips, hands, fores };
   measureAll(hands, fores);
   placeStage();
   return s;
@@ -609,6 +611,7 @@ function measureAll(hands, fores) {
       act.stop();
       continue;
     }
+
     const hand = hands[mv.hit];
     const fore = fores[mv.hit];
     if (!hand) { act.stop(); continue; }
@@ -630,7 +633,7 @@ function measureAll(hands, fores) {
     tmpC.copy(tmpA).sub(tmpB).normalize();
     const contact = tmpA.clone().addScaledVector(tmpC, 0.115);
 
-    MEASURE[mv.id] = { impact: best.t, dur: clip.duration, contact, reach: contact.distanceTo(origin) };
+    MEASURE[mv.id] = { impact: best.t, dur: clip.duration, contact, reach: contact.distanceTo(origin), hand: mv.hit };
     act.stop();
   }
 
@@ -640,8 +643,14 @@ function measureAll(hands, fores) {
 /**
  * Place the bag so that the median punch just reaches its near face, then give
  * every punch its own footwork: the fighter shifts sideways / steps in until
- * the knuckles sit exactly on the front surface — never inside it.
+ * the knuckles sit exactly on the surface — never inside it.
+ *
+ * Straights land square on the front face. Hooks do not: a hook arrives on an
+ * arc, so its glove has to meet the flank of the bag. Those get a contact angle
+ * around the cylinder (the camera side, where the arc actually wraps) and the
+ * fighter steps in / across to make that angle reachable.
  */
+const HOOK_ANGLE = { LeftHand: 46, RightHand: 34 }; // degrees around the bag axis
 function solveStaging() {
   const ids = MOVES.filter((m) => m.hit && MEASURE[m.id] && MEASURE[m.id].contact).map((m) => m.id);
   if (!ids.length) return;
@@ -653,12 +662,26 @@ function solveStaging() {
 
   for (const id of ids) {
     const c = MEASURE[id].contact;
-    // keep a little of the natural lateral offset so punches land on different
-    // spots of the bag face instead of one single dot
-    const off = clamp(c.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
-    const inward = Math.sqrt(Math.max(0.0004, BAG.r * BAG.r - off * off));
-    const tx = BAG.x + off;
-    const tz = BAG.z - inward;
+    const hook = /hook/.test(id);
+    let tx, tz, off, inward;
+
+    if (hook) {
+      // the glove meets the flank: the contact normal points out of the side
+      // of the cylinder, so the burst of water flies off sideways
+      const th = (HOOK_ANGLE[MEASURE[id].hand] || 40) * Math.PI / 180;
+      off = Math.sin(th) * BAG.r;
+      inward = Math.cos(th) * BAG.r;
+      tx = BAG.x + off;
+      tz = BAG.z - inward;
+    } else {
+      // keep a little of the natural lateral offset so punches land on
+      // different spots of the bag face instead of one single dot
+      off = clamp(c.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
+      inward = Math.sqrt(Math.max(0.0004, BAG.r * BAG.r - off * off));
+      tx = BAG.x + off;
+      tz = BAG.z - inward;
+    }
+
     MEASURE[id].target = new THREE.Vector3(tx, c.y, tz);
     MEASURE[id].normal = new THREE.Vector3(off / BAG.r, 0, -inward / BAG.r).normalize();
     MEASURE[id].move = new THREE.Vector3(tx - c.x, 0, tz - c.z);
@@ -670,7 +693,7 @@ function placeStage() {
   bagRoot.position.set(BAG.x, 0, BAG.z);
   bagShadow.position.set(BAG.x, 0.006, BAG.z);
   contactLight.position.set(BAG.x, 1.2, BAG.z - BAG.r - 0.15);
-  bagFill.position.set(BAG.x + 2.3, 1.55, BAG.z - 2.5);
+  bagFill.position.set(BAG.x + 1.9, 1.75, BAG.z - 1.9);
   practical.position.set(BAG.x + 4.6, 3.3, BAG.z + 2.6);
   lampPost.position.set(BAG.x + 5.1, 0, BAG.z + 2.6);
   frameStage();
@@ -728,7 +751,7 @@ function splash(p, n, power) {
 
   // ring on the surface
   contactRing.position.copy(p).addScaledVector(n, 0.03);
-  contactRing.quaternion.copy(camera.quaternion);
+  contactRing.quaternion.setFromUnitVectors(RING_AXIS, n);
   contactRing.visible = true;
   contactRing.material.opacity = 0.75;
   contactRing.scale.setScalar(1);
@@ -900,27 +923,84 @@ const camTarget = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
 const lookCur = new THREE.Vector3();
 const camPos = new THREE.Vector3();
 
-function frameStage(o = {}) {
-  const m = mobile();
-  const theta = (o.theta ?? 52) * Math.PI / 180;
-  const D = o.D ?? (m ? 4.35 : 3.75);
-  const H = o.H ?? (m ? 1.72 : 1.82);
-  const aimY = o.aimY ?? (m ? 1.02 : 1.04);
-  const pan = o.pan ?? (m ? -0.16 : -0.16);
+/* the framing the page ships with; the mouse only adds an offset on top of it */
+const camBase = { theta: 52 * Math.PI / 180, D: 3.75, H: 1.82, aimY: 1.04, pan: -0.16 };
+const orbit = { az: 0, el: 0, zoom: 1 };
 
-  const pos = new THREE.Vector3(BAG.x + Math.sin(theta) * D, H, BAG.z - Math.cos(theta) * D);
-  const aim = new THREE.Vector3(BAG.x * 0.4, aimY, BAG.z * 0.52);
+function camSolve() {
+  const th = camBase.theta + orbit.az;
+  const D = camBase.D * orbit.zoom;
+  const pos = new THREE.Vector3(BAG.x + Math.sin(th) * D, camBase.H + orbit.el, BAG.z - Math.cos(th) * D);
+  const aim = new THREE.Vector3(BAG.x * 0.4, camBase.aimY + orbit.el * 0.3, BAG.z * 0.52);
   const fwd = aim.clone().sub(pos).normalize();
   const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
-  const look = aim.clone().addScaledVector(right, pan);
-
   camTarget.pos.copy(pos);
-  camTarget.look.copy(look);
-  camPos.copy(pos);
-  lookCur.copy(look);
-  camera.position.copy(pos);
-  camera.lookAt(look);
+  camTarget.look.copy(aim).addScaledVector(right, camBase.pan);
 }
+
+function frameStage(o = {}, snap = true) {
+  const m = mobile();
+  camBase.theta = (o.theta ?? 52) * Math.PI / 180;
+  camBase.D = o.D ?? (m ? 5.6 : 3.75);
+  camBase.H = o.H ?? (m ? 1.78 : 1.82);
+  camBase.aimY = o.aimY ?? (m ? 1.06 : 1.04);
+  camBase.pan = o.pan ?? (m ? 0.1 : -0.16);
+  camSolve();
+  if (!snap) return;
+  camPos.copy(camTarget.pos);
+  lookCur.copy(camTarget.look);
+  camera.position.copy(camPos);
+  camera.lookAt(lookCur);
+}
+
+/* ---- drag to look around the yard ---- */
+let dragging = false;
+const dragStart = { x: 0, y: 0, az: 0, el: 0 };
+const AZ_LIMIT = 1.05;      // ±60° around the shipped angle
+const EL_LO = -0.55, EL_HI = 1.35;
+
+function beginDrag(e) {
+  if (e.button !== undefined && e.button !== 0) return;
+  dragging = true;
+  dragStart.x = e.clientX; dragStart.y = e.clientY;
+  dragStart.az = orbit.az; dragStart.el = orbit.el;
+  canvas.classList.add('dragging');
+  if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
+}
+function moveDrag(e) {
+  if (!dragging) return;
+  const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+  orbit.az = clamp(dragStart.az - dx * 0.0055, -AZ_LIMIT, AZ_LIMIT);
+  orbit.el = clamp(dragStart.el + dy * 0.0042, EL_LO, EL_HI);
+  camSolve();
+}
+function endDrag(e) {
+  if (!dragging) return;
+  dragging = false;
+  canvas.classList.remove('dragging');
+  if (canvas.releasePointerCapture && e.pointerId !== undefined) {
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+}
+
+canvas.addEventListener('pointerdown', beginDrag);
+canvas.addEventListener('pointermove', moveDrag);
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', endDrag);
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  orbit.zoom = clamp(orbit.zoom * (e.deltaY > 0 ? 1.07 : 0.935), 0.72, 1.45);
+  camSolve();
+}, { passive: false });
+
+function resetView() {
+  orbit.az = 0; orbit.el = 0; orbit.zoom = 1;
+  camSolve();
+  camPos.copy(camTarget.pos); lookCur.copy(camTarget.look);
+}
+canvas.addEventListener('dblclick', resetView);
+
 
 /* ------------------------------------------------------------------ loop */
 const sway = { vx: 0, vz: 0, x: 0, z: 0 };
@@ -976,10 +1056,10 @@ function tick() {
   groundUniforms.uFlash.value = flicker;
   groundUniforms.uCam.value.copy(camera.position);
   flashLight.intensity = flicker * 30;
-  hemi.intensity = 0.42 + flicker * 0.9;
+  hemi.intensity = 0.95 + flicker * 0.9;
   boltMat.opacity = Math.min(1, boltGlow * (0.6 + 0.4 * Math.sin(t0 * 70)) * 1.4);
   contactLight.intensity = Math.max(0, contactLight.intensity - dt * 42);
-  practical.intensity = 8 + Math.sin(t0 * 7.3) * 0.25;
+  practical.intensity = 13 + Math.sin(t0 * 7.3) * 0.4;
 
   updateRain(dt);
   rain.material.opacity = 0.30 + flicker * 0.5;
@@ -1021,7 +1101,7 @@ function tick() {
 
   // ---- camera: locked, only breathing + impact shake
   const drift = mobile() ? 0.035 : 0.06;
-  const k = 1 - Math.exp(-6.5 * dt);
+  const k = 1 - Math.exp(-(dragging ? 16 : 6.5) * dt);
   camPos.lerp(camTarget.pos, k);
   lookCur.lerp(camTarget.look, k);
   camera.position.copy(camPos);
@@ -1046,6 +1126,8 @@ function resize() {
   camera.aspect = w / h;
   camera.fov = mobile() ? 52 : 40;
   camera.updateProjectionMatrix();
+  const hint = document.getElementById('hint');
+  if (hint) hint.textContent = mobile() ? 'drag to look' : 'drag to look · scroll to zoom · double-click to reset';
   frameStage();
   placeNodes();
 }
@@ -1083,7 +1165,7 @@ window.addEventListener('keydown', (e) => {
 
 /* debug hook for QA */
 window.__sim = {
-  play, state, MEASURE, BAG, camera, scene, camTarget, frameStage,
+  play, state, MEASURE, BAG, camera, scene, camTarget, frameStage, orbit,
   proj: (pts) => {
     const out = {};
     for (const [k, p] of Object.entries(pts)) {
@@ -1094,6 +1176,30 @@ window.__sim = {
   },
   frame: (o) => frameStage(o || {}),
   flash: () => lightning(1),
+  /** QA: sample a clip's hand path (rig at origin) */
+  probe: (id, n = 60) => {
+    const mv = MOVE_BY_ID[id];
+    const R = window.__rig;
+    if (!mv || !R) return null;
+    const hand = R.hands[mv.hit], fore = R.fores[mv.hit], clip = R.clips[mv.clip];
+    if (!hand || !clip) return null;
+    const p = new THREE.Vector3(), f = new THREE.Vector3(), d = new THREE.Vector3(), out = [];
+    R.mixer.stopAllAction();
+    const act = R.mixer.clipAction(clip);
+    act.reset().play(); R.mixer.timeScale = 1;
+    for (let i = 0; i <= n; i++) {
+      const t = (clip.duration * i) / n;
+      act.time = t; R.mixer.update(0); R.model.updateMatrixWorld(true);
+      hand.getWorldPosition(p);
+      fore.getWorldPosition(f);
+      d.copy(p).sub(f).normalize();
+      const c = p.clone().addScaledVector(d, 0.115);
+      out.push([+t.toFixed(2), +p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3),
+        +c.x.toFixed(3), +c.y.toFixed(3), +c.z.toFixed(3)]);
+    }
+    act.stop();
+    return out;
+  },
   /** freeze exactly on a punch's impact frame (QA screenshots only) */
   holdAt: (id) => {
     const mv = MOVE_BY_ID[id], m = MEASURE[id];
