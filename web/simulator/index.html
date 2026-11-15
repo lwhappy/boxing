@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
 <title>Boxing Simulator — Heavy Bag Lab: Every Punch, Frame by Frame | SilentJab</title>
-<meta name="description" content="A boxing simulator in your browser: a fighter works a heavy bag while light rings track every strike. Tap a node to throw the jab, cross, hooks and uppercuts — the action freezes on impact while the technique is explained." />
+<meta name="description" content="A boxing simulator in your browser: a fighter works a heavy bag while light rings track every strike. Tap a node to throw the jab, cross, hooks and uppercuts and read the technique behind each one." />
 <meta name="keywords" content="boxing simulator, boxing simulator online, heavy bag, boxing techniques, how to throw a jab, cross punch, lead hook, uppercut, orthodox stance, boxing training" />
 <link rel="canonical" href="https://silentjab.com/simulator/" />
 <meta property="og:url" content="https://silentjab.com/simulator/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SilentJab" />
 <meta property="og:title" content="Boxing Simulator — Heavy Bag Lab" />
-<meta property="og:description" content="A fighter, a heavy bag, and light rings that track every strike. Tap a node, watch the punch freeze on impact, read the technique." />
+<meta property="og:description" content="A fighter, a heavy bag, and light rings that track every strike. Tap a node, watch where the punch lands, read the technique." />
 <meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
@@ -114,23 +114,6 @@
   .node.guard{border-color:rgba(255,255,255,.18)}
   .node.guard.on{border-color:var(--cy);background:rgba(10,26,34,.7);box-shadow:0 0 26px rgba(122,226,255,.3)}
 
-  /* ---------- boot ---------- */
-  #boot{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:26px;
-    background:radial-gradient(80% 60% at 50% 40%,rgba(10,18,26,.92),rgba(3,5,8,.98));
-    backdrop-filter:blur(3px);transition:opacity .6s ease,visibility .6s}
-  #boot.gone{opacity:0;visibility:hidden}
-  .boot-in{width:min(560px,92vw);text-align:center}
-  .boot-k{font-family:var(--mono);font-size:10px;letter-spacing:.34em;color:var(--cy);text-transform:uppercase}
-  .boot-in h1{font-size:clamp(28px,5vw,44px);letter-spacing:-.03em;margin:14px 0 10px;line-height:1.05}
-  .boot-in h1 em{font-style:normal;color:var(--cy);text-shadow:0 0 30px rgba(122,226,255,.5)}
-  .boot-in p{color:#93a8ba;font-size:14px;line-height:1.65;margin:0 auto 22px;max-width:430px}
-  #enterBtn{font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;
-    padding:15px 30px;border:1px solid rgba(122,226,255,.45);background:rgba(122,226,255,.1);color:#eaf7ff;
-    cursor:pointer;border-radius:2px;transition:.2s;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
-  #enterBtn:hover{background:rgba(122,226,255,.22);box-shadow:0 0 34px rgba(122,226,255,.3)}
-  #enterBtn:disabled{opacity:.4;cursor:default}
-  #bootState{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:#4f6478;margin-top:16px;text-transform:uppercase}
-
   /* ---------- responsive ---------- */
   @media (min-width:901px){
     .hud-top{padding-left:384px}
@@ -189,15 +172,7 @@
 
 <button id="sound" type="button">SOUND · ON</button>
 
-<div id="boot">
-  <div class="boot-in">
-    <div class="boot-k">SilentJab · heavy bag lab</div>
-    <h1>Boxing <em>Simulator</em></h1>
-    <p>A fighter, a heavy bag, and a light rig that measures every strike. Throw a punch, watch where it lands, and read what the technique is actually doing.</p>
-    <button id="enterBtn" type="button" disabled>enter the lab</button>
-    <div id="bootState">loading fighter…</div>
-  </div>
-</div>
+
 
 <script type="importmap">
 {
@@ -207,6 +182,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=4"></script>
+<script type="module" src="./app.js?v=5"></script>
 </body>
 </html>

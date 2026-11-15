@@ -140,10 +140,8 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x04060a, 0.062);
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 90);
-const CAM_HOME = new THREE.Vector3(-2.25, 1.78, 3.42);
-const CAM_LOOK = new THREE.Vector3(-0.34, 1.0, 0.58);
-camera.position.copy(CAM_HOME);
-camera.lookAt(CAM_LOOK);
+camera.position.set(3, 1.7, -1.8);
+camera.lookAt(0, 1.0, 0.6);
 
 /* lights — warm key, cold rim, red kicker, no shadow maps (cheap + clean) */
 scene.add(new THREE.HemisphereLight(0x1e3c52, 0x04060a, 0.75));
@@ -315,10 +313,14 @@ for (let i = 0; i < 14; i++) {
   bagPivot.add(t);
 }
 
-/* impact ring pool */
+/* impact ring pool — depthTest off: it reads as a holographic marker stamped
+   over everything, so the contact point stays visible even when the fighter's
+   own body crosses in front of the bag */
 const rings = [];
 for (let i = 0; i < 6; i++) {
   const m = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 64), glow(0xff6b6b, 0.9));
+  m.material.depthTest = false;
+  m.renderOrder = 90;
   m.visible = false; scene.add(m);
   rings.push({ m, life: 0 });
 }
@@ -570,7 +572,6 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   const clip = clips[mv.clip];
   if (!clip) return;
 
-  moveCamera(id);
   const prev = state.action;
   const act = mixer.clipAction(clip);
   act.reset();
@@ -643,34 +644,36 @@ function placeNodes() {
   }
 }
 
-/* ------------------------------------------------------- director camera */
-/* the contact face always points back at the fighter, so no single angle can
-   show every landing — the camera swings around to the side each fist lands
-   on (left-hand punches land on one half of the bag, right-hand on the other)
-   and glides back to the home 3/4 view for the guard */
-const camTarget = { pos: CAM_HOME.clone(), look: CAM_LOOK.clone() };
-const lookCur = CAM_LOOK.clone();
-const camPos = CAM_HOME.clone();
+/* ------------------------------------------------------------ fixed camera */
+/* The face that gets punched always looks back at the fighter, so the lens has
+   to sit on the fighter's side of the bag — put it anywhere past the bag and
+   the bag body swallows every contact. One fixed diagonal shot does the job:
+   the bag sits upper-left, the fighter lower-right, and the lens stands ~55°
+   off the fighter→bag axis so the striking face is turned toward it. */
+const camTarget = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
+const lookCur = new THREE.Vector3();
+const camPos = new THREE.Vector3();
 
-function punchView(id) {
-  const m = MEASURE[id];
-  if (!m) return null;
-  const side = (m.contact.x - BAG.x) >= 0 ? 1 : -1;
-  const D = mobile() ? 4.05 : 3.2;
-  const pos = new THREE.Vector3(BAG.x + side * D, mobile() ? 1.52 : 1.62, -0.55);
-  const mid = new THREE.Vector3(BAG.x * 0.55, mobile() ? 0.92 : 1.0, BAG.z * 0.55 + 0.12);
-  // camera -> subject, then the true screen-right vector (cross(fwd, up))
-  const fwd = new THREE.Vector3(mid.x - pos.x, 0, mid.z - pos.z).normalize();
+function frameStage(o = {}) {
+  const m = mobile();
+  const theta = (o.theta ?? 55) * Math.PI / 180;
+  const D = o.D ?? (m ? 4.6 : 3.6);           // lens → bag
+  const H = o.H ?? 1.8;                       // lens height
+  const aimY = o.aimY ?? 1.0;
+  const pan = o.pan ?? (m ? -0.12 : -0.1);    // slide the pair away from the panel
+
+  const pos = new THREE.Vector3(BAG.x + Math.sin(theta) * D, H, BAG.z - Math.cos(theta) * D);
+  const aim = new THREE.Vector3(BAG.x * 0.55, aimY, BAG.z * 0.55);
+  const fwd = aim.clone().sub(pos).normalize();
   const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
-  // looking left of the pair pushes it into the panel-free right side of the frame
-  const look = mid.clone().addScaledVector(right, mobile() ? -0.3 : -0.55);
-  return { pos, look };
-}
+  const look = aim.clone().addScaledVector(right, pan);
 
-function moveCamera(id) {
-  const v = MOVE_BY_ID[id] && MOVE_BY_ID[id].hit ? punchView(id) : null;
-  camTarget.pos.copy(v ? v.pos : CAM_HOME);
-  camTarget.look.copy(v ? v.look : CAM_LOOK);
+  camTarget.pos.copy(pos);
+  camTarget.look.copy(look);
+  camPos.copy(pos);
+  lookCur.copy(look);
+  camera.position.copy(pos);
+  camera.lookAt(look);
 }
 
 /* ------------------------------------------------------------------ loop */
@@ -752,18 +755,14 @@ function tick() {
     if (sparkLife <= 0) sparks.visible = false;
   }
 
-  // camera: glide to the punched side, gentle drift + hit shake
-  // (drift must never feed back into the damped state, or it ratchets the
-  //  camera far past its target — drift/k is the steady-state error)
-  const drift = mobile() ? 0.06 : 0.12;
+  // camera: fixed diagonal, only a slow breath of drift + hit shake
+  const drift = mobile() ? 0.05 : 0.1;
   const k = 1 - Math.exp(-6.5 * dt);
-  camPos.x = lerp(camPos.x, camTarget.pos.x, k);
-  camPos.y = lerp(camPos.y, camTarget.pos.y, k);
-  camPos.z = lerp(camPos.z, camTarget.pos.z, k);
+  camPos.lerp(camTarget.pos, k);
+  lookCur.lerp(camTarget.look, k);
   camera.position.copy(camPos);
   camera.position.x += Math.sin(t0 * 0.22) * drift;
   camera.position.y += Math.sin(t0 * 0.31) * drift * 0.5;
-  lookCur.lerp(camTarget.look, k);
   if (shake > 0.0005) {
     camera.position.x += rand(-shake, shake);
     camera.position.y += rand(-shake, shake);
@@ -780,51 +779,35 @@ function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  // phones: pull back so the whole stage fits the upper half of the screen
-  if (mobile()) {
-    camera.fov = 50;
-    CAM_HOME.set(-2.45, 1.6, 4.0);
-    CAM_LOOK.set(-0.05, 0.62, 0.7);
-  } else {
-    camera.fov = 38;
-    CAM_HOME.set(-2.25, 1.78, 3.42);
-    CAM_LOOK.set(-0.34, 1.0, 0.58);
-  }
-  moveCamera(state.id);
-  camPos.copy(camTarget.pos);
-  camera.position.copy(camTarget.pos);
-  lookCur.copy(camTarget.look);
+  camera.fov = mobile() ? 48 : 38;
   camera.updateProjectionMatrix();
-  camera.lookAt(lookCur);
+  frameStage();
   placeNodes();
 }
 window.addEventListener('resize', resize);
-
-/* boot */
-const boot = document.getElementById('boot');
-const enterBtn = document.getElementById('enterBtn');
-const bootState = document.getElementById('bootState');
 
 resize();
 buildNodes();
 tick();
 
 loadFighter().then(() => {
-  enterBtn.disabled = false;
-  bootState.textContent = 'rig ready · 7 nodes';
   bagRoot.position.set(BAG.x, 0, BAG.z);
-  play('guard', { silent: true, panel: false });
+  frameStage();
+  // land straight in the guard loop with the stance notes already on screen —
+  // no gate, no start button
+  play('guard', { silent: true });
+  setTimeout(() => Sound.sweep(), 700);
 }).catch((e) => {
   console.error(e);
-  bootState.textContent = 'failed to load the fighter — try a hard refresh';
+  const body = document.getElementById('pBody');
+  if (body) body.innerHTML = '<div class="sec"><p>Failed to load the fighter — try a hard refresh (⌘⇧R).</p></div>';
 });
 
-enterBtn.addEventListener('click', () => {
-  Sound.init(); Sound.resume();
-  boot.classList.add('gone');
-  play('guard');
-  setTimeout(() => Sound.chirp(2400, 0.05), 500);
-});
+/* browsers only allow audio after a gesture — arm it on the first one */
+const armSound = () => { Sound.init(); Sound.resume(); };
+for (const evName of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(evName, armSound, { once: true, passive: true });
+}
 
 document.getElementById('sound').addEventListener('click', (e) => {
   Sound.on = !Sound.on;
@@ -839,7 +822,18 @@ window.addEventListener('keydown', (e) => {
 
 /* debug hook for QA */
 window.__sim = {
-  play, state, MEASURE, BAG, camera, scene, camTarget, moveCamera,
+  play, state, MEASURE, BAG, camera, scene, camTarget, frameStage,
+  /** screen-space position (0..1, origin top-left) of world points */
+  proj: (pts) => {
+    const out = {};
+    for (const [k, p] of Object.entries(pts)) {
+      const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera);
+      out[k] = [+(v.x * 0.5 + 0.5).toFixed(3), +(-v.y * 0.5 + 0.5).toFixed(3)];
+    }
+    return out;
+  },
+  /** re-frame the fixed camera (QA tuning) */
+  frame: (o) => frameStage(o || {}),
   /** re-stage the fighter at a given yaw (deg) and re-solve the bag placement */
   setYaw: (deg) => {
     if (!rig) return;
