@@ -760,7 +760,8 @@ async function boot() {
       game.spam = true;
     }
   } catch (e) {
-    st.textContent = 'could not load the fighters — ' + (e.message || 'network error');
+    st.textContent = 'could not load the fighters — ' + (e.message || 'network error') +
+      ' · try a hard refresh (' + (navigator.platform.includes('Mac') ? '⌘⇧R' : 'Ctrl+F5') + ')';
     console.error(e);
   }
 

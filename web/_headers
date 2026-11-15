@@ -37,6 +37,12 @@
 /combos/*
   Cache-Control: public, max-age=0, must-revalidate
 
+# /fight/ holds the game page AND its JS (game/app.js). The JS keeps a stable
+# URL while its content changes (path fixes, tuning), so it must revalidate on
+# every load — otherwise a stale copy silently breaks the page.
+/fight/*
+  Cache-Control: public, max-age=0, must-revalidate
+
 
 /training
   Cache-Control: public, max-age=0, must-revalidate
