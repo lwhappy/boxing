@@ -29,6 +29,8 @@ const WALK = 1.45;          // m/s
 const ATTACK_SPEED = 1.28;  // clip time scale while attacking
 const RESULT_HOLD_MS = 3000;  // let the KO + victory animations play before the panel
 const SAME_LINE_Z = 0.35;     // beyond this lateral offset the pair is "off line"
+const KO_SEP_GAP = 1.9;       // distance the pair steps apart before the ending clips
+const KO_SEP_SEC = 0.62;      // ...and how long that step-back takes
 
 /** t = seconds from clip start to the moment the strike lands (measured in Blender). */
 const ATTACKS = {
@@ -865,6 +867,7 @@ function startFight(sex, level) {
   game.ai = new AI(f, level);
   game.level = level;
   game.over = false;
+  game.sep = null;
   game.started = true;
   game.t0 = performance.now();
 
@@ -886,13 +889,35 @@ function startFight(sex, level) {
 function endFight(winner, loser) {
   if (game.over) return;
   game.over = true;
-  loser.playKO();
-  Sfx.ko();
 
-  // Hold the final tableaux on screen for a few seconds before the result
-  // panel: the loser drops first, the winner celebrates, then the (nearly
-  // transparent, bottom-docked) panel fades in over the still-running scene.
-  setTimeout(() => winner.playWin(), 900);
+  // freeze input so a held WASD key can't fight the step-back tween
+  for (const k of Object.keys(held)) held[k] = false;
+  game.player.move(null);
+  game.foe.move(null);
+
+  // A KO usually happens at punching range (~0.55m), which would put the
+  // victory clip inside the body of the guy on the canvas. So both fighters
+  // step back to a respectful distance first, THEN the ending clips start:
+  // the loser drops where they end up, the winner celebrates from a safe gap.
+  const p = game.player.root.position;
+  const f = game.foe.root.position;
+  const dir = Math.sign(f.x - p.x) || 1;
+  const mid = THREE.MathUtils.clamp((p.x + f.x) / 2, -ARENA_X + KO_SEP_GAP / 2, ARENA_X - KO_SEP_GAP / 2);
+  game.sep = {
+    t: 0,
+    dur: KO_SEP_SEC,
+    p0: p.x, p1: mid - dir * (KO_SEP_GAP / 2),
+    f0: f.x, f1: mid + dir * (KO_SEP_GAP / 2),
+    done() {
+      loser.playKO();
+      Sfx.ko();
+      setTimeout(() => winner.playWin(), 420);
+    },
+  };
+
+  // Hold the final tableaux before the result panel: the pair steps apart,
+  // the loser drops, the winner celebrates, then the (nearly transparent,
+  // bottom-docked) panel fades in over the still-running scene.
   setTimeout(() => {
     const won = winner === game.player;
     document.getElementById('overKicker').textContent = won ? 'you win' : 'you lose';
@@ -901,7 +926,7 @@ function endFight(winner, loser) {
       `${winner.name} wins with ${winner.hp} / ${HP_MAX} left. Difficulty: ${LEVELS[game.level].name}.`;
     document.getElementById('over').classList.add('on');
     document.getElementById('hud').classList.remove('on');
-  }, RESULT_HOLD_MS);
+  }, KO_SEP_SEC * 1000 + RESULT_HOLD_MS);
 }
 
 function updateHUD() {
@@ -1093,6 +1118,17 @@ function tick() {
       const dir = Math.sign(other.root.position.x - f.root.position.x) || 1;
       const want = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       f.root.rotation.y += (want - f.root.rotation.y) * Math.min(1, dt * 8);
+    }
+
+    // KO step-back: slide the pair apart before the ending clips start
+    if (game.sep) {
+      const s = game.sep;
+      s.t += dt;
+      const k = Math.min(1, s.t / s.dur);
+      const e = 1 - Math.pow(1 - k, 3);   // ease-out
+      game.player.root.position.x = s.p0 + (s.p1 - s.p0) * e;
+      game.foe.root.position.x = s.f0 + (s.f1 - s.f0) * e;
+      if (k >= 1) { game.sep = null; s.done(); }
     }
 
     // keep a minimum gap
