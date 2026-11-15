@@ -96,7 +96,7 @@ export const MOVES = [
     name: 'Rear', em: 'Uppercut', tag: 'rear hand · vertical',
     sub: 'the finisher from below',
     pos: { left: '46%', top: '86%' },
-    posM: { left: '27%',   top: '45%' },
+    posM: { left: '22%',   top: '52%' },
     what: 'The most powerful uppercut in boxing. The rear hip and leg fire straight up and the fist rides that line into the chin — short distance, enormous force.',
     points: [
       'Drop the rear shoulder and bend the rear knee, then extend both into the punch.',

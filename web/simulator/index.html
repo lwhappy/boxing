@@ -4,24 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
-<title>Boxing Simulator — Heavy Bag Lab: Every Punch, Frame by Frame | SilentJab</title>
-<meta name="description" content="A boxing simulator in your browser: a fighter works a heavy bag while light rings track every strike. Tap a node to throw the jab, cross, hooks and uppercuts and read the technique behind each one." />
+<title>Boxing Simulator — Heavy Bag in the Rain | SilentJab</title>
+<meta name="description" content="A boxing simulator in the rain: a fighter works a heavy bag in a flooded yard while lightning cracks on every punch. Throw the jab, cross, hooks and uppercuts and read the technique behind each one." />
 <meta name="keywords" content="boxing simulator, boxing simulator online, heavy bag, boxing techniques, how to throw a jab, cross punch, lead hook, uppercut, orthodox stance, boxing training" />
 <link rel="canonical" href="https://silentjab.com/simulator/" />
 <meta property="og:url" content="https://silentjab.com/simulator/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SilentJab" />
-<meta property="og:title" content="Boxing Simulator — Heavy Bag Lab" />
-<meta property="og:description" content="A fighter, a heavy bag, and light rings that track every strike. Tap a node, watch where the punch lands, read the technique." />
+<meta property="og:title" content="Boxing Simulator — Heavy Bag in the Rain" />
+<meta property="og:description" content="A fighter, a heavy bag, and a storm. Every punch lands with a burst of water and a crack of thunder." />
 <meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
-<meta name="theme-color" content="#05070b" />
+<meta name="theme-color" content="#05070a" />
 <style>
   :root{
-    --bg:#05070b; --ink:#e6f2fb; --dim:#7e93a5;
-    --cy:#7ae2ff; --cy-dim:rgba(122,226,255,.34);
-    --red:#ff4a4a;
+    --bg:#05070a; --ink:#e9eff4; --dim:#8d9aa5;
+    --bone:#dfe7ec; --steel:#a9bcc9;
+    --red:#c8452f; --red-dim:rgba(200,69,47,.4);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Roboto Mono",monospace;
     --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
@@ -30,115 +31,102 @@
   body{overscroll-behavior:none}
   #stage{position:fixed;inset:0;display:block;width:100%;height:100%}
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
-    background:radial-gradient(120% 90% at 50% 45%,transparent 38%,rgba(0,0,0,.55) 100%)}
+    background:radial-gradient(115% 85% at 50% 44%,transparent 34%,rgba(0,0,0,.62) 100%)}
   #flash{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
-    background:radial-gradient(60% 50% at 62% 48%,rgba(255,90,90,.22),transparent 70%)}
-  #flash.hit{animation:flashZ .5s ease-out}
-  @keyframes flashZ{0%{opacity:1}100%{opacity:0}}
+    background:radial-gradient(70% 60% at 58% 42%,rgba(214,235,255,.5),rgba(140,175,205,.16) 45%,transparent 72%)}
+  #flash.hit{animation:flashZ .55s ease-out}
+  @keyframes flashZ{0%{opacity:1}18%{opacity:.55}100%{opacity:0}}
 
   /* ---------- top HUD ---------- */
   .hud-top{position:fixed;top:0;left:0;right:0;z-index:6;display:flex;align-items:flex-start;
     justify-content:space-between;gap:16px;padding:18px 22px;
     padding-top:max(18px,env(safe-area-inset-top));pointer-events:none}
-  .brand{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:#cfe6f4;
+  .brand{font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#cdd9e1;
     display:flex;align-items:center;gap:9px}
-  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy);
-    animation:pulseDot 2.6s ease-in-out infinite}
-  .brand em{color:#5d7183;font-style:normal}
-  @keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.3}}
-  .stats{display:flex;gap:22px;font-family:var(--mono);text-align:right}
+  .brand .dot{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red-dim)}
+  .brand em{color:#5e6b76;font-style:normal}
+  .stats{display:flex;gap:24px;font-family:var(--mono);text-align:right}
   .stats div{display:flex;flex-direction:column;gap:3px}
-  .stats span{font-size:9px;letter-spacing:.22em;color:#5d7183;text-transform:uppercase}
-  .stats b{font-size:13px;font-weight:600;color:var(--cy);letter-spacing:.06em;
-    text-shadow:0 0 14px rgba(122,226,255,.5);font-variant-numeric:tabular-nums}
+  .stats span{font-size:9px;letter-spacing:.22em;color:#5e6b76;text-transform:uppercase}
+  .stats b{font-size:13px;font-weight:500;color:var(--bone);letter-spacing:.06em;font-variant-numeric:tabular-nums}
   #sound{pointer-events:auto;position:fixed;right:20px;bottom:16px;z-index:7;font-family:var(--mono);
-    font-size:10px;letter-spacing:.18em;color:#6f8298;background:rgba(8,13,19,.6);border:1px solid rgba(122,226,255,.16);
-    padding:7px 10px;border-radius:3px;cursor:pointer;transition:.2s}
-  #sound:hover{color:var(--cy);border-color:var(--cy-dim)}
+    font-size:10px;letter-spacing:.18em;color:#6f7d88;background:rgba(6,9,12,.55);border:1px solid rgba(210,224,235,.14);
+    padding:7px 10px;border-radius:2px;cursor:pointer;transition:.2s}
+  #sound:hover{color:var(--bone);border-color:rgba(210,224,235,.4)}
 
   /* ---------- technique panel ---------- */
-  .panel{position:fixed;z-index:6;left:0;top:0;bottom:0;width:352px;padding:96px 30px 26px 26px;
+  .panel{position:fixed;z-index:6;left:0;top:0;bottom:0;width:368px;padding:94px 34px 28px 30px;
     display:flex;flex-direction:column;justify-content:center;pointer-events:none;
-    background:linear-gradient(100deg,rgba(5,8,12,.94) 22%,rgba(5,8,12,.82) 62%,rgba(5,8,12,0) 100%);
-    opacity:0;transform:translateX(-14px);transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
+    background:linear-gradient(100deg,rgba(4,6,9,.95) 30%,rgba(4,6,9,.8) 66%,rgba(4,6,9,0) 100%);
+    opacity:0;transform:translateX(-16px);transition:opacity .55s ease,transform .55s cubic-bezier(.16,.84,.24,1)}
   .panel.on{opacity:1;transform:none}
-  .panel::before,.panel::after{content:"";position:absolute;left:26px;width:26px;height:26px;border:1px solid var(--cy-dim);opacity:.7}
-  .panel::before{top:66px;border-right:0;border-bottom:0}
-  .panel::after{bottom:22px;border-left:0;border-top:0;border-right:0}
-  .scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cy),transparent);
-    opacity:.5;top:0;animation:scanY 5.5s linear infinite}
-  @keyframes scanY{0%{top:8%;opacity:0}10%{opacity:.55}90%{opacity:.55}100%{top:92%;opacity:0}}
-  .p-head{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10px;
-    letter-spacing:.26em;text-transform:uppercase;color:var(--cy)}
-  .p-head i{flex:1;height:1px;background:linear-gradient(90deg,var(--cy-dim),transparent)}
-  .panel h1{font-size:29px;line-height:1.08;letter-spacing:-.015em;margin:12px 0 4px;font-weight:650}
-  .panel h1 em{font-style:normal;color:var(--cy);text-shadow:0 0 22px rgba(122,226,255,.45)}
-  .p-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:#6b8095;text-transform:uppercase;margin-bottom:14px}
+  .panel::before{content:"";position:absolute;left:0;top:96px;bottom:34px;width:1px;
+    background:linear-gradient(180deg,transparent,var(--red),rgba(200,69,47,.12) 70%,transparent)}
+  .p-head{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:.28em;text-transform:uppercase;color:#b9c7d1}
+  .p-head span:first-child{color:var(--red)}
+  .p-head i{flex:1;height:1px;background:linear-gradient(90deg,rgba(210,224,235,.34),transparent)}
+  .panel h1{font-family:var(--serif);font-size:38px;line-height:1.02;letter-spacing:-.02em;margin:14px 0 6px;font-weight:500}
+  .panel h1 em{font-style:italic;color:var(--red)}
+  .p-sub{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:#77858f;text-transform:uppercase;margin-bottom:16px}
   .p-body{max-height:min(56vh,520px);overflow:auto;padding-right:6px;scrollbar-width:thin}
-  .sec{margin:0 0 13px}
-  .sec>b{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:#6f8499;
-    text-transform:uppercase;margin-bottom:5px}
-  .sec p,.sec li{font-size:13px;line-height:1.62;color:#c9d8e4;margin:0 0 5px}
+  .sec{margin:0 0 15px}
+  .sec>b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.26em;color:#707d87;
+    text-transform:uppercase;margin-bottom:6px}
+  .sec p,.sec li{font-size:13.5px;line-height:1.64;color:#cdd8e0;margin:0 0 6px}
   .sec ul{margin:0;padding-left:0;list-style:none}
-  .sec li{padding-left:15px;position:relative}
-  .sec li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:1px;background:var(--cy);
-    box-shadow:0 0 6px var(--cy)}
-  .w{display:inline-block;opacity:0;transform:translateY(4px);filter:blur(3px);margin-right:.32em;
-    animation:wordIn .32s cubic-bezier(.2,.8,.2,1) forwards}
+  .sec li{padding-left:16px;position:relative}
+  .sec li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:1px;background:rgba(200,69,47,.75)}
+  .w{display:inline-block;opacity:0;transform:translateY(6px);filter:blur(4px);margin-right:.28em;
+    animation:wordIn .5s cubic-bezier(.16,.84,.24,1) forwards}
   @keyframes wordIn{to{opacity:1;transform:none;filter:none}}
-  .p-foot{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:#54677a;text-transform:uppercase;
-    display:flex;justify-content:space-between;gap:10px;margin-top:12px;border-top:1px solid rgba(122,226,255,.12);padding-top:10px}
+  .p-foot{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:#5b6873;text-transform:uppercase;
+    display:flex;justify-content:space-between;gap:10px;margin-top:14px;border-top:1px solid rgba(210,224,235,.1);padding-top:11px}
 
   /* ---------- nodes ---------- */
   #nodes{position:fixed;inset:0;z-index:5;pointer-events:none}
-  .node{position:absolute;pointer-events:auto;cursor:pointer;background:rgba(7,12,18,.55);
-    border:1px solid rgba(122,226,255,.2);border-radius:2px;
-    padding:7px 11px 7px 9px;display:flex;align-items:center;gap:9px;
-    backdrop-filter:blur(7px);transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .22s,background .22s,box-shadow .22s;
-    clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px))}
-  .node::before{content:"";position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(135deg,rgba(122,226,255,.1),transparent 55%);opacity:0;transition:.22s}
-  .node:hover{border-color:rgba(122,226,255,.6);transform:translateY(-2px);
-    box-shadow:0 8px 26px rgba(0,0,0,.5),0 0 22px rgba(122,226,255,.18)}
-  .node:hover::before{opacity:1}
-  .node.on{border-color:var(--red);background:rgba(38,10,12,.6);
-    box-shadow:0 0 26px rgba(255,74,74,.32)}
-  .node .code{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:#7ae2ff;opacity:.85}
-  .node .nm{font-size:12px;letter-spacing:.02em;color:#e8f3fb;white-space:nowrap}
-  .node .nm small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:#5f7488;
+  .node{position:absolute;pointer-events:auto;cursor:pointer;background:rgba(8,11,15,.5);
+    border:0;border-left:2px solid rgba(200,69,47,.55);
+    padding:7px 12px 7px 10px;display:flex;align-items:center;gap:9px;
+    backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,.35),inset 0 0 0 1px rgba(214,228,238,.10);
+    transition:transform .25s cubic-bezier(.16,.84,.24,1),box-shadow .25s,background .25s}
+  .node:hover{transform:translateY(-2px);background:rgba(14,19,25,.66);
+    box-shadow:0 10px 28px rgba(0,0,0,.5),inset 0 0 0 1px rgba(214,228,238,.28)}
+  .node.on{background:rgba(30,12,10,.7);border-left-color:var(--red);
+    box-shadow:0 8px 26px rgba(0,0,0,.5),inset 0 0 0 1px rgba(200,69,47,.55)}
+  .node .code{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:rgba(200,69,47,.95)}
+  .node .nm{font-size:12.5px;letter-spacing:.02em;color:#e6eef3;white-space:nowrap}
+  .node .nm small{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.18em;color:#6d7a85;
     text-transform:uppercase;margin-top:2px}
-  .node.on .nm,.node.on .code{color:#ffd9d9}
-  .node .tick{position:absolute;left:-1px;top:50%;width:3px;height:0;background:var(--cy);
-    box-shadow:0 0 8px var(--cy);transition:height .2s}
-  .node:hover .tick,.node.on .tick{height:60%;transform:translateY(-50%)}
-  .node.guard{border-color:rgba(255,255,255,.18)}
-  .node.guard.on{border-color:var(--cy);background:rgba(10,26,34,.7);box-shadow:0 0 26px rgba(122,226,255,.3)}
+  .node.on .nm{color:#fff}
+  .node.on .nm small{color:#a0817b}
+  .node.guard{border-left-color:rgba(214,228,238,.4)}
+  .node.guard.on{background:rgba(12,16,21,.75);border-left-color:var(--bone)}
 
   /* ---------- responsive ---------- */
   @media (min-width:901px){
-    .hud-top{padding-left:384px}
+    .hud-top{padding-left:398px}
   }
   @media (max-width:900px){
     .hud-top{padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top))}
     .stats{gap:14px}
     .stats b{font-size:11px}
-    .brand{font-size:9.5px;letter-spacing:.22em}
-    .panel{width:100%;left:0;right:0;top:auto;bottom:0;height:auto;max-height:46vh;
-      padding:16px 16px calc(14px + env(safe-area-inset-bottom));justify-content:flex-start;
-      background:linear-gradient(180deg,rgba(5,8,12,0) 0%,rgba(5,8,12,.9) 18%,rgba(5,8,12,.97) 100%);
+    .brand{font-size:9.5px;letter-spacing:.2em}
+    .panel{width:100%;left:0;right:0;top:auto;bottom:0;height:auto;max-height:47vh;
+      padding:18px 18px calc(14px + env(safe-area-inset-bottom));justify-content:flex-start;
+      background:linear-gradient(180deg,rgba(4,6,9,0) 0%,rgba(4,6,9,.9) 20%,rgba(4,6,9,.97) 100%);
       transform:translateY(16px)}
-    .panel::before{top:14px;left:14px;width:16px;height:16px}
-    .panel::after{display:none}
-    .panel h1{font-size:21px;margin:8px 0 2px}
-    .p-sub{font-size:9px;margin-bottom:8px}
-    .p-body{max-height:26vh}
-    .sec p,.sec li{font-size:12px;line-height:1.5}
-    .sec{margin-bottom:9px}
+    .panel::before{display:none}
+    .panel h1{font-size:26px;margin:9px 0 3px}
+    .p-sub{font-size:8.5px;margin-bottom:9px}
+    .p-body{max-height:25vh}
+    .sec p,.sec li{font-size:12px;line-height:1.52}
+    .sec{margin-bottom:10px}
     .node{padding:6px 9px 6px 7px;gap:6px}
     .node .nm{font-size:10.5px}
     .node .nm small{display:none}
     .node .code{font-size:8.5px}
-    #sound{right:12px;bottom:auto;top:52px;font-size:9px;padding:5px 8px}
+    #sound{right:12px;bottom:auto;top:50px;font-size:9px;padding:5px 8px}
   }
 </style>
 <!-- Google AdSense -->
@@ -151,7 +139,7 @@
 <div id="flash"></div>
 
 <header class="hud-top">
-  <div class="brand"><span class="dot"></span>SilentJab <em>/ bag lab</em></div>
+  <div class="brand"><span class="dot"></span>SilentJab <em>/ rain yard</em></div>
   <div class="stats">
     <div><span>node</span><b id="stNode">00</b></div>
     <div><span>reach</span><b id="stReach">—</b></div>
@@ -162,17 +150,14 @@
 <div id="nodes"></div>
 
 <aside class="panel" id="panel" aria-live="polite">
-  <div class="scan"></div>
   <div class="p-head"><span id="pCode">00</span><i></i><span id="pTag">stance</span></div>
   <h1 id="pName">Orthodox <em>Guard</em></h1>
   <div class="p-sub" id="pSub">left hand leads · right hand loads</div>
   <div class="p-body" id="pBody"></div>
-  <div class="p-foot"><span>tap a node</span><span id="pFoot">—</span></div>
+  <div class="p-foot"><span>pick a punch</span><span id="pFoot">—</span></div>
 </aside>
 
 <button id="sound" type="button">SOUND · ON</button>
-
-
 
 <script type="importmap">
 {
@@ -182,6 +167,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=5"></script>
+<script type="module" src="./app.js?v=6"></script>
 </body>
 </html>

@@ -1,13 +1,13 @@
 /**
- * Heavy Bag Lab — a boxing simulator stage.
+ * Rain Yard — a boxing simulator stage.
  *
- * - one fighter (media/glb/boxer-man.glb) working a static heavy bag
+ * - an outdoor yard at night, heavy rain, wet ground, a heavy bag on a steel base
  * - every punch clip is measured at load time: the frame where the fist is
- *   furthest forward becomes the impact frame, and the bag is positioned so
- *   that the fist lands exactly on its surface
- * - on impact a light ring blooms on the bag, the bag takes a small
- *   spring-loaded sway, and the technique text types itself in — the clip keeps
- *   playing to the end, then falls back to the guard loop
+ *   furthest forward becomes the impact frame
+ * - the fighter steps (parallel shift + in/out) so the knuckles stop exactly on
+ *   the near face of the bag — never through it, never on the far side
+ * - on impact: water bursts off the bag, the sky cracks with lightning, thunder
+ *   rolls in, the bag swings, and the technique notes type themselves in
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -18,328 +18,548 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const damp = (a, b, lambda, dt) => lerp(a, b, 1 - Math.exp(-lambda * dt));
 const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 const mobile = () => window.matchMedia('(max-width: 900px)').matches;
 
 /* ------------------------------------------------------------------ audio */
 const Sound = {
-  ctx: null, master: null, on: true, humGain: null,
+  ctx: null, master: null, on: true, rainGain: null, _brown: null,
   init() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = 0.9;
     this.master.connect(this.ctx.destination);
-    // shared echo for the "chirp" layer
-    this.delay = this.ctx.createDelay(0.5);
-    this.delay.delayTime.value = 0.11;
-    this.fb = this.ctx.createGain();
-    this.fb.gain.value = 0.26;
+    // a long-ish echo for splashes, so the yard feels like a yard
+    this.delay = this.ctx.createDelay(0.6);
+    this.delay.delayTime.value = 0.19;
+    this.fb = this.ctx.createGain(); this.fb.gain.value = 0.22;
     this.delay.connect(this.fb); this.fb.connect(this.delay);
-    this.delay.connect(this.master);
-    this.startHum();
+    const wet = this.ctx.createGain(); wet.gain.value = 0.5;
+    this.delay.connect(wet); wet.connect(this.master);
+    this.startRain();
   },
   resume() { this.ctx && this.ctx.state === 'suspended' && this.ctx.resume(); },
-  startHum() {
-    const c = this.ctx;
-    this.humGain = c.createGain();
-    this.humGain.gain.value = 0.0001;
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
-    const o1 = c.createOscillator(); o1.type = 'sine'; o1.frequency.value = 55;
-    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 82.7;
-    const g2 = c.createGain(); g2.gain.value = 0.35;
-    const lfo = c.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.07;
-    const lfoG = c.createGain(); lfoG.gain.value = 0.0009;
-    o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(this.humGain);
-    this.humGain.connect(this.master);
-    lfo.connect(lfoG); lfoG.connect(this.humGain.gain);
-    o1.start(); o2.start(); lfo.start();
-    this.humGain.gain.setTargetAtTime(0.012, c.currentTime, 2.5);
-  },
-  noise(dur) {
+  noiseBuffer(dur, brown) {
     const c = this.ctx, n = Math.floor(c.sampleRate * dur);
-    const b = c.createBuffer(1, n, c.sampleRate);
-    const d = b.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    const s = c.createBufferSource(); s.buffer = b; return s;
+    const b = c.createBuffer(2, n, c.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = b.getChannelData(ch);
+      let last = 0;
+      for (let i = 0; i < n; i++) {
+        const w = Math.random() * 2 - 1;
+        if (brown) { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.4; }
+        else d[i] = w;
+      }
+    }
+    return b;
   },
-  thud(power = 1) {
+  brown() { return (this._brown = this._brown || this.noiseBuffer(4, true)); },
+  src(buf) { const s = this.ctx.createBufferSource(); s.buffer = buf; return s; },
+  startRain() {
+    const c = this.ctx, s = this.src(this.brown());
+    s.loop = true;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 420;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 8200;
+    this.rainGain = c.createGain(); this.rainGain.gain.value = 0.0001;
+    s.connect(hp); hp.connect(lp); lp.connect(this.rainGain); this.rainGain.connect(this.master);
+    s.start();
+    this.rainGain.gain.setTargetAtTime(0.062, c.currentTime, 4);
+    const lfo = c.createOscillator(); lfo.frequency.value = 0.055;
+    const lg = c.createGain(); lg.gain.value = 0.018;
+    lfo.connect(lg); lg.connect(this.rainGain.gain); lfo.start();
+  },
+  /* wet fist on wet leather */
+  impact(power = 1) {
     if (!this.ctx || !this.on) return;
     const c = this.ctx, t = c.currentTime;
     const o = c.createOscillator(), g = c.createGain();
     o.type = 'sine';
-    o.frequency.setValueAtTime(96 * power, t);
-    o.frequency.exponentialRampToValueAtTime(38, t + 0.22);
+    o.frequency.setValueAtTime(115 * power, t);
+    o.frequency.exponentialRampToValueAtTime(33, t + 0.26);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.62 * power, t + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.5);
-    // leather crack
-    const n = this.noise(0.16);
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1150; bp.Q.value = 1.1;
-    const ng = c.createGain();
-    ng.gain.setValueAtTime(0.5 * power, t);
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-    n.connect(bp); bp.connect(ng); ng.connect(this.master); n.start(t);
-    // sub drop
+    g.gain.exponentialRampToValueAtTime(0.8 * power, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.52);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.56);
+
+    const n1 = this.src(this.noiseBuffer(0.24));
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 720; bp.Q.value = 0.8;
+    const g1 = c.createGain();
+    g1.gain.setValueAtTime(0.7 * power, t);
+    g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    n1.connect(bp); bp.connect(g1); g1.connect(this.master); g1.connect(this.delay); n1.start(t);
+
+    const n2 = this.src(this.noiseBuffer(0.6));
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500;
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.exponentialRampToValueAtTime(0.34 * power, t + 0.014);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.46);
+    n2.connect(hp); hp.connect(g2); g2.connect(this.master); g2.connect(this.delay); n2.start(t);
+
     const s = c.createOscillator(), sg = c.createGain();
-    s.type = 'triangle'; s.frequency.setValueAtTime(55, t); s.frequency.exponentialRampToValueAtTime(28, t + 0.5);
-    sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-    sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-    s.connect(sg); sg.connect(this.master); s.start(t); s.stop(t + 0.65);
+    s.type = 'triangle';
+    s.frequency.setValueAtTime(58, t); s.frequency.exponentialRampToValueAtTime(24, t + 0.7);
+    sg.gain.setValueAtTime(0.0001, t);
+    sg.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
+    s.connect(sg); sg.connect(this.master); s.start(t); s.stop(t + 0.85);
   },
-  chirp(f = 2600, vol = 0.05) {
+  thunder(delay = 0.15, power = 1) {
+    if (!this.ctx || !this.on) return;
+    const c = this.ctx, t = c.currentTime + delay;
+    const nc = this.src(this.noiseBuffer(0.3));
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 0.5;
+    const gc = c.createGain();
+    gc.gain.setValueAtTime(0.34 * power, t);
+    gc.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    nc.connect(bp); bp.connect(gc); gc.connect(this.master); nc.start(t);
+
+    const nr = this.src(this.brown());
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(360, t);
+    lp.frequency.exponentialRampToValueAtTime(72, t + 3.4);
+    const gr = c.createGain();
+    gr.gain.setValueAtTime(0.0001, t);
+    gr.gain.exponentialRampToValueAtTime(0.55 * power, t + 0.16);
+    gr.gain.exponentialRampToValueAtTime(0.0001, t + 3.6);
+    nr.connect(lp); lp.connect(gr); gr.connect(this.master); nr.start(t); nr.stop(t + 3.7);
+  },
+  /* boots on wet concrete */
+  step() {
     if (!this.ctx || !this.on) return;
     const c = this.ctx, t = c.currentTime;
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(f, t);
-    o.frequency.exponentialRampToValueAtTime(f * rand(1.5, 2.1), t + 0.07);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
-    o.connect(g); g.connect(this.master); g.connect(this.delay);
-    o.start(t); o.stop(t + 0.12);
-  },
-  sweep() {
-    if (!this.ctx || !this.on) return;
-    const c = this.ctx, t = c.currentTime;
-    const n = this.noise(0.42);
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 3.2;
-    bp.frequency.setValueAtTime(420, t); bp.frequency.exponentialRampToValueAtTime(4200, t + 0.34);
+    const n = this.src(this.noiseBuffer(0.22));
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 1.1;
     const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13, t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.14, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
     n.connect(bp); bp.connect(g); g.connect(this.master); n.start(t);
   },
-  blip(f = 1500, vol = 0.045) {
+  /* dull knock for the UI */
+  tap() {
     if (!this.ctx || !this.on) return;
     const c = this.ctx, t = c.currentTime;
     const o = c.createOscillator(), g = c.createGain();
-    o.type = 'square'; o.frequency.value = f;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.06);
+    o.type = 'sine'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.09);
+    g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.14);
   },
-  click() {
+  drop() {
     if (!this.ctx || !this.on) return;
-    this.blip(920, 0.05);
-    this.chirp(1800, 0.03);
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(rand(900, 1500), t);
+    o.frequency.exponentialRampToValueAtTime(rand(280, 420), t + 0.07);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(this.master); g.connect(this.delay); o.start(t); o.stop(t + 0.14);
+  },
+  /* low swell under the text reveal */
+  swell() {
+    if (!this.ctx || !this.on) return;
+    const c = this.ctx, t = c.currentTime;
+    const n = this.src(this.noiseBuffer(1.4));
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(120, t);
+    lp.frequency.exponentialRampToValueAtTime(900, t + 0.7);
+    lp.frequency.exponentialRampToValueAtTime(150, t + 1.3);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.13, t + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.35);
+    n.connect(lp); lp.connect(g); g.connect(this.master); n.start(t);
   }
 };
 
 /* ------------------------------------------------------------------ stage */
 const canvas = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile() ? 1.6 : 1.9));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile() ? 1.5 : 1.8));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.02;
+renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x04060a, 0.062);
+scene.fog = new THREE.FogExp2(0x0a1017, 0.042);
 
-const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 90);
-camera.position.set(3, 1.7, -1.8);
-camera.lookAt(0, 1.0, 0.6);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
+camera.position.set(3, 1.8, -1.6);
+camera.lookAt(0, 1.0, 0.8);
 
-/* lights — warm key, cold rim, red kicker, no shadow maps (cheap + clean) */
-scene.add(new THREE.HemisphereLight(0x1e3c52, 0x04060a, 0.75));
-const key = new THREE.DirectionalLight(0xfff0dd, 2.35); key.position.set(-2.6, 3.6, 3.4); scene.add(key);
-const rim = new THREE.DirectionalLight(0x74dcff, 2.9); rim.position.set(2.8, 2.4, -2.8); scene.add(rim);
-const kick = new THREE.DirectionalLight(0xff4a4a, 0.85); kick.position.set(3.4, 1.1, 2.4); scene.add(kick);
-const bagLight = new THREE.PointLight(0x74dcff, 2.2, 4, 2); scene.add(bagLight);
-
-/* ------------------------------------------------------------------ floor */
-const FLOOR_SIZE = 34;
-const floorMat = new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  uniforms: { uTime: { value: 0 }, uCol: { value: new THREE.Color(0x4fc8ee) }, uBag: { value: new THREE.Vector2(0, 1.1) } },
-  vertexShader: `
-    varying vec3 vP;
-    void main(){ vP = (modelMatrix * vec4(position,1.0)).xyz;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: `
-    uniform float uTime; uniform vec3 uCol; uniform vec2 uBag; varying vec3 vP;
-    float gridLine(vec2 p, float s){
-      vec2 q = p / s; vec2 g = abs(fract(q - 0.5) - 0.5) / fwidth(q);
-      return 1.0 - min(min(g.x, g.y), 1.0);
-    }
-    void main(){
-      float d = length(vP.xz - uBag);
-      float fade = smoothstep(11.0, 1.0, d);
-      float g = gridLine(vP.xz, 0.5) * 0.28 + gridLine(vP.xz, 2.5) * 0.55;
-      float ph = fract(uTime * 0.18);
-      float rp = ph * 7.0;
-      float ring = smoothstep(0.10, 0.0, abs(d - rp)) * (1.0 - ph);
-      float band = smoothstep(0.5, 0.0, abs(d - 2.4)) * 0.25;
-      float a = (g * 0.5 + ring * 1.1 + band + 0.02) * fade;
-      vec3 col = uCol * (g * 0.35 + ring * 0.9 + band * 0.6 + 0.02);
-      col += vec3(0.06, 0.1, 0.15) * fade * 0.4;
-      gl_FragColor = vec4(col, a * 0.95);
-    }`
-});
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_SIZE, FLOOR_SIZE, 1, 1), floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0.001;
-scene.add(floor);
-
-/* light pools under fighter + bag */
-function poolTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d');
-  const grd = g.createRadialGradient(64, 64, 2, 64, 64, 62);
-  grd.addColorStop(0, 'rgba(140,230,255,.85)');
-  grd.addColorStop(0.45, 'rgba(90,190,230,.28)');
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
+/* soft grey environment so wet surfaces have something to reflect */
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.SphereGeometry(12, 24, 16), new THREE.MeshBasicMaterial({ color: 0x18232f, side: THREE.BackSide })));
+  const skyPatch = new THREE.Mesh(new THREE.PlaneGeometry(9, 5), new THREE.MeshBasicMaterial({ color: 0x9fb8cc }));
+  skyPatch.position.set(1, 7, -3); skyPatch.lookAt(0, 0, 0); es.add(skyPatch);
+  const warm = new THREE.Mesh(new THREE.PlaneGeometry(3, 2), new THREE.MeshBasicMaterial({ color: 0xffa055 }));
+  warm.position.set(7, 2, 4); warm.lookAt(0, 1, 0); es.add(warm);
+  scene.environment = pmrem.fromScene(es, 0.05).texture;
+  pmrem.dispose();
 }
-const poolTex = poolTexture();
-const poolMat = new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5 });
-const fighterPool = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 2.1), poolMat);
-fighterPool.rotation.x = -Math.PI / 2; fighterPool.position.y = 0.004; scene.add(fighterPool);
-const bagPool = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.0), poolMat.clone());
-bagPool.material.opacity = 0.62;
-bagPool.rotation.x = -Math.PI / 2; bagPool.position.y = 0.004; scene.add(bagPool);
 
-/* ------------------------------------------------------------------ dust */
-const DUST = 420;
-const dustGeo = new THREE.BufferGeometry();
-const dustPos = new Float32Array(DUST * 3);
-const dustSeed = new Float32Array(DUST);
-for (let i = 0; i < DUST; i++) {
-  const r = rand(0.4, 6.5), a = rand(0, Math.PI * 2);
-  dustPos[i * 3] = Math.cos(a) * r;
-  dustPos[i * 3 + 1] = rand(0.05, 3.1);
-  dustPos[i * 3 + 2] = Math.sin(a) * r + 0.4;
-  dustSeed[i] = rand(0, 100);
+/* ------------------------------------------------------------------ sky */
+const skyUniforms = {
+  uTime: { value: 0 }, uFlash: { value: 0 },
+  uBoltDir: { value: new THREE.Vector3(-0.35, 0.32, 0.88).normalize() }
+};
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(90, 32, 20),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false, uniforms: skyUniforms,
+    vertexShader: `
+      varying vec3 vDir;
+      void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `
+      uniform float uTime; uniform float uFlash; uniform vec3 uBoltDir;
+      varying vec3 vDir;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+      float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
+      float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.03; a*=0.5; } return v; }
+      void main(){
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y, -0.15, 1.0);
+        vec3 col = mix(vec3(0.052,0.062,0.078), vec3(0.006,0.010,0.018), smoothstep(-0.02, 0.62, h));
+        vec2 uv = d.xz / max(0.20, d.y * 1.35);
+        float n1 = fbm(uv * 1.5 + vec2(uTime * 0.010, uTime * 0.004));
+        float n2 = fbm(uv * 4.2 - vec2(uTime * 0.018, 0.0));
+        col += vec3(0.030,0.038,0.050) * (n1 * 0.9 + n2 * 0.35) * smoothstep(-0.05, 0.40, h);
+        float glow = pow(max(0.0, dot(d, uBoltDir)), 4.0);
+        float low = smoothstep(0.62, 0.02, abs(d.y - 0.12));
+        col += vec3(0.62,0.74,0.96) * uFlash * (0.30 + glow * 2.4 + low * 0.35) * (0.35 + n1 * 0.9);
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  })
+);
+sky.frustumCulled = false;
+scene.add(sky);
+
+/* ------------------------------------------------------------------ ground */
+const groundUniforms = {
+  uTime: { value: 0 }, uFlash: { value: 0 }, uCam: { value: new THREE.Vector3() }
+};
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(160, 160, 1, 1),
+  new THREE.ShaderMaterial({
+    uniforms: groundUniforms,
+    vertexShader: `
+      varying vec3 vW;
+      void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `
+      uniform float uTime; uniform float uFlash; uniform vec3 uCam;
+      varying vec3 vW;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+      float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
+      float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<4;i++){ v+=a*noise(p); p*=2.07; a*=0.5; } return v; }
+      float ripples(vec2 p, float scale, float seed){
+        vec2 q = p * scale + seed;
+        vec2 cell = floor(q), f = fract(q);
+        vec2 c = 0.25 + 0.5 * vec2(hash(cell), hash(cell + 11.3));
+        float ph = hash(cell + 3.1);
+        float t = fract(uTime * 0.7 + ph);
+        float r = length(f - c);
+        return smoothstep(0.05, 0.0, abs(r - t * 0.3)) * (1.0 - t);
+      }
+      void main(){
+        vec2 p = vW.xz;
+        float g1 = fbm(p * 1.05), g2 = fbm(p * 4.6);
+        vec3 col = vec3(0.020,0.024,0.029) + vec3(0.030,0.035,0.040) * (g1 * 0.7 + g2 * 0.35);
+        float pud = smoothstep(0.46, 0.66, g1);
+        float rip = (ripples(p, 2.6, 0.0) + ripples(p, 1.55, 7.3)) * (0.12 + pud * 0.65);
+        col += vec3(0.16,0.21,0.27) * rip;
+        vec3 V = normalize(uCam - vW);
+        float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 4.0);
+        col += vec3(0.085,0.115,0.155) * (0.10 + fres) * (0.30 + pud * 0.9) * (0.22 + uFlash * 7.0);
+        float d = length(vW.xz - vec2(0.0, 1.2));
+        col *= mix(0.45, 1.0, smoothstep(46.0, 5.0, d));
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 0;
+scene.add(ground);
+
+/* ------------------------------------------------------------------ lights */
+const hemi = new THREE.HemisphereLight(0x24384c, 0x05070a, 0.42);
+scene.add(hemi);
+const stormKey = new THREE.DirectionalLight(0x9db6cc, 0.85);
+stormKey.position.set(-3.5, 7, -4);
+scene.add(stormKey);
+const flashLight = new THREE.DirectionalLight(0xd6e9ff, 0);
+flashLight.position.set(-6, 8, 12);
+scene.add(flashLight);
+const practical = new THREE.PointLight(0xff9a52, 8, 11, 2);
+practical.position.set(4.4, 3.3, 3.4);
+scene.add(practical);
+const fill = new THREE.PointLight(0x7fa6c8, 2.2, 9, 2);
+fill.position.set(-2.6, 2.0, -2.4);
+scene.add(fill);
+/* soft cool fill on the bag's camera-facing side, so the leather reads at night */
+const bagFill = new THREE.PointLight(0x9fc0d8, 5.5, 6.5, 2);
+scene.add(bagFill);
+const contactLight = new THREE.PointLight(0xbfe0ff, 0, 4.5, 2);
+scene.add(contactLight);
+
+/* a small practical lamp housing, so the warm light has a source */
+const lampPost = new THREE.Group();
+{
+  const steel = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: 0.5, metalness: 0.85 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 3.4, 12), steel);
+  pole.position.y = 1.7; lampPost.add(pole);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 8), steel);
+  arm.rotation.z = Math.PI / 2; arm.position.set(-0.32, 3.36, 0); lampPost.add(arm);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.2, 18, 1, true), steel);
+  shade.position.set(-0.62, 3.3, 0); shade.rotation.x = Math.PI; lampPost.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffd9ab }));
+  bulb.position.set(-0.62, 3.22, 0); lampPost.add(bulb);
+  lampPost.position.set(5.0, 0, 3.4);
+  scene.add(lampPost);
 }
-dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-  size: 0.016, color: 0x9fdcf2, transparent: true, opacity: 0.5,
-  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+
+/* ------------------------------------------------------------------ rain */
+const RAIN = mobile() ? 1500 : 2800;
+const RAIN_BOX = { x: 9, z: 12, y: 15 };
+const rainPos = new Float32Array(RAIN * 6);
+const rainMeta = new Float32Array(RAIN * 4); // x, z, y, speed
+for (let i = 0; i < RAIN; i++) {
+  rainMeta[i * 4] = rand(-RAIN_BOX.x, RAIN_BOX.x);
+  rainMeta[i * 4 + 1] = rand(-5.5, RAIN_BOX.z);
+  rainMeta[i * 4 + 2] = rand(0, RAIN_BOX.y);
+  rainMeta[i * 4 + 3] = rand(9, 16);
+}
+const rainGeo = new THREE.BufferGeometry();
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({
+  color: 0xb6cee0, transparent: true, opacity: 0.36, depthWrite: false
 }));
-scene.add(dust);
+rain.frustumCulled = false;
+scene.add(rain);
 
-/* ------------------------------------------------------------------ rings */
-const RING_MAT = () => new THREE.MeshBasicMaterial({ color: 0x7ae2ff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
-const orbiters = [];
-function addOrbiter(radius, y, tilt, speed, opacity = 0.22, color = 0x7ae2ff) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.0045, 6, 128), RING_MAT());
-  m.material.color.setHex(color); m.material.opacity = opacity;
-  m.position.y = y; m.rotation.x = Math.PI / 2 + tilt;
-  scene.add(m);
-  orbiters.push({ m, speed, base: m.rotation.z });
-  return m;
+const WIND = -1.1;
+function updateRain(dt) {
+  for (let i = 0; i < RAIN; i++) {
+    let x = rainMeta[i * 4], z = rainMeta[i * 4 + 1], y = rainMeta[i * 4 + 2];
+    const v = rainMeta[i * 4 + 3];
+    y -= v * dt;
+    x += WIND * dt;
+    if (y < 0) {
+      y = RAIN_BOX.y + rand(0, 2);
+      x = rand(-RAIN_BOX.x, RAIN_BOX.x);
+      z = rand(-5.5, RAIN_BOX.z);
+    } else if (x < -RAIN_BOX.x) x += RAIN_BOX.x * 2;
+    rainMeta[i * 4] = x; rainMeta[i * 4 + 1] = z; rainMeta[i * 4 + 2] = y;
+    const len = 0.10 + v * 0.026;
+    rainPos[i * 6] = x; rainPos[i * 6 + 1] = y; rainPos[i * 6 + 2] = z;
+    rainPos[i * 6 + 3] = x - WIND * 0.045;
+    rainPos[i * 6 + 4] = y + len;
+    rainPos[i * 6 + 5] = z;
+  }
+  rainGeo.attributes.position.needsUpdate = true;
 }
-const fighterRings = [
-  addOrbiter(0.62, 0.28, rand(-0.13, 0.13), 0.22),
-  addOrbiter(0.78, 1.05, rand(-0.2, 0.2), -0.14, 0.16),
-  addOrbiter(0.95, 1.72, rand(-0.1, 0.1), 0.09, 0.1)
-];
+updateRain(0.016);
 
-/* ------------------------------------------------------------------ bag */
-const BAG = { r: 0.275, bottom: 0.36, top: 1.58, x: 0.05, z: 1.14 };
+/* ------------------------------------------------------------------ lightning */
+const boltMat = new THREE.LineBasicMaterial({
+  color: 0xdcecff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending
+});
+const bolt = new THREE.LineSegments(new THREE.BufferGeometry(), boltMat);
+bolt.frustumCulled = false;
+scene.add(bolt);
+
+function rebuildBolt() {
+  // low camera → only a thin band of sky is in frame, so the bolt hugs the
+  // horizon just above it, right of the bag
+  const pts = [];
+  let x = rand(-9, -4.5), y = rand(3.6, 5), z = rand(4, 7.5);
+  const main = [new THREE.Vector3(x, y, z)];
+  while (y > 0.6) {
+    y -= rand(0.5, 1.0);
+    x += rand(-0.7, 0.7);
+    z += rand(-0.4, 0.4);
+    main.push(new THREE.Vector3(x, y, z));
+    if (Math.random() < 0.3 && y > 1.8) {
+      let bx = x, by = y, bz = z;
+      for (let i = 0; i < 3; i++) {
+        bx += rand(-0.9, 0.9); by -= rand(0.4, 0.9); bz += rand(-0.4, 0.4);
+        pts.push(new THREE.Vector3(x, y, z), new THREE.Vector3(bx, by, bz));
+      }
+    }
+  }
+  for (let i = 0; i < main.length - 1; i++) pts.push(main[i], main[i + 1]);
+  bolt.geometry.dispose();
+  bolt.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+}
+rebuildBolt();
+
+let flash = 0;
+let boltGlow = 0;
+function lightning(power = 1) {
+  flash = Math.max(flash, power);
+  boltGlow = Math.max(boltGlow, power);
+  rebuildBolt();
+  Sound.thunder(rand(0.06, 0.34), power);
+}
+
+/* ------------------------------------------------------------------ heavy bag */
+const BAG = { r: 0.27, bottom: 0.42, top: 1.62, x: 0, z: 1.35 };
 const bagRoot = new THREE.Group();
 scene.add(bagRoot);
 
-const metal = new THREE.MeshStandardMaterial({ color: 0x151a21, roughness: 0.42, metalness: 0.72 });
-const dark = new THREE.MeshStandardMaterial({ color: 0x0d1117, roughness: 0.7, metalness: 0.25 });
-const glow = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false });
+const steelMat = new THREE.MeshStandardMaterial({ color: 0x2e3740, roughness: 0.4, metalness: 0.88 });
+const leatherMat = new THREE.MeshPhysicalMaterial({
+  color: 0x33231d, roughness: 0.42, metalness: 0.05,
+  clearcoat: 0.55, clearcoatRoughness: 0.28, envMapIntensity: 0.8
+});
+const strapMat = new THREE.MeshPhysicalMaterial({
+  color: 0x120e0d, roughness: 0.5, metalness: 0.05, clearcoat: 0.4, clearcoatRoughness: 0.35
+});
 
 /* base plate */
-const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.09, 48), metal);
-base.position.y = 0.045; bagRoot.add(base);
-const baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.006, 6, 96), glow(0x7ae2ff, 0.55));
-baseRing.rotation.x = Math.PI / 2; baseRing.position.y = 0.092; bagRoot.add(baseRing);
+const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.1, 40), steelMat);
+base.position.y = 0.05; bagRoot.add(base);
+for (let i = 0; i < 6; i++) {
+  const a = (i / 6) * Math.PI * 2;
+  const boltHead = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.014, 8), steelMat);
+  boltHead.position.set(Math.cos(a) * 0.29, 0.104, Math.sin(a) * 0.29);
+  bagRoot.add(boltHead);
+}
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.12, 0.24, 20), steelMat);
+neck.position.y = 0.18; bagRoot.add(neck);
 
-/* the tilting part: everything above the base pivots at the base */
+/* the tilting part */
 const bagPivot = new THREE.Group();
 bagPivot.position.y = BAG.bottom;
 bagRoot.add(bagPivot);
 const bagY = (y) => y - BAG.bottom;
 
 const bodyH = BAG.top - BAG.bottom;
-const body = new THREE.Mesh(new THREE.CylinderGeometry(BAG.r * 0.94, BAG.r, bodyH, 56, 1, false), new THREE.MeshStandardMaterial({
-  color: 0x191e26, roughness: 0.52, metalness: 0.35
-}));
-body.position.y = bagY(BAG.bottom + bodyH / 2); bagPivot.add(body);
+const body = new THREE.Mesh(new THREE.CylinderGeometry(BAG.r * 0.95, BAG.r, bodyH, 48, 1, false), leatherMat);
+body.position.y = bagY(BAG.bottom + bodyH / 2);
+bagPivot.add(body);
 
-/* top dome + bottom skirt */
-const dome = new THREE.Mesh(new THREE.SphereGeometry(BAG.r * 0.94, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1b2129, roughness: 0.5, metalness: 0.4 }));
-dome.position.y = bagY(BAG.top); dome.scale.y = 0.34; bagPivot.add(dome);
+/* rounded caps */
+const dome = new THREE.Mesh(new THREE.SphereGeometry(BAG.r * 0.95, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), leatherMat);
+dome.position.y = bagY(BAG.top); dome.scale.y = 0.42; bagPivot.add(dome);
+const skirt = new THREE.Mesh(new THREE.SphereGeometry(BAG.r, 40, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), leatherMat);
+skirt.position.y = bagY(BAG.bottom); skirt.scale.y = 0.45; bagPivot.add(skirt);
 
-/* glowing seams */
-for (const y of [0.52, 0.86, 1.2, 1.5]) {
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 0.985, 0.0035, 6, 96), glow(0x63d8ff, y === 1.5 ? 0.5 : 0.22));
+/* stitched seams */
+const seamMat = new THREE.MeshStandardMaterial({ color: 0x0e0908, roughness: 0.75, metalness: 0.05 });
+for (const y of [0.62, 0.98, 1.34, 1.56]) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 0.995, 0.0045, 6, 64), seamMat);
   ring.rotation.x = Math.PI / 2; ring.position.y = bagY(y); bagPivot.add(ring);
 }
-/* vertical seam */
-const seam = new THREE.Mesh(new THREE.BoxGeometry(0.006, bodyH * 0.96, 0.006), glow(0x63d8ff, 0.28));
-seam.position.set(0, bagY(BAG.bottom + bodyH / 2), BAG.r * 0.99); bagPivot.add(seam);
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2;
+  const strap = new THREE.Mesh(new THREE.BoxGeometry(0.035, bodyH * 0.99, 0.012), strapMat);
+  strap.position.set(Math.cos(a) * BAG.r * 0.99, bagY(BAG.bottom + bodyH / 2), Math.sin(a) * BAG.r * 0.99);
+  strap.rotation.y = -a;
+  bagPivot.add(strap);
+}
 
-/* the collar / lid that receives uppercuts */
+/* steel collar / lid that slides down to receive uppercuts */
 const collar = new THREE.Group();
 bagPivot.add(collar);
-const collarTopY = BAG.top + 0.035;
-const collarRing = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 1.12, 0.028, 10, 72), new THREE.MeshStandardMaterial({ color: 0x222a34, roughness: 0.32, metalness: 0.9 }));
+const collarTopY = BAG.top + 0.004;
+const collarRing = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 1.06, 0.026, 10, 56), steelMat);
 collarRing.rotation.x = Math.PI / 2;
-const collarGlow = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 1.12, 0.008, 6, 72), glow(0x7ae2ff, 0.85));
-collarGlow.rotation.x = Math.PI / 2;
-const collarDisc = new THREE.Mesh(new THREE.CircleGeometry(BAG.r * 1.08, 48), glow(0x8fe8ff, 0.3));
-collarDisc.rotation.x = Math.PI / 2; collarDisc.position.y = -0.004;
-const collarDisc2 = new THREE.Mesh(new THREE.CircleGeometry(BAG.r * 1.08, 48), glow(0x8fe8ff, 0.14));
-collarDisc2.rotation.x = -Math.PI / 2; collarDisc2.position.y = 0.004;
-collar.add(collarRing, collarGlow, collarDisc, collarDisc2);
+const collarLip = new THREE.Mesh(new THREE.CylinderGeometry(BAG.r * 1.06, BAG.r * 1.06, 0.045, 48, 1, true), steelMat);
+collarLip.position.y = -0.022;
+const collarPlate = new THREE.Mesh(new THREE.CircleGeometry(BAG.r * 1.04, 48), leatherMat);
+collarPlate.rotation.x = -Math.PI / 2; collarPlate.position.y = -0.03;
+collar.add(collarRing, collarLip, collarPlate);
 collar.position.y = bagY(collarTopY);
-const studs = [];
-for (let i = 0; i < 4; i++) {
-  const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-  const s = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), glow(0xffffff, 0.75));
-  s.position.set(Math.cos(a) * BAG.r * 1.12, 0.012, Math.sin(a) * BAG.r * 1.12);
-  collar.add(s); studs.push(s);
+
+/* wet contact shadows */
+function blobTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+  grd.addColorStop(0, 'rgba(0,0,0,.85)');
+  grd.addColorStop(0.5, 'rgba(0,0,0,.45)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const blobTex = blobTexture();
+const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, opacity: 0.62, depthWrite: false });
+const fighterShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 2.4), blobMat);
+fighterShadow.rotation.x = -Math.PI / 2; fighterShadow.position.y = 0.005; scene.add(fighterShadow);
+const bagShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), blobMat.clone());
+bagShadow.material.opacity = 0.7;
+bagShadow.rotation.x = -Math.PI / 2; bagShadow.position.y = 0.006; scene.add(bagShadow);
+
+/* ------------------------------------------------------------------ splash fx */
+function softSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.4, 'rgba(226,242,255,.6)');
+  grd.addColorStop(1, 'rgba(200,228,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+const dropTex = softSprite();
+
+const SPRAY = 180;
+const sprayPos = new Float32Array(SPRAY * 3);
+const sprayVel = new Float32Array(SPRAY * 3);
+const sprayGeo = new THREE.BufferGeometry();
+sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+const sprayMat = new THREE.PointsMaterial({
+  map: dropTex, size: 0.055, color: 0xe8f4ff, transparent: true, opacity: 0,
+  depthWrite: false, sizeAttenuation: true
+});
+const spray = new THREE.Points(sprayGeo, sprayMat);
+spray.frustumCulled = false; spray.visible = false;
+scene.add(spray);
+let sprayLife = 0;
+
+/* spray sheets — cheap puffs of mist around the burst */
+const sheets = [];
+for (let i = 0; i < 5; i++) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: dropTex, color: 0xd8ecff, transparent: true, opacity: 0, depthWrite: false
+  }));
+  s.visible = false; scene.add(s);
+  sheets.push({ s, life: 0, vel: new THREE.Vector3() });
 }
 
-/* ruler marks down the side of the bag (measuring column) */
-const rulerMat = glow(0x7ae2ff, 0.4);
-for (let i = 0; i < 14; i++) {
-  const y = 0.44 + i * 0.08;
-  const long = i % 5 === 0;
-  const t = new THREE.Mesh(new THREE.BoxGeometry(long ? 0.055 : 0.03, 0.0035, 0.0035), rulerMat);
-  const a = -Math.PI * 0.32;
-  t.position.set(Math.cos(a) * BAG.r * 1.005, bagY(y), Math.sin(a) * BAG.r * 1.005);
-  t.rotation.y = -a;
-  bagPivot.add(t);
-}
+/* shockwave that spreads over the wet ground */
+const wave = new THREE.Mesh(
+  new THREE.RingGeometry(0.32, 0.37, 64),
+  new THREE.MeshBasicMaterial({ color: 0xbcd6ea, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+);
+wave.rotation.x = -Math.PI / 2; wave.position.y = 0.012; wave.visible = false; scene.add(wave);
+let waveLife = 0;
 
-/* impact ring pool — depthTest off: it reads as a holographic marker stamped
-   over everything, so the contact point stays visible even when the fighter's
-   own body crosses in front of the bag */
-const rings = [];
-for (let i = 0; i < 6; i++) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 64), glow(0xff6b6b, 0.9));
-  m.material.depthTest = false;
-  m.renderOrder = 90;
-  m.visible = false; scene.add(m);
-  rings.push({ m, life: 0 });
-}
-/* sparks */
-const SPARKS = 64;
-const sparkGeo = new THREE.BufferGeometry();
-const sparkPos = new Float32Array(SPARKS * 3);
-const sparkVel = new Float32Array(SPARKS * 3);
-sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
-const sparkMat = new THREE.PointsMaterial({ size: 0.028, color: 0xffb3a0, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
-const sparks = new THREE.Points(sparkGeo, sparkMat);
-sparks.visible = false;
-scene.add(sparks);
-let sparkLife = 0;
+/* a white ring at the contact point, on the bag surface */
+const contactRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.055, 0.075, 48),
+  new THREE.MeshBasicMaterial({ color: 0xf2fbff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+);
+contactRing.visible = false; contactRing.renderOrder = 60; scene.add(contactRing);
+let ringLife = 0;
 
 /* ------------------------------------------------------------------ fighter */
-let model, mixer, clips = {}, rig, handBones = {};
-const MEASURE = {};        // id -> { impact, contact:Vector3, dur, delta:Vector3, radial:Vector3, dist }
-const state = { id: null, action: null, impact: 0, hit: false, delta: new THREE.Vector3(), deltaCur: new THREE.Vector3() };
+let model, mixer, clips = {}, rig;
+const MEASURE = {};
+const state = {
+  id: null, action: null, impact: 0, hit: false,
+  move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3()
+};
 
 async function loadFighter() {
   const gltf = await new GLTFLoader().loadAsync('../media/glb/boxer-man.glb');
@@ -349,6 +569,11 @@ async function loadFighter() {
   const s = 1.78 / h;
   model.scale.setScalar(s);
   model.position.y = -box.min.y * s;
+  model.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) if (m.roughness !== undefined && m.roughness > 0.75) m.roughness = 0.68;
+  });
   rig = new THREE.Group();
   rig.add(model);
   scene.add(rig);
@@ -357,123 +582,173 @@ async function loadFighter() {
   for (const c of gltf.animations) clips[c.name] = c;
 
   const bone = (n) => model.getObjectByName('mixamorig:' + n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName(n);
-  handBones.LeftHand = bone('LeftHand'); handBones.RightHand = bone('RightHand');
-  handBones.LeftForeArm = bone('LeftForeArm'); handBones.RightForeArm = bone('RightForeArm');
-  handBones.Head = bone('Head');
+  const hands = { LeftHand: bone('LeftHand'), RightHand: bone('RightHand') };
+  const fores = { LeftHand: bone('LeftForeArm'), RightHand: bone('RightForeArm') };
 
   model.updateMatrixWorld(true);
-  measureAll();
+  measureAll(hands, fores);
+  placeStage();
   return s;
 }
 
-/** find the impact frame of each punch + where the fist actually is */
-function measureAll() {
+/** find the impact frame of each punch + where the knuckles actually are */
+function measureAll(hands, fores) {
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
   const origin = new THREE.Vector3(0, 0, 0);
   mixer.stopAllAction();
+
   for (const mv of MOVES) {
     const clip = clips[mv.clip];
     if (!clip) continue;
     const act = mixer.clipAction(clip);
     act.reset().play();
     mixer.timeScale = 1;
-    const hand = handBones[mv.hit];
-    const fore = handBones[mv.hit ? mv.hit.replace('Hand', 'ForeArm') : 'LeftForeArm'];
+
+    if (!mv.hit) {
+      MEASURE[mv.id] = { impact: 0, dur: clip.duration, reach: 0, contact: new THREE.Vector3() };
+      act.stop();
+      continue;
+    }
+    const hand = hands[mv.hit];
+    const fore = fores[mv.hit];
     if (!hand) { act.stop(); continue; }
+
     let best = { z: -9, t: 0 };
-    const N = 110;
+    const N = 120;
     for (let i = 0; i <= N; i++) {
       const t = (clip.duration * i) / N;
       act.time = t;
       mixer.update(0);
       model.updateMatrixWorld(true);
       hand.getWorldPosition(tmpA);
-      if (tmpA.z > best.z) best = { z: tmpA.z, t, p: tmpA.clone() };
+      if (tmpA.z > best.z) best = { z: tmpA.z, t };
     }
-    // contact point = wrist pushed forward along the forearm axis (knuckles)
+    // contact = wrist pushed along the forearm axis to the knuckle line
     act.time = best.t; mixer.update(0); model.updateMatrixWorld(true);
     hand.getWorldPosition(tmpA);
-    if (fore) { fore.getWorldPosition(tmpB); tmpC.copy(tmpA).sub(tmpB).normalize(); } else tmpC.set(0, 0, 1);
-    const contact = tmpA.clone().addScaledVector(tmpC, 0.155);
-    MEASURE[mv.id] = { impact: best.t, dur: clip.duration, contact, wrist: tmpA.clone(), reach: contact.distanceTo(origin) };
+    fore.getWorldPosition(tmpB);
+    tmpC.copy(tmpA).sub(tmpB).normalize();
+    const contact = tmpA.clone().addScaledVector(tmpC, 0.115);
+
+    MEASURE[mv.id] = { impact: best.t, dur: clip.duration, contact, reach: contact.distanceTo(origin) };
     act.stop();
   }
 
-  /* ---- bag placement: minimise the worst distance error over all punches ---- */
-  const hitIds = MOVES.filter((m) => m.hit && MEASURE[m.id]).map((m) => m.id);
-  const cx = hitIds.reduce((s, id) => s + MEASURE[id].contact.x, 0) / hitIds.length;
-  BAG.x = cx;
-  let bestZ = 1.1, bestErr = 99;
-  for (let z = 0.7; z <= 1.5; z += 0.005) {
-    let err = 0;
-    for (const id of hitIds) {
-      const c = MEASURE[id].contact;
-      const d = Math.hypot(c.x - BAG.x, c.z - z);
-      err = Math.max(err, Math.abs(d - BAG.r));
-    }
-    if (err < bestErr) { bestErr = err; bestZ = z; }
-  }
-  BAG.z = bestZ;
+  solveStaging();
+}
 
-  /* ---- per-punch correction: slide the fighter in/out so the fist touches ---- */
-  for (const id of hitIds) {
+/**
+ * Place the bag so that the median punch just reaches its near face, then give
+ * every punch its own footwork: the fighter shifts sideways / steps in until
+ * the knuckles sit exactly on the front surface — never inside it.
+ */
+function solveStaging() {
+  const ids = MOVES.filter((m) => m.hit && MEASURE[m.id] && MEASURE[m.id].contact).map((m) => m.id);
+  if (!ids.length) return;
+
+  const zs = ids.map((id) => MEASURE[id].contact.z).sort((a, b) => a - b);
+  const medZ = zs[Math.floor(zs.length / 2)];
+  BAG.x = 0;
+  BAG.z = medZ + BAG.r;
+
+  for (const id of ids) {
     const c = MEASURE[id].contact;
-    const dx = c.x - BAG.x, dz = c.z - BAG.z;
-    const d = Math.hypot(dx, dz) || 1;
-    const over = clamp(d - BAG.r, -0.22, 0.22);
-    MEASURE[id].delta = new THREE.Vector3((-dx / d) * over, 0, (-dz / d) * over);
-    MEASURE[id].radial = new THREE.Vector3(dx / d, 0, dz / d);
+    // keep a little of the natural lateral offset so punches land on different
+    // spots of the bag face instead of one single dot
+    const off = clamp(c.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
+    const inward = Math.sqrt(Math.max(0.0004, BAG.r * BAG.r - off * off));
+    const tx = BAG.x + off;
+    const tz = BAG.z - inward;
+    MEASURE[id].target = new THREE.Vector3(tx, c.y, tz);
+    MEASURE[id].normal = new THREE.Vector3(off / BAG.r, 0, -inward / BAG.r).normalize();
+    MEASURE[id].move = new THREE.Vector3(tx - c.x, 0, tz - c.z);
   }
+  placeStage();
+}
 
+function placeStage() {
   bagRoot.position.set(BAG.x, 0, BAG.z);
-  bagLight.position.set(BAG.x, 1.35, BAG.z + 0.35);
-  floorMat.uniforms.uBag.value.set(BAG.x, BAG.z);
-  bagPool.position.set(BAG.x, 0.004, BAG.z);
-  bagPool.scale.setScalar(1.35);
-  ringBag.forEach((r, i) => { r.m.position.set(BAG.x, 0.55 + i * 0.42, BAG.z); });
+  bagShadow.position.set(BAG.x, 0.006, BAG.z);
+  contactLight.position.set(BAG.x, 1.2, BAG.z - BAG.r - 0.15);
+  bagFill.position.set(BAG.x + 2.3, 1.55, BAG.z - 2.5);
+  practical.position.set(BAG.x + 4.6, 3.3, BAG.z + 2.6);
+  lampPost.position.set(BAG.x + 5.1, 0, BAG.z + 2.6);
+  frameStage();
 }
 
-/* rings that circle the bag */
-const ringBag = [];
-for (let i = 0; i < 3; i++) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(BAG.r * 1.55, 0.0035, 6, 96), RING_MAT());
-  m.material.opacity = 0.2 - i * 0.05;
-  m.rotation.x = Math.PI / 2 + (i - 1) * 0.18;
-  scene.add(m);
-  ringBag.push({ m, speed: 0.18 * (i % 2 ? -1 : 1), base: m.rotation.z });
+/* ------------------------------------------------------------------ impact */
+function fireImpact() {
+  const m = MEASURE[state.id];
+  if (!m || !m.target) return;
+  const isUpper = /uppercut/.test(state.id);
+  const p = m.target.clone();
+  if (isUpper) p.y = collar.position.y + BAG.bottom;
+  const n = m.normal.clone();
+  if (isUpper) n.set(n.x * 0.3, 10, n.z * 0.3).normalize();
+
+  splash(p, n, clamp(0.8 + (m.reach - 1.2) * 0.6, 0.7, 1.3));
+  lightning(0.85);
+  shake = 0.085 + Math.min(0.05, m.reach * 0.02);
+
+  const dir = isUpper ? new THREE.Vector3(0, 0, 0) : n.clone();
+  sway.vz += -dir.z * 3.6 + rand(-0.25, 0.25);
+  sway.vx += -dir.x * 3.6 + rand(-0.25, 0.25);
+
+  Sound.impact(clamp(0.75 + (m.reach - 1.2) * 0.5, 0.7, 1.2));
 }
 
-/* ------------------------------------------------------------------ impact fx */
-function impactFX(point, normal) {
-  // ring on the surface — billboarded and nudged toward the camera so a
-  // side-on view can never hide it behind the bag's own curve
-  const slot = rings.find((r) => r.life <= 0) || rings[0];
-  slot.life = 1;
-  slot.m.visible = true;
-  const toCam = new THREE.Vector3().subVectors(camera.position, point).normalize();
-  slot.m.position.copy(point).addScaledVector(toCam, 0.07);
-  slot.m.quaternion.copy(camera.quaternion);
-  slot.m.scale.setScalar(0.35);
-  slot.m.material.opacity = 1;
-  // sparks
-  for (let i = 0; i < SPARKS; i++) {
-    sparkPos[i * 3] = point.x; sparkPos[i * 3 + 1] = point.y; sparkPos[i * 3 + 2] = point.z;
-    const sp = rand(0.6, 2.4);
-    const dir = normal.clone().multiplyScalar(rand(0.4, 1)).add(new THREE.Vector3(rand(-0.7, 0.7), rand(-0.4, 0.9), rand(-0.7, 0.7))).normalize();
-    sparkVel[i * 3] = dir.x * sp; sparkVel[i * 3 + 1] = dir.y * sp + 0.7; sparkVel[i * 3 + 2] = dir.z * sp;
+function splash(p, n, power) {
+  // droplets
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < SPRAY; i++) {
+    sprayPos[i * 3] = p.x + rand(-0.02, 0.02);
+    sprayPos[i * 3 + 1] = p.y + rand(-0.02, 0.02);
+    sprayPos[i * 3 + 2] = p.z + rand(-0.02, 0.02);
+    const sp = rand(0.7, 3.2) * power;
+    const v = n.clone().multiplyScalar(rand(0.3, 1.0))
+      .addScaledVector(up, rand(0.15, 1.0))
+      .add(new THREE.Vector3(rand(-0.85, 0.85), rand(-0.3, 0.6), rand(-0.85, 0.85)))
+      .normalize()
+      .multiplyScalar(sp);
+    sprayVel[i * 3] = v.x; sprayVel[i * 3 + 1] = v.y; sprayVel[i * 3 + 2] = v.z;
   }
-  sparkGeo.attributes.position.needsUpdate = true;
-  sparkLife = 1; sparks.visible = true;
-  // screen flash + shake
-  const flash = document.getElementById('flash');
-  flash.classList.remove('hit'); void flash.offsetWidth; flash.classList.add('hit');
-  shake = 0.05;
+  sprayGeo.attributes.position.needsUpdate = true;
+  spray.visible = true; sprayMat.opacity = 1; sprayLife = 1;
+
+  // mist puffs
+  for (let i = 0; i < sheets.length; i++) {
+    const s = sheets[i];
+    s.life = 1;
+    s.s.visible = true;
+    s.s.position.copy(p).addScaledVector(n, 0.05).add(new THREE.Vector3(rand(-0.04, 0.04), rand(-0.02, 0.07), rand(-0.04, 0.04)));
+    s.vel.copy(n).multiplyScalar(rand(0.2, 0.7)).add(new THREE.Vector3(rand(-0.25, 0.25), rand(0.1, 0.45), rand(-0.25, 0.25)));
+    s.s.material.opacity = 0;
+    s.s.scale.setScalar(rand(0.08, 0.14));
+  }
+
+  // ring on the surface
+  contactRing.position.copy(p).addScaledVector(n, 0.03);
+  contactRing.quaternion.copy(camera.quaternion);
+  contactRing.visible = true;
+  contactRing.material.opacity = 0.75;
+  contactRing.scale.setScalar(1);
+  ringLife = 1;
+
+  // ground shock
+  wave.position.set(BAG.x, 0.014, BAG.z);
+  wave.visible = true; wave.material.opacity = 0.4; wave.scale.setScalar(0.5);
+  waveLife = 1;
+
+  contactLight.position.copy(p).addScaledVector(n, 0.25);
+  contactLight.intensity = 9;
+
+  const fl = document.getElementById('flash');
+  fl.classList.remove('hit'); void fl.offsetWidth; fl.classList.add('hit');
 }
 
 let shake = 0;
-let hitGlow = 0;
 
-/* ------------------------------------------------------------------ playing */
+/* ------------------------------------------------------------------ panel */
 const panel = document.getElementById('panel');
 const nodesEl = document.getElementById('nodes');
 const stNode = document.getElementById('stNode');
@@ -497,8 +772,8 @@ function typeSection(label, text, delayStart, out) {
   let i = 0;
   for (const w of words(text)) {
     const s = document.createElement('span');
-    s.className = 'w'; s.textContent = w + ' ';
-    s.style.animationDelay = delayStart + i * 16 + 'ms';
+    s.className = 'w'; s.textContent = w;
+    s.style.animationDelay = delayStart + i * 18 + 'ms';
     p.appendChild(s); i++;
   }
   sec.appendChild(p); out.appendChild(sec);
@@ -516,8 +791,8 @@ function typeList(label, arr, delayStart, out) {
     let i = 0;
     for (const w of words(item)) {
       const s = document.createElement('span');
-      s.className = 'w'; s.textContent = w + ' ';
-      s.style.animationDelay = delayStart + (n + i) * 16 + 'ms';
+      s.className = 'w'; s.textContent = w;
+      s.style.animationDelay = delayStart + (n + i) * 18 + 'ms';
       li.appendChild(s); i++;
     }
     n += i; ul.appendChild(li);
@@ -537,8 +812,8 @@ function showPanel(mv, measured) {
   const body = document.getElementById('pBody');
   let n = 0;
   n += typeSection('what it is', mv.what, 0, body);
-  n += typeList('key points', mv.points, 260 + n * 16, body);
-  n += typeSection('when to use it', mv.use, 520 + n * 16, body);
+  n += typeList('key points', mv.points, 240 + n * 18, body);
+  n += typeSection('when to use it', mv.use, 500 + n * 18, body);
 
   stNode.textContent = mv.code;
   if (measured) {
@@ -549,23 +824,21 @@ function showPanel(mv, measured) {
     stImpact.textContent = '—';
   }
   document.getElementById('pFoot').textContent = measured
-    ? `clip ${measured.dur.toFixed(2)}s · impact @ ${measured.impact.toFixed(2)}s`
+    ? `clip ${measured.dur.toFixed(2)}s · lands at ${measured.impact.toFixed(2)}s`
     : 'loop · hold the line';
 
   panel.classList.add('on');
   panel.scrollTop = 0;
   body.scrollTop = 0;
 
-  // sound design for the reveal
-  Sound.sweep();
-  const total = n;
-  const step = Math.max(4, Math.round(total / 14));
-  for (let i = 0; i < total; i += step) {
-    setTimeout(() => Sound.chirp(rand(2100, 3600), 0.035), 120 + i * 16);
-  }
+  Sound.swell();
+  setTimeout(() => Sound.drop(), 220);
+  setTimeout(() => Sound.drop(), 520);
+
   for (const el of document.querySelectorAll('.node')) el.classList.toggle('on', el.dataset.id === mv.id);
 }
 
+/* ------------------------------------------------------------------ playing */
 function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   const mv = MOVE_BY_ID[id];
   if (!mv || !mixer) return;
@@ -587,35 +860,13 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   state.action = act;
   state.hit = false;
   state.impact = mv.hit ? MEASURE[id].impact : 0;
-  state.delta.copy(mv.hit ? MEASURE[id].delta : new THREE.Vector3());
-  mixer.timeScale = 1;
+  state.from.copy(state.cur);
+  state.move.copy(mv.hit ? MEASURE[id].move : new THREE.Vector3());
 
-  if (!silent) Sound.click();
+  if (!silent) Sound.tap();
+  // a scuff of boots when the fighter has to travel for this punch
+  if (mv.hit && state.from.distanceTo(state.move) > 0.07) setTimeout(() => Sound.step(), 60);
   if (showPanelToo) showPanel(mv, mv.hit ? MEASURE[id] : null);
-}
-
-function fireImpact() {
-  const m = MEASURE[state.id];
-  if (!m) return;
-  model.updateMatrixWorld(true);
-
-  // contact + normal
-  const contact = m.contact.clone().add(state.deltaCur);
-  const n = m.radial ? m.radial.clone() : new THREE.Vector3(0, 0, 1);
-  const isUpper = /uppercut/.test(state.id);
-  const point = isUpper
-    ? new THREE.Vector3(contact.x, collar.position.y + BAG.bottom - 0.02, contact.z)
-    : new THREE.Vector3(BAG.x + n.x * BAG.r, contact.y, BAG.z + n.z * BAG.r);
-  // uppercut rings face up-and-out so they stay visible from the camera
-  impactFX(point, isUpper ? n.clone().multiplyScalar(0.85).add(new THREE.Vector3(0, 0.55, 0)) : n);
-
-  // bag sway
-  const dir = isUpper ? new THREE.Vector3(0, 0, 0) : n.clone();
-  sway.vz += -dir.z * 2.6 + rand(-0.2, 0.2);
-  sway.vx += -dir.x * 2.6 + rand(-0.2, 0.2);
-
-  hitGlow = 2.1;
-  Sound.thud(clamp(0.75 + (m.reach - 1.2) * 0.5, 0.7, 1.25));
 }
 
 /* ------------------------------------------------------------------ nodes */
@@ -625,9 +876,9 @@ function buildNodes() {
     b.type = 'button';
     b.className = 'node' + (mv.id === 'guard' ? ' guard' : '');
     b.dataset.id = mv.id;
-    b.innerHTML = `<span class="tick"></span><span class="code">${mv.code}</span><span class="nm">${mv.name === mv.em ? mv.em : `${mv.name} ${mv.em}`}<small>${mv.tag}</small></span>`;
-    b.addEventListener('click', () => { Sound.resume(); play(mv.id); });
-    b.addEventListener('pointerenter', () => Sound.blip(1350, 0.02));
+    b.innerHTML = `<span class="code">${mv.code}</span><span class="nm">${mv.name === mv.em ? mv.em : `${mv.name} ${mv.em}`}<small>${mv.tag}</small></span>`;
+    b.addEventListener('click', () => { Sound.init(); Sound.resume(); play(mv.id); });
+    b.addEventListener('pointerenter', () => Sound.tap());
     nodesEl.appendChild(b);
   }
   placeNodes();
@@ -644,26 +895,21 @@ function placeNodes() {
   }
 }
 
-/* ------------------------------------------------------------ fixed camera */
-/* The face that gets punched always looks back at the fighter, so the lens has
-   to sit on the fighter's side of the bag — put it anywhere past the bag and
-   the bag body swallows every contact. One fixed diagonal shot does the job:
-   the bag sits upper-left, the fighter lower-right, and the lens stands ~55°
-   off the fighter→bag axis so the striking face is turned toward it. */
+/* ------------------------------------------------------------------ camera */
 const camTarget = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
 const lookCur = new THREE.Vector3();
 const camPos = new THREE.Vector3();
 
 function frameStage(o = {}) {
   const m = mobile();
-  const theta = (o.theta ?? 55) * Math.PI / 180;
-  const D = o.D ?? (m ? 4.6 : 3.6);           // lens → bag
-  const H = o.H ?? 1.8;                       // lens height
-  const aimY = o.aimY ?? 1.0;
-  const pan = o.pan ?? (m ? -0.12 : -0.1);    // slide the pair away from the panel
+  const theta = (o.theta ?? 52) * Math.PI / 180;
+  const D = o.D ?? (m ? 4.35 : 3.75);
+  const H = o.H ?? (m ? 1.72 : 1.82);
+  const aimY = o.aimY ?? (m ? 1.02 : 1.04);
+  const pan = o.pan ?? (m ? -0.16 : -0.16);
 
   const pos = new THREE.Vector3(BAG.x + Math.sin(theta) * D, H, BAG.z - Math.cos(theta) * D);
-  const aim = new THREE.Vector3(BAG.x * 0.55, aimY, BAG.z * 0.55);
+  const aim = new THREE.Vector3(BAG.x * 0.4, aimY, BAG.z * 0.52);
   const fwd = aim.clone().sub(pos).normalize();
   const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
   const look = aim.clone().addScaledVector(right, pan);
@@ -685,19 +931,21 @@ function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   t0 += dt;
 
-  // collar eases to its target height (down for uppercuts, top otherwise)
   const mv = state.id ? MOVE_BY_ID[state.id] : null;
   const upper = !!mv && /uppercut/.test(mv.id) && !!MEASURE[mv.id];
-  const targetCollarY = upper ? MEASURE[mv.id].contact.y + 0.03 : collarTopY;
-  // snaps down fast to meet the fist, drifts back up once the strike is over
-  collar.position.y = damp(collar.position.y, bagY(targetCollarY), upper ? 20 : 8, dt);
+  const targetCollarY = upper ? MEASURE[mv.id].contact.y + 0.02 : collarTopY;
+  collar.position.y = damp(collar.position.y, bagY(targetCollarY), upper ? 18 : 7, dt);
 
-  // fighter slides in/out for the strike
-  state.deltaCur.x = damp(state.deltaCur.x, state.delta.x, 9, dt);
-  state.deltaCur.z = damp(state.deltaCur.z, state.delta.z, 9, dt);
-  if (rig) { rig.position.x = state.deltaCur.x; rig.position.z = state.deltaCur.z; }
+  // ---- footwork: ease into the punch's own stance, ease back out afterwards
+  if (mv) {
+    const ramp = state.impact > 0 ? Math.max(0.22, state.impact * 0.72) : 0.5;
+    const t = state.action ? state.action.time : 0;
+    const k = smooth(t / ramp);
+    state.cur.lerpVectors(state.from, state.move, k);
+    if (rig) { rig.position.x = state.cur.x; rig.position.z = state.cur.z; }
+    if (fighterShadow) fighterShadow.position.set(state.cur.x + 0.05, 0.005, state.cur.z + 0.28);
+  }
 
-  // impact: fire once, but never interrupt the clip — it plays through
   if (state.action && state.impact > 0 && !state.hit && state.action.time >= state.impact) {
     state.hit = true;
     fireImpact();
@@ -705,68 +953,85 @@ function tick() {
 
   if (mixer) mixer.update(dt);
 
-  // finished punch → back to guard (keep the technique panel on screen)
   if (state.action && !mv?.loop && state.action.time >= state.action.getClip().duration - 0.02) {
     if (!state.returning) { state.returning = true; play('guard', { silent: true, panel: false }); state.returning = false; }
   }
 
-  // bag sway spring
-  const K = 42, C = 5.2;
-  const ax = -K * sway.x - C * sway.vx;
-  const az = -K * sway.z - C * sway.vz;
-  sway.vx += ax * dt; sway.vz += az * dt;
-  sway.x += sway.vx * dt; sway.z += sway.vz * dt;
-  bagPivot.rotation.z = sway.x * 0.16;
-  bagPivot.rotation.x = sway.z * 0.16;
+  // bag spring
+  const K = 40, C = 5.0;
+  sway.vx += (-K * sway.x - C * sway.vx) * dt;
+  sway.vz += (-K * sway.z - C * sway.vz) * dt;
+  sway.x += sway.vx * dt;
+  sway.z += sway.vz * dt;
+  bagPivot.rotation.z = sway.x * 0.2;
+  bagPivot.rotation.x = sway.z * 0.2;
 
-  // rings + dust + floor
-  for (const o of orbiters) o.m.rotation.z = o.base + t0 * o.speed;
-  for (const r of ringBag) {
-    r.m.rotation.z = r.base + t0 * r.speed;
-    r.m.position.y = 0.55 + ((Math.sin(t0 * 0.6 + r.base * 4) + 1) / 2) * 0.95;
-  }
-  floorMat.uniforms.uTime.value = t0;
-  dust.rotation.y = t0 * 0.012;
-  dust.material.opacity = 0.38 + Math.sin(t0 * 0.8) * 0.08;
-  bagLight.intensity = 2.0 + Math.sin(t0 * 2.2) * 0.25 + hitGlow;
-  hitGlow = Math.max(0, hitGlow - dt * 2.4);
+  // ---- storm
+  flash = Math.max(0, flash - dt * (2.6 + flash * 3.6));
+  boltGlow = Math.max(0, boltGlow - dt * 3.6);
+  const flicker = flash * (0.55 + 0.45 * Math.sin(t0 * 90));
+  skyUniforms.uTime.value = t0;
+  skyUniforms.uFlash.value = flicker;
+  groundUniforms.uTime.value = t0;
+  groundUniforms.uFlash.value = flicker;
+  groundUniforms.uCam.value.copy(camera.position);
+  flashLight.intensity = flicker * 30;
+  hemi.intensity = 0.42 + flicker * 0.9;
+  boltMat.opacity = Math.min(1, boltGlow * (0.6 + 0.4 * Math.sin(t0 * 70)) * 1.4);
+  contactLight.intensity = Math.max(0, contactLight.intensity - dt * 42);
+  practical.intensity = 8 + Math.sin(t0 * 7.3) * 0.25;
 
-  // impact rings
-  for (const r of rings) {
-    if (r.life > 0) {
-      r.life -= dt * 1.7;
-      const k = 1 - r.life;
-      r.m.scale.setScalar(0.35 + k * 3.4);
-      r.m.material.opacity = Math.max(0, r.life) * 0.95;
-      if (r.life <= 0) r.m.visible = false;
+  updateRain(dt);
+  rain.material.opacity = 0.30 + flicker * 0.5;
+
+  // ---- fx
+  if (sprayLife > 0) {
+    sprayLife -= dt * 1.25;
+    for (let i = 0; i < SPRAY; i++) {
+      sprayVel[i * 3 + 1] -= 9.2 * dt;
+      sprayPos[i * 3] += sprayVel[i * 3] * dt;
+      sprayPos[i * 3 + 1] += sprayVel[i * 3 + 1] * dt;
+      sprayPos[i * 3 + 2] += sprayVel[i * 3 + 2] * dt;
     }
+    sprayGeo.attributes.position.needsUpdate = true;
+    sprayMat.opacity = clamp(sprayLife, 0, 1);
+    if (sprayLife <= 0) spray.visible = false;
   }
-  // sparks
-  if (sparkLife > 0) {
-    sparkLife -= dt * 1.35;
-    for (let i = 0; i < SPARKS; i++) {
-      sparkVel[i * 3 + 1] -= 3.6 * dt;
-      sparkPos[i * 3] += sparkVel[i * 3] * dt;
-      sparkPos[i * 3 + 1] += sparkVel[i * 3 + 1] * dt;
-      sparkPos[i * 3 + 2] += sparkVel[i * 3 + 2] * dt;
-    }
-    sparkGeo.attributes.position.needsUpdate = true;
-    sparkMat.opacity = Math.max(0, sparkLife);
-    if (sparkLife <= 0) sparks.visible = false;
+  for (const s of sheets) {
+    if (s.life <= 0) continue;
+    s.life -= dt * 2.6;
+    s.s.position.addScaledVector(s.vel, dt);
+    s.s.scale.setScalar(s.s.scale.x + dt * 0.85);
+    s.s.material.opacity = Math.max(0, s.life) * 0.2;
+    if (s.life <= 0) s.s.visible = false;
+  }
+  if (ringLife > 0) {
+    ringLife -= dt * 3.4;
+    contactRing.scale.setScalar(1 + (1 - ringLife) * 3.6);
+    contactRing.material.opacity = Math.max(0, ringLife) * 0.7;
+    if (ringLife <= 0) contactRing.visible = false;
+  }
+  if (waveLife > 0) {
+    waveLife -= dt * 1.5;
+    const k = 1 - waveLife;
+    wave.scale.setScalar(0.5 + k * 5.2);
+    wave.material.opacity = Math.max(0, waveLife) * 0.38;
+    if (waveLife <= 0) wave.visible = false;
   }
 
-  // camera: fixed diagonal, only a slow breath of drift + hit shake
-  const drift = mobile() ? 0.05 : 0.1;
+  // ---- camera: locked, only breathing + impact shake
+  const drift = mobile() ? 0.035 : 0.06;
   const k = 1 - Math.exp(-6.5 * dt);
   camPos.lerp(camTarget.pos, k);
   lookCur.lerp(camTarget.look, k);
   camera.position.copy(camPos);
-  camera.position.x += Math.sin(t0 * 0.22) * drift;
-  camera.position.y += Math.sin(t0 * 0.31) * drift * 0.5;
+  camera.position.y += Math.sin(t0 * 0.7) * drift;
+  camera.position.x += Math.sin(t0 * 0.23) * drift * 0.4;
   if (shake > 0.0005) {
     camera.position.x += rand(-shake, shake);
     camera.position.y += rand(-shake, shake);
-    shake *= 0.86;
+    camera.position.z += rand(-shake, shake) * 0.6;
+    shake *= 0.85;
   }
   camera.lookAt(lookCur);
 
@@ -779,7 +1044,7 @@ function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  camera.fov = mobile() ? 48 : 38;
+  camera.fov = mobile() ? 52 : 40;
   camera.updateProjectionMatrix();
   frameStage();
   placeNodes();
@@ -791,12 +1056,8 @@ buildNodes();
 tick();
 
 loadFighter().then(() => {
-  bagRoot.position.set(BAG.x, 0, BAG.z);
-  frameStage();
-  // land straight in the guard loop with the stance notes already on screen —
-  // no gate, no start button
   play('guard', { silent: true });
-  setTimeout(() => Sound.sweep(), 700);
+  setTimeout(() => Sound.swell(), 900);
 }).catch((e) => {
   console.error(e);
   const body = document.getElementById('pBody');
@@ -811,7 +1072,7 @@ for (const evName of ['pointerdown', 'keydown', 'touchstart']) {
 
 document.getElementById('sound').addEventListener('click', (e) => {
   Sound.on = !Sound.on;
-  if (Sound.on) { Sound.init(); Sound.resume(); Sound.blip(1200, 0.04); }
+  if (Sound.on) { Sound.init(); Sound.resume(); Sound.tap(); }
   e.currentTarget.textContent = 'SOUND · ' + (Sound.on ? 'ON' : 'OFF');
 });
 
@@ -823,7 +1084,6 @@ window.addEventListener('keydown', (e) => {
 /* debug hook for QA */
 window.__sim = {
   play, state, MEASURE, BAG, camera, scene, camTarget, frameStage,
-  /** screen-space position (0..1, origin top-left) of world points */
   proj: (pts) => {
     const out = {};
     for (const [k, p] of Object.entries(pts)) {
@@ -832,24 +1092,17 @@ window.__sim = {
     }
     return out;
   },
-  /** re-frame the fixed camera (QA tuning) */
   frame: (o) => frameStage(o || {}),
-  /** re-stage the fighter at a given yaw (deg) and re-solve the bag placement */
-  setYaw: (deg) => {
-    if (!rig) return;
-    rig.rotation.y = THREE.MathUtils.degToRad(deg);
-    rig.updateMatrixWorld(true);
-    measureAll();
-    play('guard', { silent: true, panel: false });
-  },
+  flash: () => lightning(1),
   /** freeze exactly on a punch's impact frame (QA screenshots only) */
   holdAt: (id) => {
     const mv = MOVE_BY_ID[id], m = MEASURE[id];
     if (!mv || !m) return;
     state.id = id;
-    state.delta.copy(m.delta); state.deltaCur.copy(m.delta);
-    if (rig) { rig.position.x = m.delta.x; rig.position.z = m.delta.z; }
-    collar.position.y = bagY((/uppercut/.test(id) ? m.contact.y + 0.03 : collarTopY));
+    state.cur.copy(m.move || new THREE.Vector3());
+    state.from.copy(state.cur);
+    if (rig) { rig.position.x = state.cur.x; rig.position.z = state.cur.z; }
+    collar.position.y = bagY((/uppercut/.test(id) ? m.contact.y + 0.02 : collarTopY));
     mixer.stopAllAction();
     const act = mixer.clipAction(clips[mv.clip]);
     act.reset(); act.enabled = true;
@@ -870,9 +1123,10 @@ window.__sim = {
   dump: () => JSON.stringify({
     bag: BAG,
     moves: Object.fromEntries(Object.entries(MEASURE).map(([k, v]) => [k, {
-      impact: +v.impact.toFixed(3), dur: +v.dur.toFixed(3), reach: +v.reach.toFixed(3),
-      contact: [+v.contact.x.toFixed(3), +v.contact.y.toFixed(3), +v.contact.z.toFixed(3)],
-      delta: [+v.delta.x.toFixed(3), +v.delta.z.toFixed(3)]
+      impact: +v.impact.toFixed(3), dur: +v.dur.toFixed(3), reach: +(v.reach || 0).toFixed(3),
+      contact: v.contact ? [+v.contact.x.toFixed(3), +v.contact.y.toFixed(3), +v.contact.z.toFixed(3)] : null,
+      target: v.target ? [+v.target.x.toFixed(3), +v.target.y.toFixed(3), +v.target.z.toFixed(3)] : null,
+      move: v.move ? [+v.move.x.toFixed(3), +v.move.z.toFixed(3)] : null
     }]))
   })
 };
