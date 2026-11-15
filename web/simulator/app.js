@@ -5,8 +5,9 @@
  * - every punch clip is measured at load time: the frame where the fist is
  *   furthest forward becomes the impact frame, and the bag is positioned so
  *   that the fist lands exactly on its surface
- * - on impact the mixer freezes, a light ring blooms on the bag, the bag takes
- *   a small spring-loaded sway, and the technique text types itself in
+ * - on impact a light ring blooms on the bag, the bag takes a small
+ *   spring-loaded sway, and the technique text types itself in — the clip keeps
+ *   playing to the end, then falls back to the guard loop
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -336,7 +337,7 @@ let sparkLife = 0;
 /* ------------------------------------------------------------------ fighter */
 let model, mixer, clips = {}, rig, handBones = {};
 const MEASURE = {};        // id -> { impact, contact:Vector3, dur, delta:Vector3, radial:Vector3, dist }
-const state = { id: null, action: null, frozen: false, impact: 0, resumeAt: 0, delta: new THREE.Vector3(), deltaCur: new THREE.Vector3() };
+const state = { id: null, action: null, impact: 0, hit: false, delta: new THREE.Vector3(), deltaCur: new THREE.Vector3() };
 
 async function loadFighter() {
   const gltf = await new GLTFLoader().loadAsync('../media/glb/boxer-man.glb');
@@ -465,6 +466,7 @@ function impactFX(point, normal) {
 }
 
 let shake = 0;
+let hitGlow = 0;
 
 /* ------------------------------------------------------------------ playing */
 const panel = document.getElementById('panel');
@@ -542,7 +544,7 @@ function showPanel(mv, measured) {
     stImpact.textContent = '—';
   }
   document.getElementById('pFoot').textContent = measured
-    ? `clip ${measured.dur.toFixed(2)}s · freeze @ ${measured.impact.toFixed(2)}s`
+    ? `clip ${measured.dur.toFixed(2)}s · impact @ ${measured.impact.toFixed(2)}s`
     : 'loop · hold the line';
 
   panel.classList.add('on');
@@ -565,7 +567,6 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   const clip = clips[mv.clip];
   if (!clip) return;
 
-  if (state.frozen) resumeNow();
   const prev = state.action;
   const act = mixer.clipAction(clip);
   act.reset();
@@ -579,7 +580,7 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
 
   state.id = id;
   state.action = act;
-  state.frozen = false;
+  state.hit = false;
   state.impact = mv.hit ? MEASURE[id].impact : 0;
   state.delta.copy(mv.hit ? MEASURE[id].delta : new THREE.Vector3());
   mixer.timeScale = 1;
@@ -588,13 +589,9 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   if (showPanelToo) showPanel(mv, mv.hit ? MEASURE[id] : null);
 }
 
-function freezeAtImpact() {
-  const mv = MOVE_BY_ID[state.id];
+function fireImpact() {
   const m = MEASURE[state.id];
-  state.frozen = true;
-  state.action.time = m.impact;
-  mixer.timeScale = 0;
-  mixer.update(0);
+  if (!m) return;
   model.updateMatrixWorld(true);
 
   // contact + normal
@@ -612,16 +609,8 @@ function freezeAtImpact() {
   sway.vz += -dir.z * 2.6 + rand(-0.2, 0.2);
   sway.vx += -dir.x * 2.6 + rand(-0.2, 0.2);
 
+  hitGlow = 2.1;
   Sound.thud(clamp(0.75 + (m.reach - 1.2) * 0.5, 0.7, 1.25));
-  state.resumeAt = performance.now() + 3200;
-}
-
-function resumeNow() {
-  if (!state.frozen) return;
-  state.frozen = false;
-  mixer.timeScale = 1;
-  const mv = MOVE_BY_ID[state.id];
-  if (mv && !mv.loop) state.resumeAt = 0;
 }
 
 /* ------------------------------------------------------------------ nodes */
@@ -657,32 +646,31 @@ let t0 = 0;
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
-  const now = performance.now();
   t0 += dt;
 
   // collar eases to its target height (down for uppercuts, top otherwise)
   const mv = state.id ? MOVE_BY_ID[state.id] : null;
-  let targetCollarY = collarTopY;
-  if (mv && /uppercut/.test(mv.id) && MEASURE[mv.id]) {
-    targetCollarY = MEASURE[mv.id].contact.y + 0.03;
-  }
-  collar.position.y = damp(collar.position.y, bagY(targetCollarY), state.frozen ? 16 : 9, dt);
+  const upper = !!mv && /uppercut/.test(mv.id) && !!MEASURE[mv.id];
+  const targetCollarY = upper ? MEASURE[mv.id].contact.y + 0.03 : collarTopY;
+  // snaps down fast to meet the fist, drifts back up once the strike is over
+  collar.position.y = damp(collar.position.y, bagY(targetCollarY), upper ? 20 : 8, dt);
 
   // fighter slides in/out for the strike
   state.deltaCur.x = damp(state.deltaCur.x, state.delta.x, 9, dt);
   state.deltaCur.z = damp(state.deltaCur.z, state.delta.z, 9, dt);
   if (rig) { rig.position.x = state.deltaCur.x; rig.position.z = state.deltaCur.z; }
 
-  // freeze / resume
-  if (state.action && !state.frozen && state.impact > 0 && state.action.time >= state.impact) freezeAtImpact();
-  if (state.frozen && state.resumeAt && now >= state.resumeAt) resumeNow();
-  if (state.frozen) state.resumeAt = state.resumeAt || now + 3200;
+  // impact: fire once, but never interrupt the clip — it plays through
+  if (state.action && state.impact > 0 && !state.hit && state.action.time >= state.impact) {
+    state.hit = true;
+    fireImpact();
+  }
 
-  if (mixer) mixer.update(state.frozen ? 0 : dt);
+  if (mixer) mixer.update(dt);
 
-  // finished punch → back to guard
-  if (state.action && !state.frozen && !mv?.loop && state.action.time >= state.action.getClip().duration - 0.02) {
-    if (!state.returning) { state.returning = true; play('guard', { silent: true }); state.returning = false; }
+  // finished punch → back to guard (keep the technique panel on screen)
+  if (state.action && !mv?.loop && state.action.time >= state.action.getClip().duration - 0.02) {
+    if (!state.returning) { state.returning = true; play('guard', { silent: true, panel: false }); state.returning = false; }
   }
 
   // bag sway spring
@@ -703,7 +691,8 @@ function tick() {
   floorMat.uniforms.uTime.value = t0;
   dust.rotation.y = t0 * 0.012;
   dust.material.opacity = 0.38 + Math.sin(t0 * 0.8) * 0.08;
-  bagLight.intensity = 2.0 + Math.sin(t0 * 2.2) * 0.25 + (state.frozen ? 1.6 : 0);
+  bagLight.intensity = 2.0 + Math.sin(t0 * 2.2) * 0.25 + hitGlow;
+  hitGlow = Math.max(0, hitGlow - dt * 2.4);
 
   // impact rings
   for (const r of rings) {
@@ -801,12 +790,11 @@ document.getElementById('sound').addEventListener('click', (e) => {
 window.addEventListener('keydown', (e) => {
   const i = parseInt(e.key, 10);
   if (i >= 0 && i <= 6) play(MOVES[i].id);
-  if (e.code === 'Space') { e.preventDefault(); resumeNow(); }
 });
 
 /* debug hook for QA */
 window.__sim = {
-  play, resumeNow, state, MEASURE, BAG, camera, scene,
+  play, state, MEASURE, BAG, camera, scene,
   dump: () => JSON.stringify({
     bag: BAG,
     moves: Object.fromEntries(Object.entries(MEASURE).map(([k, v]) => [k, {
