@@ -22,7 +22,7 @@ ws.onopen = async () => {
   await send('Page.enable', {}, sid);
   await send('Runtime.enable', {}, sid);
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false }, sid);
-  await send('Page.navigate', { url: `${BASE}/fight/game.html?demo=woman&level=${LEVEL}` }, sid);
+  await send('Page.navigate', { url: `${BASE}/fight/game/?demo=woman&level=${LEVEL}` }, sid);
   await sleep(3500);
 
   // ---- phase 1: before any hit — remember the passive behaviour

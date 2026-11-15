@@ -29,7 +29,7 @@ ws.onopen = async () => {
   await send('Page.enable', {}, sid);
   await send('Runtime.enable', {}, sid);
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false }, sid);
-  await send('Page.navigate', { url: `${BASE}/fight/game.html?demo=${SEX}&level=1` }, sid);
+  await send('Page.navigate', { url: `${BASE}/fight/game/?demo=${SEX}&level=1` }, sid);
   await sleep(3500);
 
   // freeze the AI so it never walks in/out of the tested distance

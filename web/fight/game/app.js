@@ -1,6 +1,6 @@
-/* Boxing Training Game — /fight/game.html
+/* Boxing Training Game — /fight/game/ (index.html)
  *
- * Assets: ../media/glb/boxer-man.glb + boxer-woman.glb
+ * Assets: ../../media/glb/boxer-man.glb + boxer-woman.glb
  *   each = 1 skinned boxer + 25 clips, exported from Blender at 30fps.
  *   clip: idle guard block hit-head hit-body defeat win taunt
  *         jab cross jab-cross combo1 lead-hook rear-hook
@@ -737,8 +737,8 @@ async function boot() {
   document.getElementById('startBtn').disabled = true;
   try {
     const [man, woman] = await Promise.all([
-      loadGLB('../media/glb/boxer-man.glb', prog),
-      loadGLB('../media/glb/boxer-woman.glb', prog),
+      loadGLB('../../media/glb/boxer-man.glb', prog),
+      loadGLB('../../media/glb/boxer-woman.glb', prog),
     ]);
     game.manGltf = man; game.womanGltf = woman;
     st.textContent = 'ready — pick a difficulty';

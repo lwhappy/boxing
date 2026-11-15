@@ -18,7 +18,7 @@ ws.onopen = async () => {
   await send('Page.enable', {}, sid);
   await send('Runtime.enable', {}, sid);
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 820, deviceScaleFactor: 1, mobile: false }, sid);
-  await send('Page.navigate', { url: `${BASE}/fight/game.html` }, sid);
+  await send('Page.navigate', { url: `${BASE}/fight/game/` }, sid);
   await sleep(2500);
   const r1 = await send('Runtime.evaluate', { expression: `document.getElementById('startBtn').click(); 'ok'`, returnByValue: true }, sid);
   await sleep(500);

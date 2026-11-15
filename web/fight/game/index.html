@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Boxing Training Game — 3D Sparring | Boxing Training Online</title>
 <meta name="description" content="A 3D boxing training game: pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and headbutts — every punch tracked, every hit landed." />
-<link rel="canonical" href="https://silentjab.com/fight/game" />
+<link rel="canonical" href="https://silentjab.com/fight/game/" />
 <meta name="theme-color" content="#0b0d10" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Boxing Training Game — 3D Sparring" />
@@ -209,8 +209,8 @@
     <h1>Who steps in the ring?</h1>
     <p class="sub">Your opponent takes the other corner.</p>
     <div class="picks" id="picks">
-      <button class="pick on" data-sex="woman"><img class="ico" src="./game/icon-woman.png" alt="" /><div class="t">Nadia</div><div class="d">female · orthodox</div></button>
-      <button class="pick" data-sex="man"><img class="ico" src="./game/icon-man.png" alt="" /><div class="t">Marcus</div><div class="d">male · orthodox</div></button>
+      <button class="pick on" data-sex="woman"><img class="ico" src="./icon-woman.png" alt="" /><div class="t">Nadia</div><div class="d">female · orthodox</div></button>
+      <button class="pick" data-sex="man"><img class="ico" src="./icon-man.png" alt="" /><div class="t">Marcus</div><div class="d">male · orthodox</div></button>
     </div>
     <button class="cta" id="goBtn" disabled>Enter the ring</button>
     <div class="foot"><span id="pickState">pick one to continue</span><a href="#" id="backIntro">← back</a></div>
@@ -231,11 +231,11 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "../vendor/three/three.module.min.js",
-    "three/addons/": "../vendor/three/addons/"
+    "three": "../../vendor/three/three.module.min.js",
+    "three/addons/": "../../vendor/three/addons/"
   }
 }
 </script>
-<script type="module" src="./game/app.js"></script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>

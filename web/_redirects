@@ -65,3 +65,6 @@
 /combos/combo_jab_cross_leaduppercut.html    /combos/combo_jab_cross_leaduppercut    301
 /combos/combo_jab_jab_cross.html    /combos/combo_jab_jab_cross    301
 /combos/combo_jab_rearuppercut_leadhook.html    /combos/combo_jab_rearuppercut_leadhook    301
+# --- the game now lives at /fight/game/ (directory-style, like /fight/fight1/) ---
+/fight/game.html    /fight/game/    301
+/fight/game    /fight/game/    301
