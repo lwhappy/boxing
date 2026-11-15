@@ -368,6 +368,7 @@ async function loadFighter() {
 function measureAll() {
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
   const origin = new THREE.Vector3(0, 0, 0);
+  mixer.stopAllAction();
   for (const mv of MOVES) {
     const clip = clips[mv.clip];
     if (!clip) continue;
@@ -442,12 +443,14 @@ for (let i = 0; i < 3; i++) {
 
 /* ------------------------------------------------------------------ impact fx */
 function impactFX(point, normal) {
-  // ring on the surface
+  // ring on the surface — billboarded and nudged toward the camera so a
+  // side-on view can never hide it behind the bag's own curve
   const slot = rings.find((r) => r.life <= 0) || rings[0];
   slot.life = 1;
   slot.m.visible = true;
-  slot.m.position.copy(point).addScaledVector(normal, 0.012);
-  slot.m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize());
+  const toCam = new THREE.Vector3().subVectors(camera.position, point).normalize();
+  slot.m.position.copy(point).addScaledVector(toCam, 0.07);
+  slot.m.quaternion.copy(camera.quaternion);
   slot.m.scale.setScalar(0.35);
   slot.m.material.opacity = 1;
   // sparks
@@ -567,6 +570,7 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   const clip = clips[mv.clip];
   if (!clip) return;
 
+  moveCamera(id);
   const prev = state.action;
   const act = mixer.clipAction(clip);
   act.reset();
@@ -637,6 +641,36 @@ function placeNodes() {
     const p = m ? mv.posM : mv.pos;
     for (const k in p) b.style[k] = p[k];
   }
+}
+
+/* ------------------------------------------------------- director camera */
+/* the contact face always points back at the fighter, so no single angle can
+   show every landing — the camera swings around to the side each fist lands
+   on (left-hand punches land on one half of the bag, right-hand on the other)
+   and glides back to the home 3/4 view for the guard */
+const camTarget = { pos: CAM_HOME.clone(), look: CAM_LOOK.clone() };
+const lookCur = CAM_LOOK.clone();
+const camPos = CAM_HOME.clone();
+
+function punchView(id) {
+  const m = MEASURE[id];
+  if (!m) return null;
+  const side = (m.contact.x - BAG.x) >= 0 ? 1 : -1;
+  const D = mobile() ? 4.05 : 3.2;
+  const pos = new THREE.Vector3(BAG.x + side * D, mobile() ? 1.52 : 1.62, -0.55);
+  const mid = new THREE.Vector3(BAG.x * 0.55, mobile() ? 0.92 : 1.0, BAG.z * 0.55 + 0.12);
+  // camera -> subject, then the true screen-right vector (cross(fwd, up))
+  const fwd = new THREE.Vector3(mid.x - pos.x, 0, mid.z - pos.z).normalize();
+  const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+  // looking left of the pair pushes it into the panel-free right side of the frame
+  const look = mid.clone().addScaledVector(right, mobile() ? -0.3 : -0.55);
+  return { pos, look };
+}
+
+function moveCamera(id) {
+  const v = MOVE_BY_ID[id] && MOVE_BY_ID[id].hit ? punchView(id) : null;
+  camTarget.pos.copy(v ? v.pos : CAM_HOME);
+  camTarget.look.copy(v ? v.look : CAM_LOOK);
 }
 
 /* ------------------------------------------------------------------ loop */
@@ -718,16 +752,24 @@ function tick() {
     if (sparkLife <= 0) sparks.visible = false;
   }
 
-  // camera: gentle drift + hit shake
+  // camera: glide to the punched side, gentle drift + hit shake
+  // (drift must never feed back into the damped state, or it ratchets the
+  //  camera far past its target — drift/k is the steady-state error)
   const drift = mobile() ? 0.06 : 0.12;
-  camera.position.x = CAM_HOME.x + Math.sin(t0 * 0.22) * drift;
-  camera.position.y = CAM_HOME.y + Math.sin(t0 * 0.31) * drift * 0.5;
+  const k = 1 - Math.exp(-6.5 * dt);
+  camPos.x = lerp(camPos.x, camTarget.pos.x, k);
+  camPos.y = lerp(camPos.y, camTarget.pos.y, k);
+  camPos.z = lerp(camPos.z, camTarget.pos.z, k);
+  camera.position.copy(camPos);
+  camera.position.x += Math.sin(t0 * 0.22) * drift;
+  camera.position.y += Math.sin(t0 * 0.31) * drift * 0.5;
+  lookCur.lerp(camTarget.look, k);
   if (shake > 0.0005) {
     camera.position.x += rand(-shake, shake);
     camera.position.y += rand(-shake, shake);
     shake *= 0.86;
   }
-  camera.lookAt(CAM_LOOK);
+  camera.lookAt(lookCur);
 
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
@@ -748,9 +790,12 @@ function resize() {
     CAM_HOME.set(-2.25, 1.78, 3.42);
     CAM_LOOK.set(-0.34, 1.0, 0.58);
   }
-  camera.position.copy(CAM_HOME);
+  moveCamera(state.id);
+  camPos.copy(camTarget.pos);
+  camera.position.copy(camTarget.pos);
+  lookCur.copy(camTarget.look);
   camera.updateProjectionMatrix();
-  camera.lookAt(CAM_LOOK);
+  camera.lookAt(lookCur);
   placeNodes();
 }
 window.addEventListener('resize', resize);
@@ -794,7 +839,40 @@ window.addEventListener('keydown', (e) => {
 
 /* debug hook for QA */
 window.__sim = {
-  play, state, MEASURE, BAG, camera, scene,
+  play, state, MEASURE, BAG, camera, scene, camTarget, moveCamera,
+  /** re-stage the fighter at a given yaw (deg) and re-solve the bag placement */
+  setYaw: (deg) => {
+    if (!rig) return;
+    rig.rotation.y = THREE.MathUtils.degToRad(deg);
+    rig.updateMatrixWorld(true);
+    measureAll();
+    play('guard', { silent: true, panel: false });
+  },
+  /** freeze exactly on a punch's impact frame (QA screenshots only) */
+  holdAt: (id) => {
+    const mv = MOVE_BY_ID[id], m = MEASURE[id];
+    if (!mv || !m) return;
+    state.id = id;
+    state.delta.copy(m.delta); state.deltaCur.copy(m.delta);
+    if (rig) { rig.position.x = m.delta.x; rig.position.z = m.delta.z; }
+    collar.position.y = bagY((/uppercut/.test(id) ? m.contact.y + 0.03 : collarTopY));
+    mixer.stopAllAction();
+    const act = mixer.clipAction(clips[mv.clip]);
+    act.reset(); act.enabled = true;
+    act.setEffectiveWeight(1); act.setEffectiveTimeScale(1);
+    act.play(); act.time = m.impact;
+    state.action = act; state.hit = true;
+    mixer.update(0); model.updateMatrixWorld(true);
+    mixer.timeScale = 0;
+    fireImpact();
+  },
+  go: () => { if (mixer) mixer.timeScale = 1; },
+  view: (x, y, z, lx, ly, lz) => {
+    camTarget.pos.set(x, y, z); camTarget.look.set(lx, ly, lz);
+    camPos.set(x, y, z);
+    camera.position.set(x, y, z); lookCur.set(lx, ly, lz);
+    camera.lookAt(lookCur);
+  },
   dump: () => JSON.stringify({
     bag: BAG,
     moves: Object.fromEntries(Object.entries(MEASURE).map(([k, v]) => [k, {
