@@ -68,7 +68,7 @@ export const MOVES = [
     name: 'Rear', em: 'Hook', tag: 'rear hand · horizontal',
     sub: 'the heaviest arc you own',
     pos: { left: '85%', top: '53%' },
-    posM: { left: '76%',   top: '41%' },
+    posM: { left: '74%',   top: '41%' },
     what: 'The heaviest hook in the box. The whole rear side — foot, hip, shoulder — rotates behind the fist, which is why it hurts and why it leaves you open for a beat longer.',
     points: [
       'Rear heel turns out hard; the hip leads the shoulder, and the shoulder leads the fist.',
@@ -154,7 +154,7 @@ export const MOVES = [
     name: 'Combo', em: 'Jab Cross', tag: 'two beats · the one-two',
     sub: 'short punches, no reset',
     pos: { left: '83%', top: '36%' },
-    posM: { left: '68%', top: '82%' },
+    posM: { left: '35%', top: '95%' },
     what: 'A tight four-punch combination thrown from punching range without ever leaving the pocket. Nothing swings wide, the hands come back to the chin between shots, and the last punch lands where the first one started.',
     points: [
       'Stay in stance: the feet turn, the hips turn, and the shoulders never square up for longer than one punch.',
@@ -169,7 +169,7 @@ export const MOVES = [
     name: 'Combo', em: 'Punch Knee', tag: 'long sequence · knee finish',
     sub: 'hands, then the knee',
     pos: { left: '62%', top: '64%' },
-    posM: { left: '2%',  top: '89%' },
+    posM: { left: '2%',  top: '88%' },
     what: 'A long combination that starts as boxing and finishes as clinch work: the hands bring the guard up and the head down, then the rear knee comes through the middle to the body.',
     points: [
       'The punches are the setup, not the point — aim them at the guard to make the man cover, not to knock him out.',
@@ -184,7 +184,7 @@ export const MOVES = [
     name: 'Combo', em: 'Punch Elbow', tag: 'long sequence · elbow finish',
     sub: 'walk him down, then cut him',
     pos: { left: '58%', top: '76%' },
-    posM: { left: '40%', top: '89%' },
+    posM: { left: '41%', top: '88%' },
     what: 'The walking version of the same idea: the combination presses forward behind the jab and the cross, and closes with the rear elbow once the distance is gone entirely.',
     points: [
       'Every punch buys a step: land, step, land again — do not reach with the hands for distance your feet have not covered.',
@@ -192,6 +192,20 @@ export const MOVES = [
       'Cut the angle as the elbow lands, so you exit on the side he is not looking at.'
     ],
     use: 'Against a fighter who backs up in a straight line. The pressure of the punches is what makes the elbow land — the strike itself is only the last ten centimetres.'
+  },
+  {
+    id: 'kick', code: '13', clip: 'kick', hit: 'RightFoot', joint: true,
+    name: 'Rear', em: 'Kick', tag: 'rear leg · body height',
+    sub: 'the whole hip swings through',
+    pos: { left: '52%', top: '40%' },
+    posM: { left: '68%', top: '81%' },
+    what: 'The roundhouse is the heaviest single shot in the arsenal: the rear leg swings off the floor, the hip turns over ahead of it, and the shin arrives with the whole body weight behind it. Where a punch borrows arm strength, a kick borrows the floor.',
+    points: [
+      'Pivot the support foot before the leg swings — if the heel stays planted the hip cannot turn and the kick dies at half height.',
+      'The leg swings like a bat, not a foot: drive the hip through the target and let the shin carry the weight while both hands stay at the chin.',
+      'Re-chamber on the way back — the leg comes down along the same arc it went up, so you land in stance instead of off balance.'
+    ],
+    use: 'Against the body and the ribs, at the range where punches start to feel too close. It is also the shot that makes a boxer respect distance — nobody stands in kicking range comfortably.'
   }
 ];
 

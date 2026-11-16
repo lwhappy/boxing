@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js?v=18';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=19';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -607,7 +607,7 @@ async function loadFighter() {
   const bone = (n) => model.getObjectByName('mixamorig:' + n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName(n);
   const hands = { LeftHand: bone('LeftHand'), RightHand: bone('RightHand') };
   const fores = { LeftHand: bone('LeftForeArm'), RightHand: bone('RightForeArm') };
-  const joints = { RightForeArm: bone('RightForeArm'), LeftForeArm: bone('LeftForeArm'), RightLeg: bone('RightLeg'), LeftLeg: bone('LeftLeg'), Head: bone('Head') };
+  const joints = { RightForeArm: bone('RightForeArm'), LeftForeArm: bone('LeftForeArm'), RightLeg: bone('RightLeg'), LeftLeg: bone('LeftLeg'), Head: bone('Head'), RightFoot: bone('RightFoot'), LeftFoot: bone('LeftFoot') };
 
   model.updateMatrixWorld(true);
   window.__rig = { model, mixer, clips, hands, fores, joints };
@@ -1357,7 +1357,7 @@ soundBtn.addEventListener('click', () => {
 window.addEventListener('keydown', (e) => {
   const i = parseInt(e.key, 10);
   if (i >= 0 && i <= 9 && MOVES[i]) play(MOVES[i].id);
-  const extra = { q: 10, w: 11, e: 12 };
+  const extra = { q: 10, w: 11, e: 12, r: 13 };
   if (extra[e.key] !== undefined && MOVES[extra[e.key]]) play(MOVES[extra[e.key]].id);
 });
 
