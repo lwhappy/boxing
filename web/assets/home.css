@@ -110,6 +110,27 @@ a { color: inherit; }
 .nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 .nav a[aria-current="page"] { color: var(--text); }
 
+/* ---- narrow phones: logo + four nav labels do not fit at full size ---------
+   Tighten the gap, the wordmark tracking and the pill padding instead of
+   wrapping the nav onto a second row — the header stays one line at 320px. */
+@media (max-width: 560px) {
+  .site-head .wrap { gap: 10px; padding: 0 11px; }
+  .logo { gap: 7px; }
+  .logo-mark { width: 24px; height: 22px; }
+  .logo-mark img { width: 24px; }
+  .logo-text { font-size: 11px; letter-spacing: 0.16em; }
+  .nav { gap: 0; font-size: 12px; }
+  .nav a { padding: 6px 7px; }
+}
+
+@media (max-width: 380px) {
+  .site-head .wrap { gap: 8px; padding: 0 8px; }
+  .logo { gap: 6px; }
+  .logo-text { font-size: 10px; letter-spacing: 0.08em; }
+  .nav { font-size: 11px; }
+  .nav a { padding: 5px 5px; }
+}
+
 /* ---------------- breadcrumbs ---------------- */
 .breadcrumbs {
   position: sticky;
