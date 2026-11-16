@@ -82,7 +82,7 @@ export const MOVES = [
     name: 'Lead', em: 'Uppercut', tag: 'lead hand · vertical',
     sub: 'up through the middle',
     pos: { left: '76%', top: '80%' },
-    posM: { left: '56%',   top: '53%' },
+    posM: { left: '52%',   top: '86%' },
     what: 'A short vertical punch from the lead side that comes up through the middle of a high guard. It is the only punch that attacks from underneath.',
     points: [
       'Dip the lead shoulder and knee slightly, then drive up — the legs supply the punch, not the arm.',
@@ -96,7 +96,7 @@ export const MOVES = [
     name: 'Rear', em: 'Uppercut', tag: 'rear hand · vertical',
     sub: 'the finisher from below',
     pos: { left: '46%', top: '86%' },
-    posM: { left: '22%',   top: '52%' },
+    posM: { left: '6%',    top: '80%' },
     what: 'The most powerful uppercut in boxing. The rear hip and leg fire straight up and the fist rides that line into the chin — short distance, enormous force.',
     points: [
       'Drop the rear shoulder and bend the rear knee, then extend both into the punch.',
