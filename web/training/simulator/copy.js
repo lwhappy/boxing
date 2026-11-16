@@ -153,7 +153,7 @@ export const MOVES = [
     boneList: ['LeftHand', 'RightHand'], multi: true,
     name: 'Combo', em: 'Jab Cross', tag: 'two beats · the one-two',
     sub: 'short punches, no reset',
-    pos: { left: '83%', top: '32%' },
+    pos: { left: '83%', top: '36%' },
     posM: { left: '68%', top: '82%' },
     what: 'A tight four-punch combination thrown from punching range without ever leaving the pocket. Nothing swings wide, the hands come back to the chin between shots, and the last punch lands where the first one started.',
     points: [
