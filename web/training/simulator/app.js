@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js?v=15';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=16';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -1308,11 +1308,10 @@ function soundRunning() { return !!(Sound.ctx && Sound.ctx.state === 'running');
 
 function syncSoundLabel() {
   if (!soundBtn) return;
-  const live = soundRunning();
-  soundBtn.textContent = Sound.on ? (live ? 'SOUND · ON' : 'SOUND · TAP') : 'SOUND · OFF';
-  soundBtn.classList.toggle('waiting', Sound.on && !live);
+  soundBtn.textContent = Sound.on ? 'SOUND · ON' : 'SOUND · OFF';
+  soundBtn.classList.remove('waiting');
   /* first time the bed becomes audible, say hello with a distant rumble */
-  if (live && Sound.on && !Sound._announced) {
+  if (soundRunning() && Sound.on && !Sound._announced) {
     Sound._announced = true;
     setTimeout(() => { if (soundRunning() && Sound.on) Sound.thunder(0.05, 0.5); }, 850);
   }
