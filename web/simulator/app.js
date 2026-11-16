@@ -777,6 +777,7 @@ const nodesEl = document.getElementById('nodes');
 const stNode = document.getElementById('stNode');
 const stReach = document.getElementById('stReach');
 const stImpact = document.getElementById('stImpact');
+const setText = (el, v) => { if (el) el.textContent = v; };
 
 let typingTimer = null;
 
@@ -838,13 +839,13 @@ function showPanel(mv, measured) {
   n += typeList('key points', mv.points, 240 + n * 18, body);
   n += typeSection('when to use it', mv.use, 500 + n * 18, body);
 
-  stNode.textContent = mv.code;
+  setText(stNode, mv.code);
   if (measured) {
-    stReach.textContent = measured.reach.toFixed(2) + ' m';
-    stImpact.textContent = measured.impact.toFixed(2) + ' s';
+    setText(stReach, measured.reach.toFixed(2) + ' m');
+    setText(stImpact, measured.impact.toFixed(2) + ' s');
   } else {
-    stReach.textContent = '—';
-    stImpact.textContent = '—';
+    setText(stReach, '—');
+    setText(stImpact, '—');
   }
   document.getElementById('pFoot').textContent = measured
     ? `clip ${measured.dur.toFixed(2)}s · lands at ${measured.impact.toFixed(2)}s`
