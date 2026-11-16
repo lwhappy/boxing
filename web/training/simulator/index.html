@@ -39,7 +39,7 @@
   @keyframes flashZ{0%{opacity:1}18%{opacity:.55}100%{opacity:0}}
 
   /* ---------- top HUD ---------- */
-  .hud-top{position:fixed;top:0;left:0;right:0;z-index:6;display:flex;align-items:flex-start;
+  .hud-top{position:fixed;top:0;left:0;right:0;z-index:7;display:flex;align-items:flex-start;
     justify-content:space-between;gap:16px;padding:18px 22px;
     padding-top:max(18px,env(safe-area-inset-top));pointer-events:none}
   .home{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;text-decoration:none;
@@ -47,7 +47,7 @@
     background:rgba(6,9,12,.5);border:1px solid rgba(210,224,235,.16);padding:7px 13px 7px 11px;
     border-radius:2px;backdrop-filter:blur(8px);transition:.2s}
   .home:hover{color:#fff;border-color:rgba(210,224,235,.42);background:rgba(14,19,25,.68)}
-  .home span{color:var(--red)}
+  .home svg{display:block;color:var(--red)}
   .hud-left{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
   .hint{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#6b7883;text-transform:uppercase}
   #sound{pointer-events:auto;position:fixed;right:20px;bottom:16px;z-index:7;font-family:var(--mono);
@@ -105,9 +105,6 @@
   .node.guard.on{background:rgba(12,16,21,.75);border-left-color:var(--bone)}
 
   /* ---------- responsive ---------- */
-  @media (min-width:901px){
-    .hud-top{padding-left:398px}
-  }
   @media (max-width:900px){
     .hud-top{padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top))}
     .home{font-size:9px;letter-spacing:.2em;padding:6px 11px 6px 9px}
@@ -136,7 +133,9 @@
 
 <header class="hud-top">
   <div class="hud-left">
-    <a class="home" href="../../"><span>&larr;</span>Home</a>
+    <a class="home" href="../../" aria-label="Back to home">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.8V21h13V9.8"/><path d="M10 21v-6h4v6"/></svg>
+      Home</a>
     <div class="hint" id="hint">drag to look · scroll to zoom · double-click to reset</div>
   </div>
 </header>
@@ -160,6 +159,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=13"></script>
+<script type="module" src="./app.js?v=14"></script>
 </body>
 </html>

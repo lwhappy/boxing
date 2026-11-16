@@ -151,7 +151,7 @@ export const MOVES = [
   {
     id: 'combo1', code: '10', clip: 'combo1', hit: 'LeftHand',
     boneList: ['LeftHand', 'RightHand'], multi: true,
-    name: 'Combo', em: 'One', tag: 'four beats · tight hands',
+    name: 'Combo', em: 'Jab Cross', tag: 'two beats · the one-two',
     sub: 'short punches, no reset',
     pos: { left: '83%', top: '32%' },
     posM: { left: '68%', top: '82%' },
@@ -166,7 +166,7 @@ export const MOVES = [
   {
     id: 'combo2-knee', code: '11', clip: 'combo2-knee', hit: 'RightHand',
     boneList: ['LeftHand', 'RightHand', 'RightLeg'], multi: true,
-    name: 'Combo', em: 'Two · Knee', tag: 'long sequence · knee finish',
+    name: 'Combo', em: 'Punch Knee', tag: 'long sequence · knee finish',
     sub: 'hands, then the knee',
     pos: { left: '62%', top: '64%' },
     posM: { left: '2%',  top: '89%' },
@@ -181,7 +181,7 @@ export const MOVES = [
   {
     id: 'combo2-elbow', code: '12', clip: 'combo2-elbow', hit: 'RightHand',
     boneList: ['LeftHand', 'RightHand', 'RightForeArm'], multi: true, travel: true,
-    name: 'Combo', em: 'Two · Elbow', tag: 'long sequence · elbow finish',
+    name: 'Combo', em: 'Punch Elbow', tag: 'long sequence · elbow finish',
     sub: 'walk him down, then cut him',
     pos: { left: '58%', top: '76%' },
     posM: { left: '40%', top: '89%' },
