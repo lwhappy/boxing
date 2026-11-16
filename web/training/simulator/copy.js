@@ -168,7 +168,7 @@ export const MOVES = [
     boneList: ['LeftHand', 'RightHand', 'RightLeg'], multi: true,
     name: 'Combo', em: 'Punch Knee', tag: 'long sequence · knee finish',
     sub: 'hands, then the knee',
-    pos: { left: '62%', top: '64%' },
+    pos: { left: '78%', top: '64%' },
     posM: { left: '2%',  top: '88%' },
     what: 'A long combination that starts as boxing and finishes as clinch work: the hands bring the guard up and the head down, then the rear knee comes through the middle to the body.',
     points: [
@@ -197,7 +197,7 @@ export const MOVES = [
     id: 'kick', code: '13', clip: 'kick', hit: 'RightFoot', joint: true,
     name: 'Rear', em: 'Kick', tag: 'rear leg · body height',
     sub: 'the whole hip swings through',
-    pos: { left: '52%', top: '40%' },
+    pos: { left: '85%', top: '18%' },
     posM: { left: '68%', top: '81%' },
     what: 'The roundhouse is the heaviest single shot in the arsenal: the rear leg swings off the floor, the hip turns over ahead of it, and the shin arrives with the whole body weight behind it. Where a punch borrows arm strength, a kick borrows the floor.',
     points: [
