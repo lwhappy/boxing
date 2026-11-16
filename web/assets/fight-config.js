@@ -12,7 +12,7 @@ window.FIGHT = {
    *   - clips "attack-*" / "defence-*" (attack-idle, attack-jab, ...)
    *   - an empty "ancher1" on the defender (impact point)
    */
-  glb: './media/glb/all.glb',
+  glb: '/media/glb/all.glb',
 
   /* ---- attacker poses (per move) ---- */
   /* Root transform of the attack armature for every punch, in glTF space
@@ -86,7 +86,7 @@ window.FIGHT = {
    * choice in localStorage, so `on` only sets the FIRST-visit default. */
   sound: {
     on: true,
-    impact: './media/audio/punch-impact.wav',
+    impact: '/media/audio/punch-impact.wav',
     volume: 0.85            /* 0 … 1 */
   },
 

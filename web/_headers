@@ -43,13 +43,10 @@
 /fight/*
   Cache-Control: public, max-age=0, must-revalidate
 
-# /simulator/ holds the heavy-bag lab AND its JS (simulator/app.js, copy.js).
-# Same rule as /fight/: the JS keeps a stable URL while content changes.
-/simulator/*
-  Cache-Control: public, max-age=0, must-revalidate
-
-
-/training
+# /training/ holds the section page, the heavy-bag lab (simulator/app.js,
+# copy.js) and the punch demo. Same rule as /fight/: the JS keeps a stable URL
+# while its content changes, so it must revalidate on every load.
+/training/*
   Cache-Control: public, max-age=0, must-revalidate
 
 /contact/*

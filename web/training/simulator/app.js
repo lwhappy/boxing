@@ -571,7 +571,7 @@ const state = {
 };
 
 async function loadFighter() {
-  const gltf = await new GLTFLoader().loadAsync('../media/glb/boxer-man.glb');
+  const gltf = await new GLTFLoader().loadAsync('../../media/glb/boxer-man.glb');
   model = gltf.scene;
   const box = new THREE.Box3().setFromObject(model);
   const h = box.max.y - box.min.y;

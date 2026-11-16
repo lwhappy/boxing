@@ -585,7 +585,7 @@ function updateEffects(dt) {
  * default. */
 const SFX = (() => {
   const cfg = CFG.sound || {};
-  const src = cfg.impact || './media/audio/punch-impact.wav';
+  const src = cfg.impact || '/media/audio/punch-impact.wav';
   const volume = Math.min(1, Math.max(0, Number(cfg.volume ?? 0.85)));
   const KEY = 'silentjab.fight.muted';
 
