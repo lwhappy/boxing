@@ -204,7 +204,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.32;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x121c26, 0.033);
+scene.fog = new THREE.FogExp2(0x1a2836, 0.032);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
 camera.position.set(3, 1.8, -1.6);
@@ -245,11 +245,11 @@ const sky = new THREE.Mesh(
       void main(){
         vec3 d = normalize(vDir);
         float h = clamp(d.y, -0.15, 1.0);
-        vec3 col = mix(vec3(0.082,0.098,0.120), vec3(0.014,0.021,0.033), smoothstep(-0.02, 0.62, h));
+        vec3 col = mix(vec3(0.165,0.192,0.230), vec3(0.045,0.060,0.088), smoothstep(-0.02, 0.62, h));
         vec2 uv = d.xz / max(0.20, d.y * 1.35);
         float n1 = fbm(uv * 1.5 + vec2(uTime * 0.010, uTime * 0.004));
         float n2 = fbm(uv * 4.2 - vec2(uTime * 0.018, 0.0));
-        col += vec3(0.044,0.055,0.070) * (n1 * 0.9 + n2 * 0.35) * smoothstep(-0.05, 0.40, h);
+        col += vec3(0.080,0.096,0.120) * (n1 * 0.9 + n2 * 0.35) * smoothstep(-0.05, 0.40, h);
         float glow = pow(max(0.0, dot(d, uBoltDir)), 4.0);
         float low = smoothstep(0.62, 0.02, abs(d.y - 0.12));
         col += vec3(0.62,0.74,0.96) * uFlash * (0.30 + glow * 2.4 + low * 0.35) * (0.35 + n1 * 0.9);
@@ -291,15 +291,15 @@ const ground = new THREE.Mesh(
       void main(){
         vec2 p = vW.xz;
         float g1 = fbm(p * 1.05), g2 = fbm(p * 4.6);
-        vec3 col = vec3(0.031,0.037,0.045) + vec3(0.042,0.049,0.057) * (g1 * 0.7 + g2 * 0.35);
+        vec3 col = vec3(0.066,0.076,0.092) + vec3(0.078,0.090,0.104) * (g1 * 0.7 + g2 * 0.35);
         float pud = smoothstep(0.46, 0.66, g1);
         float rip = (ripples(p, 2.6, 0.0) + ripples(p, 1.55, 7.3)) * (0.12 + pud * 0.65);
-        col += vec3(0.19,0.25,0.32) * rip;
+        col += vec3(0.23,0.30,0.38) * rip;
         vec3 V = normalize(uCam - vW);
         float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 4.0);
-        col += vec3(0.085,0.115,0.155) * (0.10 + fres) * (0.30 + pud * 0.9) * (0.22 + uFlash * 7.0);
+        col += vec3(0.125,0.165,0.215) * (0.10 + fres) * (0.30 + pud * 0.9) * (0.22 + uFlash * 7.0);
         float d = length(vW.xz - vec2(0.0, 1.2));
-        col *= mix(0.45, 1.0, smoothstep(46.0, 5.0, d));
+        col *= mix(0.58, 1.0, smoothstep(46.0, 5.0, d));
         gl_FragColor = vec4(col, 1.0);
       }`
   })
