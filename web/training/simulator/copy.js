@@ -82,7 +82,7 @@ export const MOVES = [
     name: 'Lead', em: 'Uppercut', tag: 'lead hand · vertical',
     sub: 'up through the middle',
     pos: { left: '76%', top: '80%' },
-    posM: { left: '52%',   top: '86%' },
+    posM: { left: '35%',   top: '82%' },
     what: 'A short vertical punch from the lead side that comes up through the middle of a high guard. It is the only punch that attacks from underneath.',
     points: [
       'Dip the lead shoulder and knee slightly, then drive up — the legs supply the punch, not the arm.',
@@ -96,7 +96,7 @@ export const MOVES = [
     name: 'Rear', em: 'Uppercut', tag: 'rear hand · vertical',
     sub: 'the finisher from below',
     pos: { left: '46%', top: '86%' },
-    posM: { left: '6%',    top: '80%' },
+    posM: { left: '2%',    top: '82%' },
     what: 'The most powerful uppercut in boxing. The rear hip and leg fire straight up and the fist rides that line into the chin — short distance, enormous force.',
     points: [
       'Drop the rear shoulder and bend the rear knee, then extend both into the punch.',
@@ -104,6 +104,94 @@ export const MOVES = [
       'Chin stays down. A missed uppercut leaves you tall, square and easy to hit.'
     ],
     use: 'For an opponent who ducks, leans in, or drops his head after a combination. Body first to bring the hands down, then the chin.'
+  },
+  {
+    id: 'elbow', code: '07', clip: 'elbow', hit: 'RightForeArm', joint: true,
+    name: 'Rear', em: 'Elbow', tag: 'rear arm · close range',
+    sub: 'no swing · all bone',
+    pos: { left: '27%', top: '10%' },
+    posM: { left: '2%',  top: '75%' },
+    what: 'The elbow is the shortest power shot in fighting. From the guard the rear arm turns over and the point of the elbow drives straight through where a hook would have to travel — nothing else in boxing arrives that fast from that range.',
+    points: [
+      'Turn the rear heel out as the arm comes through: the elbow rides the hip, not the shoulder.',
+      'Keep the glove against your own chest — a wide elbow becomes a slap and telegraphs for a week.',
+      'Strike with the point of the bone, not the forearm; the hand stays relaxed so the elbow is the hard part.'
+    ],
+    use: 'At clinch range, coming out of a slip, or against anyone who steps in behind his own punches. It opens cuts faster than any punch in the sport.'
+  },
+  {
+    id: 'knee', code: '08', clip: 'knee', hit: 'RightLeg', joint: true,
+    name: 'Rear', em: 'Knee', tag: 'rear leg · clinch range',
+    sub: 'the body shot nobody blocks',
+    pos: { left: '52%', top: '20%' },
+    posM: { left: '35%', top: '75%' },
+    what: 'A knee is a punch thrown with the biggest bone in your body. The rear leg lifts, the hip drives forward and up, and the strike lands with the point of the knee while both hands pull the target into it.',
+    points: [
+      'Step the lead foot out slightly so the knee travels straight up the middle, not across.',
+      'Drive the hip through the target and pull the man down into it with both hands — the knee meets him halfway.',
+      'Chin tucked and hands high: a knee that misses leaves you on one leg in punching range.'
+    ],
+    use: 'Clinch range and the body. It is the classic answer to a fighter who ties you up, and the reason strikers keep one hand free when they close the distance.'
+  },
+  {
+    id: 'jab-cross', code: '09', clip: 'jab-cross', hit: 'LeftHand',
+    boneList: ['LeftHand', 'RightHand'], multi: true,
+    name: 'Jab', em: 'Cross', tag: 'two beats · the one-two',
+    sub: 'the first combination anyone learns',
+    pos: { left: '88%', top: '12%' },
+    posM: { left: '68%', top: '75%' },
+    what: 'The one-two: a jab to take the range and a cross down the same line before the guard comes back. Two punches, one movement — the jab opens the door and the rear hand walks through it.',
+    points: [
+      'Do not reset between them: the lead hand comes back as the rear hand goes out, so there is never a gap.',
+      'The cross turns off the rear foot; if the heel stays down the second punch is only an arm.',
+      'Throw both on the same line so the second arrives before the first has been answered.'
+    ],
+    use: 'Every exchange starts here. It scores, it measures distance, and it forces a reaction you can read for the third punch.'
+  },
+  {
+    id: 'combo1', code: '10', clip: 'combo1', hit: 'LeftHand',
+    boneList: ['LeftHand', 'RightHand'], multi: true,
+    name: 'Combo', em: 'One', tag: 'four beats · tight hands',
+    sub: 'short punches, no reset',
+    pos: { left: '91%', top: '32%' },
+    posM: { left: '68%', top: '82%' },
+    what: 'A tight four-punch combination thrown from punching range without ever leaving the pocket. Nothing swings wide, the hands come back to the chin between shots, and the last punch lands where the first one started.',
+    points: [
+      'Stay in stance: the feet turn, the hips turn, and the shoulders never square up for longer than one punch.',
+      'Breathe out on each shot — a combination held in the lungs runs out of speed by the third punch.',
+      'Finish every combination in guard. The last punch is the one people get hit with on the way out.'
+    ],
+    use: 'When you are already inside and the other man is covering up. Judges score the cleaner, more numerous work — this is how you take a round without one big shot.'
+  },
+  {
+    id: 'combo2-knee', code: '11', clip: 'combo2-knee', hit: 'RightHand',
+    boneList: ['LeftHand', 'RightHand', 'RightLeg'], multi: true,
+    name: 'Combo', em: 'Two · Knee', tag: 'long sequence · knee finish',
+    sub: 'hands, then the knee',
+    pos: { left: '62%', top: '64%' },
+    posM: { left: '2%',  top: '89%' },
+    what: 'A long combination that starts as boxing and finishes as clinch work: the hands bring the guard up and the head down, then the rear knee comes through the middle to the body.',
+    points: [
+      'The punches are the setup, not the point — aim them at the guard to make the man cover, not to knock him out.',
+      'As the last punch lands the lead hand takes the head and the rear leg is already loaded.',
+      'Knee up the centre and pull him into it; never lean back to make room for the knee.'
+    ],
+    use: 'The bridge between striking and the clinch — the moment a boxer covers up at close range, the knee is already free.'
+  },
+  {
+    id: 'combo2-elbow', code: '12', clip: 'combo2-elbow', hit: 'RightHand',
+    boneList: ['LeftHand', 'RightHand', 'RightForeArm'], multi: true, travel: true,
+    name: 'Combo', em: 'Two · Elbow', tag: 'long sequence · elbow finish',
+    sub: 'walk him down, then cut him',
+    pos: { left: '58%', top: '76%' },
+    posM: { left: '40%', top: '89%' },
+    what: 'The walking version of the same idea: the combination presses forward behind the jab and the cross, and closes with the rear elbow once the distance is gone entirely.',
+    points: [
+      'Every punch buys a step: land, step, land again — do not reach with the hands for distance your feet have not covered.',
+      'Save the elbow for the moment he is covering: it comes from the hip, not from a swing.',
+      'Cut the angle as the elbow lands, so you exit on the side he is not looking at.'
+    ],
+    use: 'Against a fighter who backs up in a straight line. The pressure of the punches is what makes the elbow land — the strike itself is only the last ten centimetres.'
   }
 ];
 

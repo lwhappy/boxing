@@ -563,10 +563,11 @@ contactRing.visible = false; contactRing.renderOrder = 60; scene.add(contactRing
 let ringLife = 0;
 
 /* ------------------------------------------------------------------ fighter */
-let model, mixer, clips = {}, rig;
+let model, mixer, clips = {}, rawClips = {}, rig;
 const MEASURE = {};
 const state = {
   id: null, action: null, impact: 0, hit: false,
+  hits: [], nextHit: 0,
   move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3()
 };
 
@@ -588,64 +589,178 @@ async function loadFighter() {
   scene.add(rig);
 
   mixer = new THREE.AnimationMixer(model);
-  for (const c of gltf.animations) clips[c.name] = c;
+  /* Clips are used as authored first; the long combos carry real root travel
+     (combo2-elbow walks about two metres forward) and get theirs rescaled in
+     scaleTravel() once we know how far the bag actually is. */
+  for (const c of gltf.animations) { rawClips[c.name] = c; clips[c.name] = c; }
 
   const bone = (n) => model.getObjectByName('mixamorig:' + n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName(n);
   const hands = { LeftHand: bone('LeftHand'), RightHand: bone('RightHand') };
   const fores = { LeftHand: bone('LeftForeArm'), RightHand: bone('RightForeArm') };
+  const joints = { RightForeArm: bone('RightForeArm'), LeftForeArm: bone('LeftForeArm'), RightLeg: bone('RightLeg'), LeftLeg: bone('LeftLeg'), Head: bone('Head') };
 
   model.updateMatrixWorld(true);
-  window.__rig = { model, mixer, clips, hands, fores };
-  measureAll(hands, fores);
+  window.__rig = { model, mixer, clips, hands, fores, joints };
+  measureAll(hands, fores, joints);
   placeStage();
   return s;
 }
 
-/** find the impact frame of each punch + where the knuckles actually are */
-function measureAll(hands, fores) {
-  const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
-  const origin = new THREE.Vector3(0, 0, 0);
+/** scale the horizontal hip travel of a clip around its first frame (Y kept) */
+function scaleRoot(clip, k) {
+  const c = clip.clone();
+  c.tracks = c.tracks.map((tr) => {
+    if (!/Hips\.position$/.test(tr.name)) return tr;
+    const v = tr.values;
+    const x0 = v[0], z0 = v[2];
+    const out = v.slice();
+    for (let i = 0; i < out.length; i += 3) {
+      out[i] = x0 + (out[i] - x0) * k;
+      out[i + 2] = z0 + (out[i + 2] - z0) * k;
+    }
+    return new THREE.VectorKeyframeTrack(tr.name, Array.from(tr.times), out, tr.getInterpolation());
+  });
+  return c;
+}
+
+/** find the impact frame(s) of each move + where the striking point really is */
+function measureAll(hands, fores, joints) {
   mixer.stopAllAction();
+  const rig2 = { hands, fores, joints };
+  for (const mv of MOVES) measureOne(mv, rig2);
+  solveStaging();
+  scaleTravel(rig2);
+}
 
-  for (const mv of MOVES) {
-    const clip = clips[mv.clip];
-    if (!clip) continue;
-    const act = mixer.clipAction(clip);
-    act.reset().play();
-    mixer.timeScale = 1;
+/** resolve a bone name to the bone that actually lands the strike */
+function boneOf(rig2, name) {
+  return rig2.hands[name] || rig2.joints[name] || null;
+}
 
-    if (!mv.hit) {
-      MEASURE[mv.id] = { impact: 0, dur: clip.duration, reach: 0, contact: new THREE.Vector3() };
-      act.stop();
-      continue;
-    }
+function measureOne(mv, rig2) {
+  const clip = clips[mv.clip];
+  if (!clip) return;
+  const act = mixer.clipAction(clip);
+  act.reset().play();
+  mixer.timeScale = 1;
 
-    const hand = hands[mv.hit];
-    const fore = fores[mv.hit];
-    if (!hand) { act.stop(); continue; }
-
-    let best = { z: -9, t: 0 };
-    const N = 120;
-    for (let i = 0; i <= N; i++) {
-      const t = (clip.duration * i) / N;
-      act.time = t;
-      mixer.update(0);
-      model.updateMatrixWorld(true);
-      hand.getWorldPosition(tmpA);
-      if (tmpA.z > best.z) best = { z: tmpA.z, t };
-    }
-    // contact = wrist pushed along the forearm axis to the knuckle line
-    act.time = best.t; mixer.update(0); model.updateMatrixWorld(true);
-    hand.getWorldPosition(tmpA);
-    fore.getWorldPosition(tmpB);
-    tmpC.copy(tmpA).sub(tmpB).normalize();
-    const contact = tmpA.clone().addScaledVector(tmpC, 0.115);
-
-    MEASURE[mv.id] = { impact: best.t, dur: clip.duration, contact, reach: contact.distanceTo(origin), hand: mv.hit };
+  if (!mv.hit) {
+    MEASURE[mv.id] = { impact: 0, dur: clip.duration, reach: 0, contact: new THREE.Vector3(), hits: [] };
     act.stop();
+    return;
   }
 
-  solveStaging();
+  const primary = boneOf(rig2, mv.hit);
+  if (!primary) { act.stop(); return; }
+
+  const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
+
+  /* contact point of one named bone at time t: the knuckle line for fists,
+     the joint itself for elbows and knees (that is where it lands) */
+  const contactAt = (t, name) => {
+    const b = boneOf(rig2, name) || primary;
+    act.time = t; mixer.update(0); model.updateMatrixWorld(true);
+    const isHand = b === rig2.hands[Object.keys(rig2.hands).find((k) => rig2.hands[k] === b)];
+    b.getWorldPosition(tmpA);
+    if (!isHand) return tmpA.clone();
+    const fore = rig2.fores[Object.keys(rig2.hands).find((k) => rig2.hands[k] === b)];
+    if (fore) { fore.getWorldPosition(tmpB); tmpC.copy(tmpA).sub(tmpB).normalize(); }
+    else tmpC.set(0, 0, 1);
+    return tmpA.clone().addScaledVector(tmpC, 0.115);
+  };
+
+  const N = 200;
+  let frames = [];
+
+  if (mv.multi) {
+    /* a combination: every bone in the list can land, so collect the local
+       forward peaks of each one and keep them in time order */
+    const names = mv.boneList || [mv.hit];
+    const found = [];
+    for (const name of names) {
+      const seq = [];
+      for (let i = 0; i <= N; i++) {
+        const t = (clip.duration * i) / N;
+        const c = contactAt(t, name);
+        seq.push({ t, z: c.z, y: c.y });
+      }
+      const zmax = Math.max(...seq.map((p) => p.z));
+      for (let i = 2; i < seq.length - 2; i++) {
+        const p = seq[i];
+        if (p.z < zmax - 0.09) continue;
+        if (p.y < 0.55 || p.y > 1.60) continue;
+        if (p.z > seq[i - 1].z && p.z >= seq[i + 1].z && p.z >= seq[i - 2].z && p.z >= seq[i + 2].z) {
+          found.push({ t: p.t, z: p.z, name });
+        }
+      }
+    }
+    found.sort((a, b) => a.t - b.t);
+    const merged = [];
+    for (const f of found) {
+      const last = merged[merged.length - 1];
+      if (last && f.t - last.t < 0.17) { if (f.z > last.z) merged[merged.length - 1] = f; }
+      else merged.push(f);
+    }
+    frames = merged.slice(0, 6).map((f) => ({ t: f.t, name: f.name }));
+  }
+
+  if (!frames.length) {
+    /* single strike: the wrist leads the fist, and it is the wrist that was
+       tuned to the bag — pick the frame where it is furthest forward */
+    let best = { z: -9, t: 0 };
+    for (let i = 0; i <= N; i++) {
+      const t = (clip.duration * i) / N;
+      act.time = t; mixer.update(0); model.updateMatrixWorld(true);
+      primary.getWorldPosition(tmpA);
+      const z = mv.joint ? contactAt(t, mv.hit).z : tmpA.z;
+      if (z > best.z) best = { z, t };
+    }
+    frames = [{ t: best.t, name: mv.hit }];
+  }
+
+  const hits = frames.map((f) => {
+    const contact = contactAt(f.t, f.name);
+    return { t: f.t, contact, reach: contact.length(), bone: f.name };
+  });
+
+  MEASURE[mv.id] = {
+    impact: hits[0].t, dur: clip.duration, hits,
+    contact: hits[0].contact, reach: Math.max(...hits.map((h) => h.reach)), hand: mv.hit
+  };
+  act.stop();
+}
+
+/**
+ * The long combos were authored walking forward, and they walk much further
+ * than this bag stands away. Their hip travel is scaled so the deepest strike
+ * of the sequence just meets the leather — the gait stays, the distance is
+ * whatever the bag actually is.
+ */
+function scaleTravel(rig2) {
+  let changed = false;
+  for (const mv of MOVES) {
+    if (!mv.travel) continue;
+    const m = MEASURE[mv.id];
+    const raw = rawClips[mv.clip];
+    if (!m || !raw || !m.hits.length) continue;
+    const surfZ = BAG.z - BAG.r + 0.02;
+    const anchor = m.hits.reduce((a, b) => (b.contact.z > a.contact.z ? b : a), m.hits[0]);
+    const startZ = (() => {
+      const act = mixer.clipAction(clips[mv.clip]);
+      act.reset().play(); act.time = 0; mixer.update(0); model.updateMatrixWorld(true);
+      const p = boneOf(rig2, mv.hit).getWorldPosition(new THREE.Vector3());
+      act.stop();
+      return p.z;
+    })();
+    const span = anchor.contact.z - startZ;
+    if (span <= 0.05) continue;
+    const k = clamp((surfZ - startZ) / span, 0.25, 1);
+    if (k > 0.97) continue;
+    clips[mv.clip] = scaleRoot(raw, k);
+    measureOne(mv, rig2);
+    changed = true;
+  }
+  if (changed) solveStaging();
 }
 
 /**
@@ -660,17 +775,25 @@ function measureAll(hands, fores) {
  */
 const HOOK_ANGLE = { LeftHand: 46, RightHand: 34 }; // degrees around the bag axis
 function solveStaging() {
-  const ids = MOVES.filter((m) => m.hit && MEASURE[m.id] && MEASURE[m.id].contact).map((m) => m.id);
+  const ids = MOVES.filter((m) => m.hit && MEASURE[m.id] && MEASURE[m.id].hits.length).map((m) => m.id);
   if (!ids.length) return;
 
-  const zs = ids.map((id) => MEASURE[id].contact.z).sort((a, b) => a - b);
-  const medZ = zs[Math.floor(zs.length / 2)];
+  /* the bag stands where the straights just reach it; everything shorter
+     (hooks on their arc, elbows, knees, combos) steps in to meet it */
+  const BASE = ['jab', 'cross', 'lead-hook', 'rear-hook', 'lead-uppercut', 'rear-uppercut'];
+  const refs = BASE.filter((id) => MEASURE[id] && MEASURE[id].contact).map((id) => MEASURE[id].contact.z);
+  const pool = (refs.length ? refs : ids.map((id) => MEASURE[id].contact.z)).sort((a, b) => a - b);
+  const medZ = pool[Math.floor(pool.length / 2)];
   BAG.x = 0;
   BAG.z = medZ + BAG.r;
 
   for (const id of ids) {
-    const c = MEASURE[id].contact;
+    const m = MEASURE[id];
     const hook = /hook/.test(id);
+    /* the deepest beat anchors the footwork — the rig is positioned so that
+       this one strike lands exactly on the surface */
+    const anchor = m.hits.reduce((a, b) => (b.contact.z > a.contact.z ? b : a), m.hits[0]);
+    const c = anchor.contact;
     let tx, tz, off, inward;
 
     if (hook) {
@@ -690,9 +813,24 @@ function solveStaging() {
       tz = BAG.z - inward;
     }
 
-    MEASURE[id].target = new THREE.Vector3(tx, c.y, tz);
-    MEASURE[id].normal = new THREE.Vector3(off / BAG.r, 0, -inward / BAG.r).normalize();
-    MEASURE[id].move = new THREE.Vector3(tx - c.x, 0, tz - c.z);
+    m.target = new THREE.Vector3(tx, c.y, tz);
+    m.normal = new THREE.Vector3(off / BAG.r, 0, -inward / BAG.r).normalize();
+    m.move = new THREE.Vector3(tx - c.x, 0, tz - c.z);
+
+    /* every beat gets its own splash: project its strike point onto the
+       cylinder, so even the second punch of a combo bursts in the right place */
+    for (const hit of m.hits) {
+      const p = hit.contact.clone().add(m.move);
+      let dx = p.x - BAG.x, dz = p.z - BAG.z;
+      const d = Math.hypot(dx, dz) || 1e-4;
+      dx /= d; dz /= d;
+      hit.normal = new THREE.Vector3(dx, 0, dz);
+      hit.point = new THREE.Vector3(
+        BAG.x + dx * BAG.r,
+        clamp(p.y, BAG.bottom + 0.07, BAG.top - 0.02),
+        BAG.z + dz * BAG.r
+      );
+    }
   }
   placeStage();
 }
@@ -708,24 +846,24 @@ function placeStage() {
 }
 
 /* ------------------------------------------------------------------ impact */
-function fireImpact() {
+function fireImpact(hit) {
   const m = MEASURE[state.id];
-  if (!m || !m.target) return;
+  if (!m || !hit || !hit.point) return;
   const isUpper = /uppercut/.test(state.id);
-  const p = m.target.clone();
+  const p = hit.point.clone();
   if (isUpper) p.y = collar.position.y + BAG.bottom;
-  const n = m.normal.clone();
+  const n = hit.normal.clone();
   if (isUpper) n.set(n.x * 0.3, 10, n.z * 0.3).normalize();
 
-  splash(p, n, clamp(0.8 + (m.reach - 1.2) * 0.6, 0.7, 1.3));
+  splash(p, n, clamp(0.8 + (hit.reach - 1.2) * 0.6, 0.7, 1.3));
   lightning(0.85);
-  shake = 0.085 + Math.min(0.05, m.reach * 0.02);
+  shake = 0.085 + Math.min(0.05, hit.reach * 0.02);
 
   const dir = isUpper ? new THREE.Vector3(0, 0, 0) : n.clone();
   sway.vz += -dir.z * 3.6 + rand(-0.25, 0.25);
   sway.vx += -dir.x * 3.6 + rand(-0.25, 0.25);
 
-  Sound.impact(clamp(0.75 + (m.reach - 1.2) * 0.5, 0.7, 1.2));
+  Sound.impact(clamp(0.75 + (hit.reach - 1.2) * 0.5, 0.7, 1.2));
 }
 
 function splash(p, n, power) {
@@ -855,8 +993,9 @@ function showPanel(mv, measured) {
     setText(stReach, '—');
     setText(stImpact, '—');
   }
+  const beats = measured ? measured.hits.map((h) => h.t.toFixed(2)).join(' / ') : '';
   document.getElementById('pFoot').textContent = measured
-    ? `clip ${measured.dur.toFixed(2)}s · lands at ${measured.impact.toFixed(2)}s`
+    ? `${measured.hits.length > 1 ? measured.hits.length + ' hits' : 'one hit'} · clip ${measured.dur.toFixed(2)}s · ${beats}s`
     : 'loop · hold the line';
 
   panel.classList.add('on');
@@ -891,6 +1030,8 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   state.id = id;
   state.action = act;
   state.hit = false;
+  state.hits = mv.hit ? MEASURE[id].hits : [];
+  state.nextHit = 0;
   state.impact = mv.hit ? MEASURE[id].impact : 0;
   state.from.copy(state.cur);
   state.move.copy(mv.hit ? MEASURE[id].move : new THREE.Vector3());
@@ -1035,9 +1176,13 @@ function tick() {
     if (fighterShadow) fighterShadow.position.set(state.cur.x + 0.05, 0.005, state.cur.z + 0.28);
   }
 
-  if (state.action && state.impact > 0 && !state.hit && state.action.time >= state.impact) {
-    state.hit = true;
-    fireImpact();
+  if (state.action && state.hits.length) {
+    const at = state.action.time;
+    while (state.nextHit < state.hits.length && at >= state.hits[state.nextHit].t) {
+      state.hit = true;
+      fireImpact(state.hits[state.nextHit]);
+      state.nextHit++;
+    }
   }
 
   if (mixer) mixer.update(dt);
@@ -1201,7 +1346,9 @@ soundBtn.addEventListener('click', (e) => {
 
 window.addEventListener('keydown', (e) => {
   const i = parseInt(e.key, 10);
-  if (i >= 0 && i <= 6) play(MOVES[i].id);
+  if (i >= 0 && i <= 9 && MOVES[i]) play(MOVES[i].id);
+  const extra = { q: 10, w: 11, e: 12 };
+  if (extra[e.key] !== undefined && MOVES[extra[e.key]]) play(MOVES[extra[e.key]].id);
 });
 
 /* debug hook for QA */
@@ -1256,9 +1403,10 @@ window.__sim = {
     act.setEffectiveWeight(1); act.setEffectiveTimeScale(1);
     act.play(); act.time = m.impact;
     state.action = act; state.hit = true;
+    state.hits = m.hits; state.nextHit = 1;
     mixer.update(0); model.updateMatrixWorld(true);
     mixer.timeScale = 0;
-    fireImpact();
+    fireImpact(m.hits[0]);
   },
   go: () => { if (mixer) mixer.timeScale = 1; },
   view: (x, y, z, lx, ly, lz) => {
@@ -1271,6 +1419,7 @@ window.__sim = {
     bag: BAG,
     moves: Object.fromEntries(Object.entries(MEASURE).map(([k, v]) => [k, {
       impact: +v.impact.toFixed(3), dur: +v.dur.toFixed(3), reach: +(v.reach || 0).toFixed(3),
+      beats: (v.hits || []).map((h) => [+h.t.toFixed(3), h.point ? [+h.point.x.toFixed(2), +h.point.y.toFixed(2), +h.point.z.toFixed(2)] : null]),
       contact: v.contact ? [+v.contact.x.toFixed(3), +v.contact.y.toFixed(3), +v.contact.z.toFixed(3)] : null,
       target: v.target ? [+v.target.x.toFixed(3), +v.target.y.toFixed(3), +v.target.z.toFixed(3)] : null,
       move: v.move ? [+v.move.x.toFixed(3), +v.move.z.toFixed(3)] : null
