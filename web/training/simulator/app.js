@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js?v=14';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=15';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -1333,6 +1333,11 @@ for (const evName of ['pointerdown', 'pointerup', 'keydown', 'touchstart', 'touc
   window.addEventListener(evName, unlockAudio, { passive: true });
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) unlockAudio(); });
+/* some browsers grant autoplay a moment after load (site engagement, user
+   settings) — keep asking until the bed is actually running */
+setInterval(() => {
+  if (Sound.on && Sound.ctx && !soundRunning()) { Sound.resume(); syncSoundLabel(); }
+}, 1200);
 
 soundBtn.addEventListener('click', (e) => {
   Sound.on = !Sound.on;

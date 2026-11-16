@@ -49,7 +49,8 @@
   .home:hover{color:#fff;border-color:rgba(210,224,235,.42);background:rgba(14,19,25,.68)}
   .home svg{display:block;color:var(--red)}
   .hud-left{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
-  .hint{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#6b7883;text-transform:uppercase}
+  .hint{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#6b7883;text-transform:uppercase;
+    margin-top:10px;text-align:right}
   #sound{pointer-events:auto;position:fixed;right:20px;bottom:16px;z-index:7;font-family:var(--mono);
     font-size:10px;letter-spacing:.18em;color:#6f7d88;background:rgba(6,9,12,.55);border:1px solid rgba(210,224,235,.14);
     padding:7px 10px;border-radius:2px;cursor:pointer;transition:.2s}
@@ -136,8 +137,8 @@
     <a class="home" href="../../" aria-label="Back to home">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.8V21h13V9.8"/><path d="M10 21v-6h4v6"/></svg>
       Home</a>
-    <div class="hint" id="hint">drag to look · scroll to zoom · double-click to reset</div>
   </div>
+  <div class="hint" id="hint">drag to look · scroll to zoom · double-click to reset</div>
 </header>
 
 <div id="nodes"></div>
@@ -159,6 +160,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=14"></script>
+<script type="module" src="./app.js?v=15"></script>
 </body>
 </html>
