@@ -83,8 +83,6 @@
   .w{display:inline-block;opacity:0;transform:translateY(6px);filter:blur(4px);margin-right:.28em;
     animation:wordIn .5s cubic-bezier(.16,.84,.24,1) forwards}
   @keyframes wordIn{to{opacity:1;transform:none;filter:none}}
-  .p-foot{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:#5b6873;text-transform:uppercase;
-    display:flex;justify-content:space-between;gap:10px;margin-top:14px;border-top:1px solid rgba(210,224,235,.1);padding-top:11px}
 
   /* ---------- nodes ---------- */
   #nodes{position:fixed;inset:0;z-index:5;pointer-events:none}
@@ -150,7 +148,6 @@
   <h1 id="pName">Orthodox <em>Guard</em></h1>
   <div class="p-sub" id="pSub">left hand leads · right hand loads</div>
   <div class="p-body" id="pBody"></div>
-  <div class="p-foot"><span>pick a punch</span><span id="pFoot">—</span></div>
 </aside>
 
 <button id="sound" type="button">SOUND · ON</button>
@@ -163,6 +160,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=12"></script>
+<script type="module" src="./app.js?v=13"></script>
 </body>
 </html>

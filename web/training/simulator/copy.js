@@ -138,7 +138,7 @@ export const MOVES = [
     boneList: ['LeftHand', 'RightHand'], multi: true,
     name: 'Jab', em: 'Cross', tag: 'two beats · the one-two',
     sub: 'the first combination anyone learns',
-    pos: { left: '88%', top: '12%' },
+    pos: { left: '80%', top: '12%' },
     posM: { left: '68%', top: '75%' },
     what: 'The one-two: a jab to take the range and a cross down the same line before the guard comes back. Two punches, one movement — the jab opens the door and the rear hand walks through it.',
     points: [
@@ -153,7 +153,7 @@ export const MOVES = [
     boneList: ['LeftHand', 'RightHand'], multi: true,
     name: 'Combo', em: 'One', tag: 'four beats · tight hands',
     sub: 'short punches, no reset',
-    pos: { left: '91%', top: '32%' },
+    pos: { left: '83%', top: '32%' },
     posM: { left: '68%', top: '82%' },
     what: 'A tight four-punch combination thrown from punching range without ever leaving the pocket. Nothing swings wide, the hands come back to the chin between shots, and the last punch lands where the first one started.',
     points: [

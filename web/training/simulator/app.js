@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=13';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -993,10 +993,6 @@ function showPanel(mv, measured) {
     setText(stReach, '—');
     setText(stImpact, '—');
   }
-  const beats = measured ? measured.hits.map((h) => h.t.toFixed(2)).join(' / ') : '';
-  document.getElementById('pFoot').textContent = measured
-    ? `${measured.hits.length > 1 ? measured.hits.length + ' hits' : 'one hit'} · clip ${measured.dur.toFixed(2)}s · ${beats}s`
-    : 'loop · hold the line';
 
   panel.classList.add('on');
   panel.scrollTop = 0;
