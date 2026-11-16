@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js?v=17';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=18';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -49,6 +49,16 @@ const Sound = {
       const p = this.ctx.resume();
       if (p && p.catch) p.catch(() => {});
     } catch {}
+  },
+  /* the master gain is the only thing that can silence the rain bed: the
+     looping rain source is already running and must keep running */
+  setOn(on) {
+    this.on = !!on;
+    if (!this.ctx || !this.master) return;
+    const g = this.master.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(Math.max(g.value, 0.0001), t);
+    g.setTargetAtTime(this.on ? 0.9 : 0.0001, t, 0.04);
   },
   noiseBuffer(dur, brown) {
     const c = this.ctx, n = Math.floor(c.sampleRate * dur);
@@ -1338,8 +1348,8 @@ setInterval(() => {
   if (Sound.on && Sound.ctx && !soundRunning()) { Sound.resume(); syncSoundLabel(); }
 }, 1200);
 
-soundBtn.addEventListener('click', (e) => {
-  Sound.on = !Sound.on;
+soundBtn.addEventListener('click', () => {
+  Sound.setOn(!Sound.on);
   if (Sound.on) { unlockAudio(); Sound.tap(); }
   syncSoundLabel();
 });
