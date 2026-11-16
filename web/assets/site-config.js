@@ -47,7 +47,7 @@ window.SITE = {
 
   // ── Footer ──────────────────────────────────────
   footer: {
-    copyright: '© 2026 SilentJab — boxing simulator & technique reference for striking sports.',
+    copyright: '© 2026 SilentJab — a boxing & kickboxing simulator and technique reference for striking sports.',
     links: [
       { label: 'Home',     href: '/' },
       { label: 'Moves',    href: '/moves/' },
