@@ -41,7 +41,15 @@ const Sound = {
     this.delay.connect(wet); wet.connect(this.master);
     this.startRain();
   },
-  resume() { this.ctx && this.ctx.state === 'suspended' && this.ctx.resume(); },
+  /* resume is attempted on every interaction; a rejected promise (browser
+     autoplay policy) must never surface as an unhandled rejection */
+  resume() {
+    if (!this.ctx || this.ctx.state !== 'suspended') return;
+    try {
+      const p = this.ctx.resume();
+      if (p && p.catch) p.catch(() => {});
+    } catch {}
+  },
   noiseBuffer(dur, brown) {
     const c = this.ctx, n = Math.floor(c.sampleRate * dur);
     const b = c.createBuffer(2, n, c.sampleRate);
@@ -66,7 +74,7 @@ const Sound = {
     this.rainGain = c.createGain(); this.rainGain.gain.value = 0.0001;
     s.connect(hp); hp.connect(lp); lp.connect(this.rainGain); this.rainGain.connect(this.master);
     s.start();
-    this.rainGain.gain.setTargetAtTime(0.062, c.currentTime, 4);
+    this.rainGain.gain.setTargetAtTime(0.062, c.currentTime, 2.4);
     const lfo = c.createOscillator(); lfo.frequency.value = 0.055;
     const lg = c.createGain(); lg.gain.value = 0.018;
     lfo.connect(lg); lg.connect(this.rainGain.gain); lfo.start();
@@ -1140,6 +1148,7 @@ tick();
 
 loadFighter().then(() => {
   play('guard', { silent: true });
+  unlockAudio();
   setTimeout(() => Sound.swell(), 900);
 }).catch((e) => {
   console.error(e);
@@ -1147,16 +1156,47 @@ loadFighter().then(() => {
   if (body) body.innerHTML = '<div class="sec"><p>Failed to load the fighter — try a hard refresh (⌘⇧R).</p></div>';
 });
 
-/* browsers only allow audio after a gesture — arm it on the first one */
-const armSound = () => { Sound.init(); Sound.resume(); };
-for (const evName of ['pointerdown', 'keydown', 'touchstart']) {
-  window.addEventListener(evName, armSound, { once: true, passive: true });
+/* ------------------------------------------------------------- audio unlock */
+/* The sound bed starts on load: the rain is queued the moment the module runs
+   and we keep asking the context to resume. Browsers that block autoplay leave
+   it suspended until the first gesture of any kind — every one of those is
+   wired below, so the audio is already playing by the time the user moves. */
+const soundBtn = document.getElementById('sound');
+
+function soundRunning() { return !!(Sound.ctx && Sound.ctx.state === 'running'); }
+
+function syncSoundLabel() {
+  if (!soundBtn) return;
+  const live = soundRunning();
+  soundBtn.textContent = Sound.on ? (live ? 'SOUND · ON' : 'SOUND · TAP') : 'SOUND · OFF';
+  soundBtn.classList.toggle('waiting', Sound.on && !live);
+  /* first time the bed becomes audible, say hello with a distant rumble */
+  if (live && Sound.on && !Sound._announced) {
+    Sound._announced = true;
+    setTimeout(() => { if (soundRunning() && Sound.on) Sound.thunder(0.05, 0.5); }, 850);
+  }
 }
 
-document.getElementById('sound').addEventListener('click', (e) => {
+function unlockAudio() {
+  Sound.init();
+  Sound.resume();
+  if (soundRunning()) syncSoundLabel();
+}
+
+Sound.init();
+Sound.resume();
+syncSoundLabel();
+if (Sound.ctx && Sound.ctx.addEventListener) Sound.ctx.addEventListener('statechange', syncSoundLabel);
+
+for (const evName of ['pointerdown', 'pointerup', 'keydown', 'touchstart', 'touchend', 'wheel', 'click', 'scroll']) {
+  window.addEventListener(evName, unlockAudio, { passive: true });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) unlockAudio(); });
+
+soundBtn.addEventListener('click', (e) => {
   Sound.on = !Sound.on;
-  if (Sound.on) { Sound.init(); Sound.resume(); Sound.tap(); }
-  e.currentTarget.textContent = 'SOUND · ' + (Sound.on ? 'ON' : 'OFF');
+  if (Sound.on) { unlockAudio(); Sound.tap(); }
+  syncSoundLabel();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -1166,7 +1206,7 @@ window.addEventListener('keydown', (e) => {
 
 /* debug hook for QA */
 window.__sim = {
-  play, state, MEASURE, BAG, camera, scene, camTarget, frameStage, orbit,
+  play, state, MEASURE, BAG, camera, scene, camTarget, frameStage, orbit, Sound,
   proj: (pts) => {
     const out = {};
     for (const [k, p] of Object.entries(pts)) {

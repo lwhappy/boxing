@@ -54,6 +54,8 @@
     font-size:10px;letter-spacing:.18em;color:#6f7d88;background:rgba(6,9,12,.55);border:1px solid rgba(210,224,235,.14);
     padding:7px 10px;border-radius:2px;cursor:pointer;transition:.2s}
   #sound:hover{color:var(--bone);border-color:rgba(210,224,235,.4)}
+  #sound.waiting{color:#e2b6a8;border-color:rgba(200,69,47,.55);animation:soundPulse 2.4s ease-in-out infinite}
+  @keyframes soundPulse{0%,100%{box-shadow:0 0 0 0 rgba(200,69,47,0)}50%{box-shadow:0 0 0 4px rgba(200,69,47,.14)}}
 
   /* ---------- technique panel ---------- */
   .panel{position:fixed;z-index:6;left:0;top:0;bottom:0;width:368px;padding:94px 34px 28px 30px;
@@ -161,6 +163,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=8"></script>
+<script type="module" src="./app.js?v=9"></script>
 </body>
 </html>
