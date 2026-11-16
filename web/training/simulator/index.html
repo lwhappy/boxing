@@ -38,6 +38,25 @@
   #flash.hit{animation:flashZ .55s ease-out}
   @keyframes flashZ{0%{opacity:1}18%{opacity:.55}100%{opacity:0}}
 
+  /* ---------- loading curtain ---------- */
+  #loader{position:fixed;inset:0;z-index:8;pointer-events:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    background:radial-gradient(125% 95% at 50% 44%,#0a1017 0%,#05070a 74%);
+    transition:opacity .55s ease,visibility .55s ease}
+  #loader.done{opacity:0;visibility:hidden}
+  #loader .ld-name{font-family:var(--serif);font-size:20px;letter-spacing:.01em;color:var(--bone)}
+  #loader .ld-name em{font-style:italic;color:var(--red)}
+  #loader .ld-bar{position:relative;width:196px;height:2px;background:rgba(210,224,235,.13);overflow:hidden}
+  #loader .ld-bar i{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 50%;
+    transform:scaleX(0);background:linear-gradient(90deg,rgba(200,69,47,.4),var(--red));
+    transition:transform .28s ease}
+  #loader.pending .ld-bar i{animation:ldPulse 1.2s ease-in-out infinite;transition:none}
+  @keyframes ldPulse{0%{transform:scaleX(.04);opacity:.5}60%{transform:scaleX(.68);opacity:1}100%{transform:scaleX(.92);opacity:0}}
+  #loader .ld-note{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+    color:#5f6d78;min-height:11px}
+  #loader.err .ld-name em{color:#e8a08f}
+  #loader.err .ld-bar{opacity:.25}
+
   /* ---------- top HUD ---------- */
   .hud-top{position:fixed;top:0;left:0;right:0;z-index:7;display:flex;align-items:flex-start;
     justify-content:space-between;gap:16px;padding:18px 22px;
@@ -130,6 +149,12 @@
 <div id="vignette"></div>
 <div id="flash"></div>
 
+<div id="loader" class="pending" role="status" aria-live="polite">
+  <div class="ld-name" id="ldName">Loading the <em>fighter</em></div>
+  <div class="ld-bar"><i id="ldBar"></i></div>
+  <div class="ld-note" id="ldNote">0%</div>
+</div>
+
 <header class="hud-top">
   <div class="hud-left">
     <a class="home" href="../../" aria-label="Back to home">
@@ -158,6 +183,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=21"></script>
+<script type="module" src="./app.js?v=22"></script>
 </body>
 </html>

@@ -581,8 +581,56 @@ const state = {
   move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3()
 };
 
+/* ------------------------------------------------------------- loading fx */
+const loaderEl = document.getElementById('loader');
+const ldBar = document.getElementById('ldBar');
+const ldNote = document.getElementById('ldNote');
+const ldName = document.getElementById('ldName');
+const bootAt = (performance && performance.now) ? performance.now() : 0;
+
+function loadProgress(f) {
+  if (!loaderEl || !ldBar || f == null) return;
+  const p = Math.max(0, Math.min(1, f));
+  loaderEl.classList.remove('pending');
+  ldBar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
+  if (ldNote) ldNote.textContent = Math.round(p * 100) + '%';
+  if (p >= 1 && ldNote) ldNote.textContent = 'preparing scene';
+}
+
+function loadFailed(msg) {
+  if (!loaderEl) return;
+  loaderEl.classList.add('err');
+  if (ldName) ldName.textContent = msg;
+  if (ldNote) ldNote.textContent = 'hard refresh to retry';
+  setTimeout(hideLoader, 2200);
+}
+
+function hideLoader() {
+  if (!loaderEl || loaderEl.classList.contains('done')) return;
+  loaderEl.classList.add('done');
+  setTimeout(() => { if (loaderEl.parentNode) loaderEl.parentNode.removeChild(loaderEl); }, 800);
+}
+
+/* keep the curtain up long enough that a fast cache hit does not flash it */
+function finishBoot() {
+  const held = (performance.now ? performance.now() : 0) - bootAt;
+  const wait = Math.max(0, 520 - held);
+  setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (ldNote) ldNote.textContent = 'ready';
+    hideLoader();
+  })), wait);
+}
+
 async function loadFighter() {
-  const gltf = await new GLTFLoader().loadAsync('../../media/glb/boxer-man.glb');
+  if (loaderEl) loaderEl.classList.add('pending');
+  const gltf = await new Promise((res, rej) => {
+    new GLTFLoader().load(
+      '../../media/glb/boxer-man.glb',
+      res,
+      (e) => { if (e && e.lengthComputable && e.total) loadProgress(e.loaded / e.total); },
+      rej
+    );
+  });
   model = gltf.scene;
   const box = new THREE.Box3().setFromObject(model);
   const h = box.max.y - box.min.y;
@@ -1300,11 +1348,13 @@ tick();
 loadFighter().then(() => {
   play('guard', { silent: true });
   unlockAudio();
+  finishBoot();
   setTimeout(() => Sound.swell(), 900);
 }).catch((e) => {
   console.error(e);
   const body = document.getElementById('pBody');
   if (body) body.innerHTML = '<div class="sec"><p>Failed to load the fighter — try a hard refresh (⌘⇧R).</p></div>';
+  loadFailed('Fighter failed to load');
 });
 
 /* ------------------------------------------------------------- audio unlock */
