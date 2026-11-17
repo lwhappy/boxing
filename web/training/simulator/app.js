@@ -882,10 +882,15 @@ function solveStaging() {
        the clip covers ground at an uneven pace and one shared offset leaves
        the short beats hanging in the air. */
     m.path = [];
+    let alt = 1;
     for (const hit of m.hits) {
       let step, txB, tzB;
       if (m.hits.length > 1) {
-        const offB = clamp(hit.contact.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
+        let offB = clamp(hit.contact.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
+        /* A strike that lands dead centre hides its own splash behind the
+           punching arm. Real combinations work the face of the bag, so near-
+           centre beats alternate to either side of the arm instead. */
+        if (Math.abs(offB) < 0.09) { offB = 0.11 * alt; alt = -alt; }
         const inwardB = Math.sqrt(Math.max(0.0004, BAG.r * BAG.r - offB * offB));
         txB = BAG.x + offB; tzB = BAG.z - inwardB;
         step = new THREE.Vector3(txB - hit.contact.x, 0, tzB - hit.contact.z);
@@ -948,9 +953,12 @@ function splash(p, n, power) {
     sprayPos[i * 3 + 1] = p.y + rand(-0.02, 0.02);
     sprayPos[i * 3 + 2] = p.z + rand(-0.02, 0.02);
     const sp = rand(0.7, 3.2) * power;
-    const v = n.clone().multiplyScalar(rand(0.3, 1.0))
-      .addScaledVector(up, rand(0.15, 1.0))
-      .add(new THREE.Vector3(rand(-0.85, 0.85), rand(-0.3, 0.6), rand(-0.85, 0.85)))
+    /* water leaves the leather sideways and up far more than it flies back
+       along the punch — a burst that hugs the bag reads as splash; one that
+       rockets at the camera reads as rain */
+    const v = n.clone().multiplyScalar(rand(0.25, 0.6))
+      .addScaledVector(up, rand(0.2, 1.1))
+      .add(new THREE.Vector3(rand(-1.0, 1.0), rand(-0.3, 0.6), rand(-1.0, 1.0)))
       .normalize()
       .multiplyScalar(sp);
     sprayVel[i * 3] = v.x; sprayVel[i * 3 + 1] = v.y; sprayVel[i * 3 + 2] = v.z;
@@ -966,7 +974,7 @@ function splash(p, n, power) {
     s.s.position.copy(p).addScaledVector(n, 0.05).add(new THREE.Vector3(rand(-0.04, 0.04), rand(-0.02, 0.07), rand(-0.04, 0.04)));
     s.vel.copy(n).multiplyScalar(rand(0.2, 0.7)).add(new THREE.Vector3(rand(-0.25, 0.25), rand(0.1, 0.45), rand(-0.25, 0.25)));
     s.s.material.opacity = 0;
-    s.s.scale.setScalar(rand(0.08, 0.14));
+    s.s.scale.setScalar(rand(0.10, 0.17));
   }
 
   // ring on the surface
@@ -1343,14 +1351,14 @@ function tick() {
   }
   for (const s of sheets) {
     if (s.life <= 0) continue;
-    s.life -= dt * 2.6;
+    s.life -= dt * 2.0;
     s.s.position.addScaledVector(s.vel, dt);
     s.s.scale.setScalar(s.s.scale.x + dt * 0.85);
-    s.s.material.opacity = Math.max(0, s.life) * 0.2;
+    s.s.material.opacity = Math.max(0, s.life) * 0.28;
     if (s.life <= 0) s.s.visible = false;
   }
   if (ringLife > 0) {
-    ringLife -= dt * 3.4;
+    ringLife -= dt * 2.7;
     contactRing.scale.setScalar(1 + (1 - ringLife) * 3.6);
     contactRing.material.opacity = Math.max(0, ringLife) * 0.7;
     if (ringLife <= 0) contactRing.visible = false;
