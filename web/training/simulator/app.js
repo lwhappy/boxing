@@ -1160,8 +1160,12 @@ function frameStage(o = {}, snap = true) {
 /* ---- drag to look around the yard ---- */
 let dragging = false;
 const dragStart = { x: 0, y: 0, az: 0, el: 0 };
-const AZ_LIMIT = 1.05;      // ±60° around the shipped angle
-const EL_LO = -0.55, EL_HI = 1.35;
+/* Full turn around the bag: the yard set (sky dome, 160 m ground plane, fog)
+   covers every direction, so the yaw is free. The vertical range stops just
+   above the ground and short of straight-down, where the up vector degenerates
+   and the framing flips. */
+const EL_LO = -1.45, EL_HI = 2.5;
+const wrapPi = (a) => a - Math.PI * 2 * Math.floor((a + Math.PI) / (Math.PI * 2));
 
 function beginDrag(e) {
   if (e.button !== undefined && e.button !== 0) return;
@@ -1174,7 +1178,7 @@ function beginDrag(e) {
 function moveDrag(e) {
   if (!dragging) return;
   const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
-  orbit.az = clamp(dragStart.az - dx * 0.0055, -AZ_LIMIT, AZ_LIMIT);
+  orbit.az = wrapPi(dragStart.az - dx * 0.0055);
   orbit.el = clamp(dragStart.el + dy * 0.0042, EL_LO, EL_HI);
   camSolve();
 }
