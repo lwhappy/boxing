@@ -577,7 +577,7 @@ let model, mixer, clips = {}, rawClips = {}, rig;
 const MEASURE = {};
 const state = {
   id: null, action: null, impact: 0, hit: false,
-  hits: [], nextHit: 0,
+  hits: [], nextHit: 0, path: [],
   move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3()
 };
 
@@ -876,17 +876,33 @@ function solveStaging() {
     m.move = new THREE.Vector3(tx - c.x, 0, tz - c.z);
 
     /* every beat gets its own splash: project its strike point onto the
-       cylinder, so even the second punch of a combo bursts in the right place */
+       cylinder, so even the second punch of a combo bursts in the right place.
+       A single strike keeps the one offset solved above (that is where the
+       hook angle lives); a combination gives every beat its own step, because
+       the clip covers ground at an uneven pace and one shared offset leaves
+       the short beats hanging in the air. */
+    m.path = [];
     for (const hit of m.hits) {
-      const p = hit.contact.clone().add(m.move);
-      let dx = p.x - BAG.x, dz = p.z - BAG.z;
-      const d = Math.hypot(dx, dz) || 1e-4;
-      dx /= d; dz /= d;
-      hit.normal = new THREE.Vector3(dx, 0, dz);
+      let step, txB, tzB;
+      if (m.hits.length > 1) {
+        const offB = clamp(hit.contact.x * 0.62, -BAG.r * 0.68, BAG.r * 0.68);
+        const inwardB = Math.sqrt(Math.max(0.0004, BAG.r * BAG.r - offB * offB));
+        txB = BAG.x + offB; tzB = BAG.z - inwardB;
+        step = new THREE.Vector3(txB - hit.contact.x, 0, tzB - hit.contact.z);
+      } else {
+        txB = tx; tzB = tz;
+        step = m.move.clone();
+      }
+      hit.step = step;
+      m.path.push({ t: hit.t, x: step.x, z: step.z });
+
+      const ddx = txB - BAG.x, ddz = tzB - BAG.z;
+      const dl = Math.hypot(ddx, ddz) || 1e-4;
+      hit.normal = new THREE.Vector3(ddx / dl, 0, ddz / dl);
       hit.point = new THREE.Vector3(
-        BAG.x + dx * BAG.r,
-        clamp(p.y, BAG.bottom + 0.07, BAG.top - 0.02),
-        BAG.z + dz * BAG.r
+        BAG.x + (ddx / dl) * BAG.r,
+        clamp(hit.contact.y + step.y, BAG.bottom + 0.07, BAG.top - 0.02),
+        BAG.z + (ddz / dl) * BAG.r
       );
     }
   }
@@ -1089,6 +1105,7 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
   state.impact = mv.hit ? MEASURE[id].impact : 0;
   state.from.copy(state.cur);
   state.move.copy(mv.hit ? MEASURE[id].move : new THREE.Vector3());
+  state.path = mv.hit && MEASURE[id].path ? MEASURE[id].path : [];
 
   if (!silent) Sound.tap();
   // a scuff of boots when the fighter has to travel for this punch
@@ -1211,6 +1228,33 @@ function resetView() {
 }
 canvas.addEventListener('dblclick', resetView);
 
+/**
+ * Where the rig stands at time t of a combination. Each beat carries the exact
+ * offset its strike was measured at; between beats the fighter walks there and
+ * settles a touch early, so every punch of the sequence is thrown from a
+ * planted stance instead of reaching for a bag that is still a step away.
+ */
+function feetAt(from, path, t, out) {
+  if (t <= path[0].t) {
+    const ramp = Math.max(0.2, path[0].t * 0.72);
+    const k = smooth(t / ramp);
+    return out.set(
+      from.x + (path[0].x - from.x) * k, 0,
+      from.z + (path[0].z - from.z) * k
+    );
+  }
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    if (t <= b.t) {
+      const raw = (t - a.t) / Math.max(0.06, b.t - a.t);
+      const k = smooth(clamp(raw / 0.82, 0, 1));
+      return out.set(a.x + (b.x - a.x) * k, 0, a.z + (b.z - a.z) * k);
+    }
+  }
+  const last = path[path.length - 1];
+  return out.set(last.x, 0, last.z);
+}
+
 
 /* ------------------------------------------------------------------ loop */
 const sway = { vx: 0, vz: 0, x: 0, z: 0 };
@@ -1228,10 +1272,16 @@ function tick() {
 
   // ---- footwork: ease into the punch's own stance, ease back out afterwards
   if (mv) {
-    const ramp = state.impact > 0 ? Math.max(0.22, state.impact * 0.72) : 0.5;
     const t = state.action ? state.action.time : 0;
-    const k = smooth(t / ramp);
-    state.cur.lerpVectors(state.from, state.move, k);
+    if (state.path.length > 1) {
+      /* a combination: walk the beat-by-beat path so every strike of the
+         sequence arrives at the exact distance it was measured at */
+      feetAt(state.from, state.path, t, state.cur);
+    } else {
+      const ramp = state.impact > 0 ? Math.max(0.22, state.impact * 0.72) : 0.5;
+      const k = smooth(t / ramp);
+      state.cur.lerpVectors(state.from, state.move, k);
+    }
     if (rig) { rig.position.x = state.cur.x; rig.position.z = state.cur.z; }
     if (fighterShadow) fighterShadow.position.set(state.cur.x + 0.05, 0.005, state.cur.z + 0.28);
   }
@@ -1473,8 +1523,9 @@ window.__sim = {
     const mv = MOVE_BY_ID[id], m = MEASURE[id];
     if (!mv || !m) return;
     state.id = id;
-    state.cur.copy(m.move || new THREE.Vector3());
     state.from.copy(state.cur);
+    state.cur.copy((m.hits[0] && m.hits[0].step) || m.move || new THREE.Vector3());
+    state.path = m.path || [];
     if (rig) { rig.position.x = state.cur.x; rig.position.z = state.cur.z; }
     collar.position.y = bagY((/uppercut/.test(id) ? m.contact.y + 0.02 : collarTopY));
     mixer.stopAllAction();
