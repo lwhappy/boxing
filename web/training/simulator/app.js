@@ -1364,6 +1364,22 @@ loadFighter().then(() => {
    wired below, so the audio is already playing by the time the user moves. */
 const soundBtn = document.getElementById('sound');
 
+/* ------------------------------------------------------------------ ad slot */
+/* Manual display unit, desktop only. The markup ships with a placeholder
+   data-ad-slot ("0000000000") — while it is in place the unit stays off and
+   Auto Ads keeps doing all the work. */
+(function initAdSlot() {
+  const slot = document.getElementById('adSlot');
+  const ins = slot && slot.querySelector('ins.adsbygoogle');
+  if (!slot || !ins) return;
+  const id = (ins.getAttribute('data-ad-slot') || '').trim();
+  if (!/^\d{9,10}$/.test(id) || id === '0000000000') return;
+  if (window.matchMedia('(min-width: 901px)').matches) {
+    slot.classList.add('on');
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  }
+})();
+
 function soundRunning() { return !!(Sound.ctx && Sound.ctx.state === 'running'); }
 
 function syncSoundLabel() {

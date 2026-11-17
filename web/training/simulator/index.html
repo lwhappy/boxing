@@ -76,7 +76,7 @@
   #sound:hover{color:var(--bone);border-color:rgba(210,224,235,.4)}
 
   /* ---------- technique panel ---------- */
-  .panel{position:fixed;z-index:6;left:0;top:0;bottom:0;width:368px;padding:94px 34px 28px 30px;
+  .panel{position:fixed;z-index:6;left:0;top:0;bottom:0;width:368px;padding:94px 34px 330px 30px;
     display:flex;flex-direction:column;justify-content:center;pointer-events:none;
     background:linear-gradient(100deg,rgba(4,6,9,.95) 30%,rgba(4,6,9,.8) 66%,rgba(4,6,9,0) 100%);
     opacity:0;transform:translateX(-16px);transition:opacity .55s ease,transform .55s cubic-bezier(.16,.84,.24,1)}
@@ -90,7 +90,7 @@
   .panel h1{font-family:var(--serif);font-size:38px;line-height:1.02;letter-spacing:-.02em;margin:14px 0 6px;font-weight:500}
   .panel h1 em{font-style:italic;color:var(--red)}
   .p-sub{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:#77858f;text-transform:uppercase;margin-bottom:16px}
-  .p-body{max-height:min(56vh,520px);overflow:auto;padding-right:6px;scrollbar-width:thin}
+  .p-body{max-height:min(40vh,360px);overflow:auto;padding-right:6px;scrollbar-width:thin}
   .sec{margin:0 0 15px}
   .sec>b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.26em;color:#707d87;
     text-transform:uppercase;margin-bottom:6px}
@@ -121,6 +121,14 @@
   .node.on .nm small{color:#a0817b}
   .node.guard{border-left-color:rgba(214,228,238,.4)}
   .node.guard.on{background:rgba(12,16,21,.75);border-left-color:var(--bone)}
+
+  /* ---------- desktop ad slot (below the technique panel) ---------- */
+  .ad-slot{position:fixed;left:30px;bottom:24px;width:308px;z-index:6;
+    display:none;pointer-events:auto}
+  .ad-slot.on{display:block}
+  .ad-slot .ad-label{font-family:var(--mono);font-size:8px;letter-spacing:.22em;
+    text-transform:uppercase;color:#57646f;margin-bottom:6px}
+  .ad-slot ins.adsbygoogle{background:rgba(6,10,14,.4);border-radius:2px}
 
   /* ---------- responsive ---------- */
   @media (max-width:900px){
@@ -173,6 +181,19 @@
   <div class="p-body" id="pBody"></div>
 </aside>
 
+<!-- Manual ad unit (desktop only). To activate it: create a "Display ads" unit
+     in the AdSense dashboard and paste its numeric slot id into data-ad-slot
+     below — the placeholder "0000000000" keeps the slot switched off. -->
+<div class="ad-slot" id="adSlot">
+  <div class="ad-label">Advertisement</div>
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-8470399807799168"
+       data-ad-slot="0000000000"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+</div>
+
 <button id="sound" type="button">SOUND · ON</button>
 
 <script type="importmap">
@@ -183,6 +204,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=22"></script>
+<script type="module" src="./app.js?v=23"></script>
 </body>
 </html>
