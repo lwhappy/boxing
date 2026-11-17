@@ -625,7 +625,7 @@ async function loadFighter() {
   if (loaderEl) loaderEl.classList.add('pending');
   const gltf = await new Promise((res, rej) => {
     new GLTFLoader().load(
-      '../../media/glb/boxer-man.glb?v=6',
+      '../../media/glb/boxer-man.glb?v=7',
       res,
       (e) => { if (e && e.lengthComputable && e.total) loadProgress(e.loaded / e.total); },
       rej
