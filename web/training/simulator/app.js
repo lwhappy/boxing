@@ -1178,7 +1178,9 @@ function beginDrag(e) {
 function moveDrag(e) {
   if (!dragging) return;
   const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
-  orbit.az = wrapPi(dragStart.az - dx * 0.0055);
+  /* grab-the-scene mapping: whatever the cursor grabs travels with the cursor,
+     so dragging left swings the stage left (the camera orbits the other way) */
+  orbit.az = wrapPi(dragStart.az + dx * 0.0055);
   orbit.el = clamp(dragStart.el + dy * 0.0042, EL_LO, EL_HI);
   camSolve();
 }
