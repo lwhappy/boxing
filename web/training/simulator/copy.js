@@ -12,7 +12,7 @@ export const MOVES = [
     sub: 'left hand leads · right hand loads',
     node: { ico: '⌂' },
     pos:  { left: '27.5%', top: '66%' },
-    posM: { left: '6%',    top: '15%' },
+    posM: { left: '2%', top: '8%' },
     what: 'Everything in boxing starts from here. In the orthodox stance the left foot and left hand lead, the stronger rear side sits behind them, and both gloves stay between your chin and his fists.',
     points: [
       'Left foot forward, right foot back, feet about shoulder-width apart, knees soft — never locked.',
@@ -26,7 +26,7 @@ export const MOVES = [
     name: 'Jab', em: 'Jab', tag: 'lead hand · straight',
     sub: 'speed · distance · the setup',
     pos: { left: '41%', top: '14.5%' },
-    posM: { left: '7%', top: '31%' },
+    posM: { left: '34.5%', top: '8%' },
     what: 'The lead-hand straight — the fastest punch in the sport. No wind-up and almost no tell: the fist leaves the guard and returns on the same line.',
     points: [
       'Push off the ball of the lead foot; the shoulder turn throws the punch, the arm only steers it.',
@@ -40,7 +40,7 @@ export const MOVES = [
     name: 'Cross', em: 'Cross', tag: 'rear hand · straight',
     sub: 'the first real power shot',
     pos: { left: '63%', top: '9%' },
-    posM: { left: '38%',   top: '20%' },
+    posM: { left: '67%', top: '8%' },
     what: 'The rear-hand straight, and the punch that ends most fights. The power is built on the floor: rear foot, hip, then shoulder, with the fist arriving last.',
     points: [
       'Pivot the rear heel outward and drive the hip through — if the arm lands first, the punch is only an arm.',
@@ -54,7 +54,7 @@ export const MOVES = [
     name: 'Lead', em: 'Hook', tag: 'lead hand · horizontal',
     sub: 'around the guard, not through it',
     pos: { left: '84.5%', top: '27%' },
-    posM: { left: '67%',   top: '29%' },
+    posM: { left: '2%', top: '14%' },
     what: 'A short horizontal arc from the lead hand that goes around a high guard instead of trying to break through it. The elbow stays bent — this is a swing with structure, not a haymaker.',
     points: [
       'Elbow up at shoulder height, forearm roughly parallel to the floor: a right angle, not a wide loop.',
@@ -68,7 +68,7 @@ export const MOVES = [
     name: 'Rear', em: 'Hook', tag: 'rear hand · horizontal',
     sub: 'the heaviest arc you own',
     pos: { left: '85%', top: '53%' },
-    posM: { left: '74%',   top: '41%' },
+    posM: { left: '34.5%', top: '14%' },
     what: 'The heaviest hook in the box. The whole rear side — foot, hip, shoulder — rotates behind the fist, which is why it hurts and why it leaves you open for a beat longer.',
     points: [
       'Rear heel turns out hard; the hip leads the shoulder, and the shoulder leads the fist.',
@@ -82,7 +82,7 @@ export const MOVES = [
     name: 'Lead', em: 'Uppercut', tag: 'lead hand · vertical',
     sub: 'up through the middle',
     pos: { left: '76%', top: '80%' },
-    posM: { left: '35%',   top: '82%' },
+    posM: { left: '67%', top: '14%' },
     what: 'A short vertical punch from the lead side that comes up through the middle of a high guard. It is the only punch that attacks from underneath.',
     points: [
       'Dip the lead shoulder and knee slightly, then drive up — the legs supply the punch, not the arm.',
@@ -96,7 +96,7 @@ export const MOVES = [
     name: 'Rear', em: 'Uppercut', tag: 'rear hand · vertical',
     sub: 'the finisher from below',
     pos: { left: '46%', top: '86%' },
-    posM: { left: '2%',    top: '82%' },
+    posM: { left: '2%', top: '20%' },
     what: 'The most powerful uppercut in boxing. The rear hip and leg fire straight up and the fist rides that line into the chin — short distance, enormous force.',
     points: [
       'Drop the rear shoulder and bend the rear knee, then extend both into the punch.',
@@ -110,7 +110,7 @@ export const MOVES = [
     name: 'Rear', em: 'Elbow', tag: 'rear arm · close range',
     sub: 'no swing · all bone',
     pos: { left: '27%', top: '10%' },
-    posM: { left: '2%',  top: '75%' },
+    posM: { left: '34.5%', top: '20%' },
     what: 'The elbow is the shortest power shot in fighting. From the guard the rear arm turns over and the point of the elbow drives straight through where a hook would have to travel — nothing else in boxing arrives that fast from that range.',
     points: [
       'Turn the rear heel out as the arm comes through: the elbow rides the hip, not the shoulder.',
@@ -124,7 +124,7 @@ export const MOVES = [
     name: 'Rear', em: 'Knee', tag: 'rear leg · clinch range',
     sub: 'the body shot nobody blocks',
     pos: { left: '52%', top: '20%' },
-    posM: { left: '35%', top: '75%' },
+    posM: { left: '67%', top: '20%' },
     what: 'A knee is a punch thrown with the biggest bone in your body. The rear leg lifts, the hip drives forward and up, and the strike lands with the point of the knee while both hands pull the target into it.',
     points: [
       'Step the lead foot out slightly so the knee travels straight up the middle, not across.',
@@ -139,7 +139,7 @@ export const MOVES = [
     name: 'Jab', em: 'Cross', tag: 'two beats · the one-two',
     sub: 'the first combination anyone learns',
     pos: { left: '80%', top: '12%' },
-    posM: { left: '68%', top: '75%' },
+    posM: { left: '34.5%', top: '26%' },
     what: 'The one-two: a jab to take the range and a cross down the same line before the guard comes back. Two punches, one movement — the jab opens the door and the rear hand walks through it.',
     points: [
       'Do not reset between them: the lead hand comes back as the rear hand goes out, so there is never a gap.',
@@ -154,7 +154,7 @@ export const MOVES = [
     name: 'Combo', em: 'Jab Cross', tag: 'two beats · the one-two',
     sub: 'short punches, no reset',
     pos: { left: '83%', top: '36%' },
-    posM: { left: '35%', top: '95%' },
+    posM: { left: '62%', top: '26%' },
     what: 'A tight four-punch combination thrown from punching range without ever leaving the pocket. Nothing swings wide, the hands come back to the chin between shots, and the last punch lands where the first one started.',
     points: [
       'Stay in stance: the feet turn, the hips turn, and the shoulders never square up for longer than one punch.',
@@ -169,7 +169,7 @@ export const MOVES = [
     name: 'Combo', em: 'Punch Knee', tag: 'long sequence · knee finish',
     sub: 'hands, then the knee',
     pos: { left: '78%', top: '64%' },
-    posM: { left: '2%',  top: '88%' },
+    posM: { left: '2%', top: '32%' },
     what: 'A long combination that starts as boxing and finishes as clinch work: the hands bring the guard up and the head down, then the rear knee comes through the middle to the body.',
     points: [
       'The punches are the setup, not the point — aim them at the guard to make the man cover, not to knock him out.',
@@ -184,7 +184,7 @@ export const MOVES = [
     name: 'Combo', em: 'Punch Elbow', tag: 'long sequence · elbow finish',
     sub: 'walk him down, then cut him',
     pos: { left: '58%', top: '76%' },
-    posM: { left: '41%', top: '88%' },
+    posM: { left: '40%', top: '32%' },
     what: 'The walking version of the same idea: the combination presses forward behind the jab and the cross, and closes with the rear elbow once the distance is gone entirely.',
     points: [
       'Every punch buys a step: land, step, land again — do not reach with the hands for distance your feet have not covered.',
@@ -198,7 +198,7 @@ export const MOVES = [
     name: 'Rear', em: 'Kick', tag: 'rear leg · body height',
     sub: 'the whole hip swings through',
     pos: { left: '85%', top: '18%' },
-    posM: { left: '68%', top: '81%' },
+    posM: { left: '2%', top: '26%' },
     what: 'The roundhouse is the heaviest single shot in the arsenal: the rear leg swings off the floor, the hip turns over ahead of it, and the shin arrives with the whole body weight behind it. Where a punch borrows arm strength, a kick borrows the floor.',
     points: [
       'Pivot the support foot before the leg swings — if the heel stays planted the hip cannot turn and the kick dies at half height.',

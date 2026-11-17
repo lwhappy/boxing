@@ -132,9 +132,14 @@
 
   /* ---------- responsive ---------- */
   @media (max-width:900px){
+    /* bottom banner: the node tray moves to the top, the bottom edge is the ad */
+    .ad-slot{left:0;right:0;bottom:0;width:auto;padding-bottom:env(safe-area-inset-bottom)}
+    .ad-slot.on{display:block}
+    .ad-slot .ad-label{font-size:7px;margin-bottom:3px;padding-left:8px}
+    .ad-slot ins.adsbygoogle{height:52px;max-height:52px!important;border-radius:0}
     .hud-top{padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top))}
     .home{font-size:9px;letter-spacing:.2em;padding:6px 11px 6px 9px}
-    .hint{font-size:8px;letter-spacing:.1em}
+    .hint{display:none}
     /* the technique panel stays in the markup for SEO, but must not cover the
        stage on small screens — hidden visually, still readable by crawlers */
     .panel,.panel.on{position:absolute;left:0;top:0;width:1px;height:1px;max-height:none;
@@ -188,8 +193,7 @@
        style="display:block"
        data-ad-client="ca-pub-8470399807799168"
        data-ad-slot="9673059937"
-       data-ad-format="auto"
-       data-full-width-responsive="true"></ins>
+       data-ad-format="horizontal"></ins>
 </div>
 
 <button id="sound" type="button">SOUND · ON</button>
@@ -202,6 +206,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=23"></script>
+<script type="module" src="./app.js?v=24"></script>
 </body>
 </html>
