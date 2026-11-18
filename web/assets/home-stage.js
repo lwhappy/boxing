@@ -1,5 +1,5 @@
 /* SilentJab — homepage stage (single character, lightweight action switcher)
- * 模型：media/glb/index.glb（红方骨架，7 条动画，动作名无前缀）
+ * 模型：media/glb/man-home.glb（man.fbx 男拳手 + index.glb 的 7 条动画，rest 修正移植）
  * 行为：默认循环播 idle；点顶部按钮播对应动作（单次，播完自动淡回 idle）；
  *       支持拖拽环绕 + 滚轮缩放。
  *
@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const GLB_URL = new URL('../media/glb/index.glb', import.meta.url).href;
+const GLB_URL = new URL('../media/glb/man-home.glb', import.meta.url).href;
 const IDLE_CLIP = 'idle';
 
 /* 页面可选配置 window.STAGE（不传 = 首页默认形态）：
