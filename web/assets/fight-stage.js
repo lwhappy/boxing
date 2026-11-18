@@ -386,17 +386,26 @@ function onLoaded(gltf) {
   model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh && o.material) {
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      // three r170 的 MeshStandardMaterial(GGX) 与 Tripo 烘焙贴图叠加会产生大块碎片斑
+      // （同贴图下 Phong/Lambert/Basic 均正常），统一换成 MeshPhongMaterial，观感几乎一致
+      for (let mi = 0; mi < mats.length; mi++) {
+        let m = mats[mi];
+        if (m.isMeshStandardMaterial) {
+          m = new THREE.MeshPhongMaterial({
+            map: mats[mi].map || null,
+            color: mats[mi].color.clone(),
+            side: mats[mi].side,
+            transparent: mats[mi].transparent,
+            opacity: mats[mi].opacity,
+            alphaTest: mats[mi].alphaTest,
+            shininess: 16,
+            specular: new THREE.Color(0x181818),
+          });
+          if (Array.isArray(o.material)) o.material[mi] = m;
+          else o.material = m;
+        }
         forceOpaque(m);
-        m.envMapIntensity = 0.6;
-        // Tripo 烘的材质默认 metalness=1（金属皮肤 → 斑驳高光），改普通皮肤材质
-        m.metalness = 0;
-        m.roughness = 0.6;
-        if (m.normalScale) m.normalScale.set(0, 0); // 法线贴图烘焙噪声会产生碎片斑，彻底禁用
-        // specularIntensityMap（KHR_materials_specular）烘的是斑驳粗糙度图，
-        // 会在皮肤上产生多边形碎片斑，彻底移除
-        if (m.specularIntensityMap) { m.specularIntensityMap = null; m.specularIntensity = 1; }
-        if (m.specularColorMap) { m.specularColorMap = null; }
       }
     }
   });
