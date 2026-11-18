@@ -50,7 +50,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="./assets/home.css?v=8" />
+<link rel="stylesheet" href="./assets/home.css?v=9" />
 <script>
 window.PAGE = { section: 'home', depth: 0 };
 </script>
@@ -86,7 +86,7 @@ window.PAGE = { section: 'home', depth: 0 };
   <section class="hero">
     <div class="hero-grid">
 
-      <!-- Left: demo stage (canvas + the six move buttons) -->
+      <!-- Left: hero tutorial stage (auto combo + part-by-part callouts) -->
       <div class="stage hero-stage" id="demo" aria-label="Punch demo area">
         <canvas id="stage-canvas"></canvas>
         <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Play a move" hidden></div>
@@ -102,10 +102,10 @@ window.PAGE = { section: 'home', depth: 0 };
         <div class="kicker">Play · Watch · Learn</div>
         <h1>A boxing &amp; kickboxing simulator you can play right now <em>— and the technique behind every strike</em></h1>
         <p>
-          Pick a fighter and spar a live opponent in the ring, then take the game apart one punch
-          at a time: the six basic moves, ten real combinations, and a training mode where the
-          punch actually lands on a defender. Press a button and the fighter throws it, orbit the
-          camera, slow it down, then open the page for the full technique notes.
+          The stage runs the core four — jab, cross, right hook, left uppercut — on its own. Each
+          punch freezes on its furthest frame and walks you through the fist, the guard hand, the
+          hips and both feet, one callout at a time. Orbit it, slow it down, or pause on a beat, then
+          open a move page for the full technique notes.
         </p>
         <div class="quick">
           <a class="chip" href="./moves/jab.html">Jab</a>
@@ -280,6 +280,6 @@ window.STAGE = {
   buttons: ['jab', 'cross', 'lead-hand-hook', 'back-hand-hook', 'lead-hand-uppercut', 'back-hand-uppercut']
 };
 </script>
-<script type="module" src="./assets/home-stage.js?v=6"></script>
+<script type="module" src="./assets/hero-stage.js?v=4"></script>
 </body>
 </html>
