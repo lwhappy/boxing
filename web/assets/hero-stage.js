@@ -271,7 +271,11 @@ function onLoaded(gltf) {
         // 法线贴图烘焙过重会加深条纹。改成普通皮肤材质。
         m.metalness = 0;
         m.roughness = 0.6;
-        if (m.normalScale) m.normalScale.set(0.35, 0.35);
+        if (m.normalScale) m.normalScale.set(0, 0); // 法线贴图烘焙噪声会在受光面产生角状碎片斑，彻底禁用
+        // specularIntensityMap（KHR_materials_specular）烘的是斑驳粗糙度图，
+        // 会在皮肤上产生多边形碎片斑，彻底移除
+        if (m.specularIntensityMap) { m.specularIntensityMap = null; m.specularIntensity = 1; }
+        if (m.specularColorMap) { m.specularColorMap = null; }
       }
     }
   });

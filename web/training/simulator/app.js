@@ -645,7 +645,10 @@ async function loadFighter() {
       // Tripo 烘的材质默认 metalness=1（金属皮肤 → 斑驳高光），改普通皮肤材质
       if (m.metalness === 1) m.metalness = 0;
       if (m.roughness === 1) m.roughness = 0.6;
-      if (m.normalScale) m.normalScale.set(0.35, 0.35);
+      if (m.normalScale) m.normalScale.set(0, 0); // 法线贴图烘焙噪声会产生碎片斑，彻底禁用
+      // specularIntensityMap 烘的是斑驳粗糙度图，会在皮肤上产生多边形碎片斑，彻底移除
+      if (m.specularIntensityMap) { m.specularIntensityMap = null; m.specularIntensity = 1; }
+      if (m.specularColorMap) { m.specularColorMap = null; }
     }
   });
   rig = new THREE.Group();
