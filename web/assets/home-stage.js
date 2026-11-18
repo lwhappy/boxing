@@ -63,12 +63,18 @@ scene.add(new THREE.HemisphereLight(0xe6f0ff, 0x4a4640, 2.9));
 const key = new THREE.DirectionalLight(0xffe8d2, 4.0);
 key.position.set(2.2, 3.2, 2.6);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0x86b8ff, 2.2);
+const rim = new THREE.DirectionalLight(0x86b8ff, 3.2);
 rim.position.set(-2.4, 2.0, -2.6);
 scene.add(rim);
-const fill = new THREE.DirectionalLight(0xffffff, 1.5);
+const fill = new THREE.DirectionalLight(0xffffff, 1.0);
 fill.position.set(0, 1.4, 4);
 scene.add(fill);
+
+/* 跟随机位的补光：一圈转过去，背面/侧面也始终有光落在可见的一侧，
+   否则用户转到背后时人物就成剪影了。强度压低，只补暗部不压平体积。 */
+const headFill = new THREE.DirectionalLight(0xeaf2ff, 1.5);
+scene.add(headFill);
+scene.add(headFill.target);
 
 /* ---------- 尺寸自适应 ---------- */
 function resize() {
@@ -418,6 +424,10 @@ function frame() {
     offset.setLength(d + (desiredFraming.dist - d) * k);
     camera.position.copy(controls.target).add(offset);
   }
+
+  headFill.position.copy(camera.position);
+  headFill.target.position.copy(controls.target);
+  headFill.position.sub(controls.target).setLength(6).add(controls.target);
 
   controls.update();
   renderer.render(scene, camera);
