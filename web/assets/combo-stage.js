@@ -76,7 +76,9 @@ const CFG = window.COMBO || {};
 // otherwise stay stale in browsers and edge caches. Bump ?v= when the GLB changes.
 // The path is resolved against this module's own directory (assets/), so the same
 // engine works from the site root and from the nested combos/ folder.
-const GLB_URL = new URL('../media/glb/' + (CFG.glb || 'combo_jab_cross.glb') + '?v=1', import.meta.url).href;
+// One shared GLB holds every combo clip (man-home's rig + ten animations);
+// each page names its clip with window.COMBO = { clip: 'combo_xxx' }.
+const GLB_URL = new URL('../media/glb/man-combos.glb?v=1', import.meta.url).href;
 
 const canvas = document.getElementById('stage-canvas');
 const barEl = document.getElementById('stage-bar');
@@ -88,7 +90,7 @@ const errorEl = document.getElementById('stage-error');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
+renderer.toneMappingExposure = 1.42;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
@@ -103,16 +105,21 @@ controls.maxDistance = 6;
 controls.maxPolarAngle = Math.PI * 0.55;
 
 /* 灯光 */
-scene.add(new THREE.HemisphereLight(0xd9e8ff, 0x3a3630, 2.0));
-const key = new THREE.DirectionalLight(0xffe8d2, 3.4);
+scene.add(new THREE.HemisphereLight(0xe6f0ff, 0x4a4640, 2.9));
+const key = new THREE.DirectionalLight(0xffe8d2, 4.0);
 key.position.set(2.2, 3.2, 2.6);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0x86b8ff, 2.0);
+const rim = new THREE.DirectionalLight(0x86b8ff, 3.2);
 rim.position.set(-2.4, 2.0, -2.6);
 scene.add(rim);
-const fill = new THREE.DirectionalLight(0xffffff, 0.9);
+const fill = new THREE.DirectionalLight(0xffffff, 1.0);
 fill.position.set(0, 1.4, 4);
 scene.add(fill);
+
+/* 跟随机位的补光：转到背面/侧面时可见的一侧也始终有光 */
+const headFill = new THREE.DirectionalLight(0xeaf2ff, 1.5);
+scene.add(headFill);
+scene.add(headFill.target);
 
 /* ---------- 尺寸自适应 ---------- */
 function resize() {
@@ -286,7 +293,7 @@ function onLoaded(gltf) {
   const clips = gltf.animations || [];
   let comboClip = null;
   if (clips.length > 0) {
-    comboClip = clips[0];
+    comboClip = (CFG.clip && THREE.AnimationClip.findByName(clips, CFG.clip)) || clips[0];
     // Trim the initial idle/loading phase so the first punch starts sooner.
     // The combo clips have ~1s of pre-punch setup; we cut roughly half of it.
     const trimStart = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.5;
@@ -400,6 +407,9 @@ const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   if (mixer) mixer.update(dt);
+  headFill.position.copy(camera.position);
+  headFill.target.position.copy(controls.target);
+  headFill.position.sub(controls.target).setLength(6).add(controls.target);
   controls.update();
   renderer.render(scene, camera);
 });
