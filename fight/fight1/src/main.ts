@@ -117,14 +117,20 @@ async function boot(): Promise<void> {
   const sfx = new FightSfx(audio.ctx, audio.sfx)
   const game: Game = new Game(renderer, gltf, sfx, stage)
   progress(0.96, 'Loading end poses')
-  const [{ loadEndClips }] = await Promise.all([import('./game/endclips')])
+  const [{ loadEndClips }, { clone: cloneSkeleton }] = await Promise.all([
+    import('./game/endclips'),
+    import('three/examples/jsm/utils/SkeletonUtils.js'),
+  ])
   // Reference clip gives the FBX position-unit scale; the rigs' bones are already canonically named.
   const refTrack = gltf.animations.flatMap(a => a.tracks).find(t => t.name.endsWith('Hips.position'))!
   const refClip = new THREE.AnimationClip('ref', -1, [refTrack])
+  // Detached clone of a fighter rig: retarget probe with canonical bone names and no animated state.
+  const probe = cloneSkeleton(game.black.model)
   const endClips = await loadEndClips(
     `${import.meta.env.BASE_URL}models/action-Victory.fbx`,
     `${import.meta.env.BASE_URL}models/action-Defeat.fbx`,
     new Set(game.black.bones.keys()),
+    probe,
     refClip,
   )
   game.setEndClips(endClips)

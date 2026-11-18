@@ -1,19 +1,28 @@
 import * as THREE from 'three'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import { retargetClip } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { canonicalBoneName } from './rig'
 
 /**
- * End-of-match clips authored as Mixamo FBX (cm units, `mixamorig:` bone names). They are loaded,
- * remapped onto the fighters' canonical bone names and unit-normalised so the same clip drives
- * either rig. Position magnitudes are scaled against a reference clip from the GLB, which removes
- * any FBX unit ambiguity (Mixamo cm vs the GLB's baked metres).
+ * End-of-match clips authored as Mixamo FBX (cm units, `mixamorig` bone names). They are retargeted
+ * onto a detached clone of a fighter rig with SkeletonUtils.retargetClip, which resolves every
+ * bone's rest-pose/hierarchy differences (the GLB rigs hang Hips under a pre-rotated, unit-scaled
+ * group; the FBX does not). The retargeted hip positions are then normalised onto the GLB clips'
+ * units using a reference clip, since the two exports disagree on overall character scale.
  */
 export type EndClips = { win: THREE.AnimationClip; lose: THREE.AnimationClip }
 
+/**
+ * @param probeBoneNames canonical bone names present on the fighters' rigs ("Hips", "Spine", ...)
+ * @param probe         a detached `SkeletonUtils.clone()` of a fighter's rig model (same bone
+ *                      names/rest pose as the live rigs, no animated state)
+ * @param referenceClip any GLB fight clip, used purely as the unit reference for hip positions
+ */
 export async function loadEndClips(
   winUrl: string,
   loseUrl: string,
-  bones: Set<string>,
+  probeBoneNames: Set<string>,
+  probe: THREE.Object3D,
   referenceClip: THREE.AnimationClip,
 ): Promise<EndClips> {
   const loader = new FBXLoader()
@@ -21,12 +30,49 @@ export async function loadEndClips(
     loader.loadAsync(winUrl),
     loader.loadAsync(loseUrl),
   ])
-  const refScale = hipsPositionScale(referenceClip)
+
+  // SkeletonUtils.retargetClip wants the target as an Object3D exposing `.skeleton` (a SkinnedMesh
+  // of the probe works) and matches source bones by name, so build the canonical -> mixamorig map.
+  const targetMesh = findSkinnedMesh(probe)
+  const names: Record<string, string> = {}
+  for (const b of probeBoneNames) names[b] = `mixamorig${b}`
+  const options = { hip: 'mixamorigHips', names }
+
   const winRaw = pickClip(winFbx.animations, 'Victory')
   const loseRaw = pickClip(loseFbx.animations, 'Defeat')
-  const win = remap(winRaw, bones, unitRatio(winRaw, refScale))
-  const lose = remap(loseRaw, bones, unitRatio(loseRaw, refScale))
+  // retargetClip expects the source to expose `.skeleton` (the animation-only FBX ships bones but
+  // no mesh), so graft a Skeleton built from its bones onto the root.
+  const winSource = withSkeleton(winFbx)
+  const loseSource = withSkeleton(loseFbx)
+  const win = renameTracks(retargetClip(targetMesh, winSource, winRaw, options))
+  const lose = renameTracks(retargetClip(targetMesh, loseSource, loseRaw, options))
+
+  // One unit ratio, measured on the standing clip (the fall clip's hips are lower by design, so
+  // measuring per-clip would over-scale it).
+  const refScale = hipsPositionScale(referenceClip)
+  const ratio = hipsPositionScale(win) > 1e-6 ? refScale / hipsPositionScale(win) : 1
+  if (Math.abs(ratio - 1) > 1e-4) scaleHips(win, ratio)
+  if (Math.abs(ratio - 1) > 1e-4) scaleHips(lose, ratio)
   return { win, lose }
+}
+
+function findSkinnedMesh(root: THREE.Object3D): THREE.SkinnedMesh {
+  let mesh: THREE.SkinnedMesh | null = null
+  root.traverse(o => {
+    if (!mesh && (o as THREE.SkinnedMesh).isSkinnedMesh) mesh = o as THREE.SkinnedMesh
+  })
+  if (!mesh) throw new Error('Fighter rig probe contains no skinned mesh')
+  return mesh
+}
+
+/** Graft a Skeleton built from the FBX's bones onto its root so retargetClip can enumerate bones. */
+function withSkeleton(fbx: THREE.Group): THREE.Group & { skeleton: THREE.Skeleton } {
+  const bones: THREE.Bone[] = []
+  fbx.traverse(o => {
+    if ((o as THREE.Bone).isBone) bones.push(o as THREE.Bone)
+  })
+  if (!bones.length) throw new Error('FBX contains no bones')
+  return Object.assign(fbx, { skeleton: new THREE.Skeleton(bones) }) as THREE.Group & { skeleton: THREE.Skeleton }
 }
 
 /** Longest clip in the FBX (the files ship a single action each). */
@@ -37,30 +83,27 @@ function pickClip(clips: THREE.AnimationClip[], fallback: string): THREE.Animati
   return best
 }
 
-/**
- * Rewrite an FBX clip's tracks onto the canonical bone names and drop anything the rig does not
- * have (FBX helper nodes, scale curves). Returns null when the clip matches no bones at all.
- */
-function remap(source: THREE.AnimationClip, bones: Set<string>, posScale: number): THREE.AnimationClip {
-  const tracks: THREE.KeyframeTrack[] = []
-  for (const track of source.tracks) {
-    const parsed = THREE.PropertyBinding.parseTrackName(track.name)
-    // FBXLoader pre-sanitizes names ("mixamorigHips"), GLTFLoader keeps the colon ("mixamorig:Hips").
-    const bone = canonicalBoneName(parsed.nodeName.replace(/^mixamorig\d*:?/, ''))
-    if (!bones.has(bone) || parsed.propertyName === 'scale') continue
-    const renamed = track.clone()
-    renamed.name = `${bone}.${parsed.propertyName}`
-    if (parsed.propertyName === 'position' && posScale > 0 && posScale !== 1) {
-      const values = renamed.values as Float32Array
-      for (let i = 0; i < values.length; i++) values[i] *= posScale
-    }
-    tracks.push(renamed)
-  }
-  if (!tracks.length) throw new Error(`No matching bones for clip "${source.name}"`)
-  return new THREE.AnimationClip(source.name, source.duration, tracks)
+function scaleHips(clip: THREE.AnimationClip, ratio: number): void {
+  const track = clip.tracks.find(t => t.name === 'Hips.position')
+  if (!track) return
+  const values = track.values as Float32Array
+  for (let i = 0; i < values.length; i++) values[i] *= ratio
 }
 
-/** Typical hip height magnitude of a clip, used as the unit reference (metres in the GLB). */
+/**
+ * retargetClip names its tracks with the `.bones[Name].prop` selector, which PropertyBinding only
+ * resolves when the mixer root itself carries a skeleton. Our fighters' mixers root at a plain
+ * group, so rewrite the names to plain `Name.prop` bone lookups.
+ */
+function renameTracks(clip: THREE.AnimationClip): THREE.AnimationClip {
+  for (const track of clip.tracks) {
+    const m = /^\.bones\[(.+)\]\.(position|quaternion|scale)$/.exec(track.name)
+    if (m) track.name = `${m[1]}.${m[2]}`
+  }
+  return clip
+}
+
+/** Typical hip height magnitude of a clip, used as the unit reference. */
 function hipsPositionScale(clip: THREE.AnimationClip): number {
   const track = clip.tracks.find(t => t.name === 'Hips.position') ?? clip.tracks.find(t => t.name.endsWith('.position'))
   if (!track || track.values.length < 3) return 1
@@ -73,8 +116,5 @@ function hipsPositionScale(clip: THREE.AnimationClip): number {
   return n > 0 ? sum / n : 1
 }
 
-/** Ratio that converts an FBX clip's position units onto the GLB reference units. */
-function unitRatio(fbxClip: THREE.AnimationClip, refScale: number): number {
-  const fbx = hipsPositionScale(fbxClip)
-  return fbx > 1e-6 ? refScale / fbx : 1
-}
+// canonicalBoneName is re-exported for callers that need to build bone name sets.
+export { canonicalBoneName }

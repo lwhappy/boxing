@@ -33,6 +33,8 @@ export class Fighter {
   readonly fists: Fist[]
   readonly strikes = new Map<string, Strike>()
   readonly bones: Map<string, THREE.Bone>
+  /** The rig's character node (container + skinned mesh + bones), used to clone a retarget probe. */
+  readonly model: THREE.Object3D
   private readonly actions = new Map<string, THREE.AnimationAction>()
   private readonly materials: THREE.MeshStandardMaterial[] = []
 
@@ -70,6 +72,7 @@ export class Fighter {
   constructor(readonly side: Side, rig: Rig, readonly transform: FighterTransform) {
     this.root.name = `fighter-${side}`
     this.bones = rig.bones
+    this.model = rig.model
     rig.model.position.set(0, 0, 0)
     this.pivot.add(rig.model)
     this.root.add(this.pivot)
