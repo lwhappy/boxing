@@ -44,7 +44,7 @@ const errorEl = document.getElementById('stage-error');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
+renderer.toneMappingExposure = 1.42;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
@@ -59,14 +59,14 @@ controls.maxDistance = 6;
 controls.maxPolarAngle = Math.PI * 0.55;
 
 /* 灯光：亮一档的天光 + 暖主光 + 冷轮廓光 + 正面补光（浅底上人物不发灰发暗） */
-scene.add(new THREE.HemisphereLight(0xd9e8ff, 0x3a3630, 2.0));
-const key = new THREE.DirectionalLight(0xffe8d2, 3.4);
+scene.add(new THREE.HemisphereLight(0xe6f0ff, 0x4a4640, 2.9));
+const key = new THREE.DirectionalLight(0xffe8d2, 4.0);
 key.position.set(2.2, 3.2, 2.6);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0x86b8ff, 2.0);
+const rim = new THREE.DirectionalLight(0x86b8ff, 2.2);
 rim.position.set(-2.4, 2.0, -2.6);
 scene.add(rim);
-const fill = new THREE.DirectionalLight(0xffffff, 0.9);
+const fill = new THREE.DirectionalLight(0xffffff, 1.5);
 fill.position.set(0, 1.4, 4);
 scene.add(fill);
 
@@ -264,7 +264,7 @@ function onLoaded(gltf) {
     if (o.isMesh && o.material) {
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
         forceOpaque(m);
-        m.envMapIntensity = 0.6;
+        m.envMapIntensity = 0.85;
       }
     }
   });
