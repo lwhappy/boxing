@@ -26,6 +26,10 @@ export class FightCamera {
   constructor(element: HTMLElement) {
     this.camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 16 / 9, 0.05, 80)
     element.addEventListener('pointerdown', e => {
+      // Interactive UI living inside the stage (result overlay buttons, touch pads) must receive
+      // its own clicks — capturing the pointer here would retarget the click to the stage element.
+      const target = e.target as HTMLElement | null
+      if (target && target !== element && target.closest('button, a, input, .result, .pad')) return
       element.setPointerCapture(e.pointerId)
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (this.pointers.size === 2) {
