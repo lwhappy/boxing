@@ -267,6 +267,11 @@ function onLoaded(gltf) {
         m.envMapIntensity = 0.85;
         m.transparent = false;
         m.opacity = 1;
+        // Tripo 烘的材质默认 metalness=1（金属皮肤 → 强光下斑驳高光），
+        // 法线贴图烘焙过重会加深条纹。改成普通皮肤材质。
+        m.metalness = 0;
+        m.roughness = 0.6;
+        if (m.normalScale) m.normalScale.set(0.35, 0.35);
       }
     }
   });
@@ -331,7 +336,7 @@ function onLoaded(gltf) {
     play: (i) => startAction(i),
     pause: (v) => setPaused(v),
     slow: (v) => setSlow(v),
-    model, camera, controls, mixer,
+    model, camera, controls, mixer, THREE,
   };
 }
 

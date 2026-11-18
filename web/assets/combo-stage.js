@@ -278,6 +278,10 @@ function onLoaded(gltf) {
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
         forceOpaque(m);
         m.envMapIntensity = 0.6;
+        // Tripo 烘的材质默认 metalness=1（金属皮肤 → 斑驳高光），改普通皮肤材质
+        m.metalness = 0;
+        m.roughness = 0.6;
+        if (m.normalScale) m.normalScale.set(0.35, 0.35);
       }
     }
   });

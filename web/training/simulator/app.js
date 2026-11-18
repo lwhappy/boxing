@@ -640,7 +640,13 @@ async function loadFighter() {
   model.traverse((o) => {
     if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    for (const m of mats) if (m.roughness !== undefined && m.roughness > 0.75) m.roughness = 0.68;
+    for (const m of mats) {
+      if (m.roughness !== undefined && m.roughness > 0.75) m.roughness = 0.68;
+      // Tripo 烘的材质默认 metalness=1（金属皮肤 → 斑驳高光），改普通皮肤材质
+      if (m.metalness === 1) m.metalness = 0;
+      if (m.roughness === 1) m.roughness = 0.6;
+      if (m.normalScale) m.normalScale.set(0.35, 0.35);
+    }
   });
   rig = new THREE.Group();
   rig.add(model);
