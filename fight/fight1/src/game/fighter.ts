@@ -63,6 +63,9 @@ export class Fighter {
   /** Called when a strike enters its active window (whoosh sound). */
   onSwing?: (fighter: Fighter) => void
   private swung = false
+  /** Match over: the fighter plays its victory/defeat clip and ignores all further commands. */
+  ko = false
+  private endAction: THREE.AnimationAction | null = null
 
   constructor(readonly side: Side, rig: Rig, readonly transform: FighterTransform) {
     this.root.name = `fighter-${side}`
@@ -178,6 +181,7 @@ export class Fighter {
 
   /** Ask for an action. Attacks first step/turn into range (auto reach), then play. */
   request(def: ActionDef): void {
+    if (this.ko) return
     if (def.kind === 'stance') {
       this.stance = def
       if (this.state === 'idle') this.fadeTo(this.actions.get(def.id)!, null)
@@ -249,6 +253,7 @@ export class Fighter {
 
   /** Called by the game when an opponent fist lands on one of this fighter's anchors. */
   takeHit(region: Region, push: THREE.Vector3, power: number): boolean {
+    if (this.ko) return false
     this.flash = 1
     this.flashColor.set(region === 'arm' ? '#7fe8ff' : '#ffb27a')
     const k = region === 'arm' ? 0.35 : region === 'leg' ? 0.5 : 1
@@ -263,6 +268,12 @@ export class Fighter {
   }
 
   step(dt: number): void {
+    // Match over: keep playing the victory/defeat clip, ignore all fight logic.
+    if (this.ko) {
+      this.mixer.update(dt)
+      this.syncRoot()
+      return
+    }
     const foe = this.opponent
     // Always face the opponent, plus the user's yaw offset and the current strike's aim.
     tmpDir.subVectors(foe.pos, this.pos).setY(0)
@@ -347,6 +358,47 @@ export class Fighter {
   hurryHome(): void {
     this.footwork = null
     if (this.state === 'idle') this.restTimer = Math.max(this.restTimer, CONFIG.fight.returnDelay + 0.01)
+  }
+
+  /** Match over: play the victory or defeat clip and freeze in its last pose. */
+  playEnd(clip: THREE.AnimationClip): void {
+    if (this.endAction && this.endAction.getClip() === clip) return
+    this.ko = true
+    this.pending = null
+    this.footwork = null
+    const prev = this.current?.action ?? this.actions.get(this.stance.id)!
+    const next = this.mixer.clipAction(clip)
+    next.reset()
+    next.setLoop(THREE.LoopOnce, 1)
+    next.clampWhenFinished = true
+    next.enabled = true
+    next.setEffectiveWeight(1)
+    next.play()
+    next.crossFadeFrom(prev, CONFIG.fight.blend * 2, false)
+    this.endAction = next
+    this.current = null
+    this.state = 'idle'
+    this.restTimer = 0
+    this.onAction?.(this.stance)
+  }
+
+  /** Restore a playable state after a rematch. */
+  resetForRematch(): void {
+    this.ko = false
+    this.pending = null
+    this.current = null
+    this.aim = 0
+    this.state = 'idle'
+    this.restTimer = 0
+    this.footwork = null
+    if (this.endAction) {
+      this.endAction.stop()
+      this.endAction = null
+    }
+    this.pos.copy(this.home)
+    this.syncRoot()
+    this.fadeTo(this.actions.get(this.stance.id)!, null)
+    this.onAction?.(this.stance)
   }
 
   syncRoot(): void {

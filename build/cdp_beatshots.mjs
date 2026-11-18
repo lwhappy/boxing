@@ -78,9 +78,10 @@ ws.onopen = async () => {
   })()`);
 
   for (const [i, b] of beats.entries()) {
+    const target = b.t + Number(process.env.DELAY || 0);
     for (let guard = 0; guard < 1200; guard++) {
       const t = await clock();
-      if (typeof t === 'number' && t >= b.t) break;
+      if (typeof t === 'number' && t >= target) break;
       await sleep(10);
     }
     await evalJS(`(() => { window.__rig.mixer.timeScale = 0; return 'ok'; })()`);
@@ -88,7 +89,7 @@ ws.onopen = async () => {
     const info = await probe();
     const s = await send('Page.captureScreenshot', { format: 'png' }, sid);
     fs.mkdirSync('build/captures', { recursive: true });
-    fs.writeFileSync(`build/captures/beat_${MOVE}_${i}.png`, Buffer.from(s.data, 'base64'));
+    fs.writeFileSync(`build/captures/beat_${MOVE}_${i}${process.env.DELAY ? '_d' + process.env.DELAY : ''}.png`, Buffer.from(s.data, 'base64'));
     console.log(`beat ${i} t=${b.t.toFixed(2)} ${b.bone}: ${info}`);
     await evalJS(`(() => { window.__rig.mixer.timeScale = 1; return 'ok'; })()`);
   }

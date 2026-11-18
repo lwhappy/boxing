@@ -8,6 +8,7 @@ import { RobotBrain } from './ai'
 import { FightCamera } from './camera'
 import { ContactTracker, segmentSegment, sweptSphereCapsule } from './combat'
 import { CONFIG, DEFAULT_CONFIG, type FighterTransform, type Side } from './config'
+import type { EndClips } from './endclips'
 import { Fighter } from './fighter'
 import { ImpactFx } from './fx'
 import { extractRigs, prepareMeshes } from './rig'
@@ -17,7 +18,13 @@ import type { Renderer } from '../engine/renderer'
 /** GLB character nodes: the black boxer is authored as "attack", the red one as "defence". */
 export const CHARACTER_NODES: Record<Side, string> = { black: 'attack', red: 'defence' }
 
+const UP = new THREE.Vector3(0, 1, 0)
+
 export type HitEvent = { attacker: Side; region: Anchor['region']; anchor: string; fist: string; point: THREE.Vector3; power: number; reacted: boolean }
+
+/** Score fight: both fighters start on this many points and lose HP_DAMAGE per clean hit. */
+export const START_HP = 200
+export const HP_DAMAGE = 10
 
 type Overlap = { fist: string; anchor: string; strikeId: number; f: Fist; an: Anchor; att: Fighter; def: Fighter }
 
@@ -36,6 +43,13 @@ export class Game {
   readonly hits: HitEvent[] = []
   onAction?: (side: Side, def: ActionDef) => void
   onHit?: (e: HitEvent) => void
+  /** Score readout: side → remaining points. */
+  hp: Record<Side, number> = { black: START_HP, red: START_HP }
+  /** True once a fighter reaches zero points; the duel stops until rematch(). */
+  matchOver = false
+  onHp?: (hp: Record<Side, number>) => void
+  onMatchEnd?: (winner: Side) => void
+  private endClips: EndClips | null = null
 
   constructor(private readonly renderer: Renderer, gltf: GLTF, private readonly sfx: FightSfx, stage: HTMLElement) {
     this.scene.background = new THREE.Color('#07070b')
@@ -114,6 +128,28 @@ export class Game {
     b.hurryHome()
   }
 
+  /**
+   * Strafe the black fighter's home spot sideways relative to the opponent line:
+   * +1 = the fighter's right (D), −1 = the fighter's left (A).
+   */
+  strafeBlack(dir: 1 | -1): void {
+    const b = this.black
+    const line = new THREE.Vector3().subVectors(this.red.pos, b.pos).setY(0)
+    if (line.lengthSq() < 1e-8) return
+    line.normalize()
+    // Right-hand side of the facing direction: forward × up.
+    const right = new THREE.Vector3().crossVectors(line, UP).normalize()
+    const amount = 0.24 * b.scale
+    b.transform.x = THREE.MathUtils.clamp(b.transform.x + right.x * amount * dir, -2.4, 2.4)
+    b.transform.z = THREE.MathUtils.clamp(b.transform.z + right.z * amount * dir, -2.4, 2.4)
+    b.hurryHome()
+  }
+
+  /** Victory/defeat clips (loaded async at boot) for the end-of-match poses. */
+  setEndClips(clips: EndClips): void {
+    this.endClips = clips
+  }
+
   setTransform(side: Side, patch: Partial<FighterTransform>): void {
     this[side].setTransform(patch)
     if (patch.x !== undefined || patch.z !== undefined) this.fistsTeleported = true
@@ -141,16 +177,59 @@ export class Game {
       this.hitstop -= dt
       return
     }
-    this.brain.step(dt)
+    if (!this.matchOver) this.brain.step(dt)
     this.black.step(dt)
     this.red.step(dt)
-    this.separate()
-    const reset = this.firstStep || this.fistsTeleported
-    this.firstStep = false
-    this.fistsTeleported = false
-    this.black.updateWorld(dt, reset)
-    this.red.updateWorld(dt, reset)
-    this.collide()
+    if (!this.matchOver) {
+      this.separate()
+      const reset = this.firstStep || this.fistsTeleported
+      this.firstStep = false
+      this.fistsTeleported = false
+      this.black.updateWorld(dt, reset)
+      this.red.updateWorld(dt, reset)
+      this.collide()
+    } else {
+      this.black.updateWorld(dt, false)
+      this.red.updateWorld(dt, false)
+    }
+  }
+
+  /** Deduct points for a clean hit and end the match at zero. */
+  private applyDamage(defender: Side): void {
+    if (this.matchOver) return
+    this.hp[defender] = Math.max(0, this.hp[defender] - HP_DAMAGE)
+    this.onHp?.(this.hp)
+    if (this.hp[defender] <= 0) this.endMatch(defender === 'black' ? 'red' : 'black')
+  }
+
+  /** Match over: the winner celebrates, the loser falls. Both poses hold until rematch. */
+  endMatch(winner: Side): void {
+    if (this.matchOver) return
+    this.matchOver = true
+    this.brain.enabled = false
+    if (this.endClips) {
+      const loser = winner === 'black' ? this.red : this.black
+      const victor = winner === 'black' ? this.black : this.red
+      loser.playEnd(this.endClips.lose)
+      victor.playEnd(this.endClips.win)
+    }
+    this.onMatchEnd?.(winner)
+  }
+
+  /** Restart the duel: scores reset, fighters return home, robot wakes up. */
+  rematch(): void {
+    this.hp = { black: START_HP, red: START_HP }
+    this.matchOver = false
+    this.hits.length = 0
+    this.brain.enabled = true
+    for (const f of [this.black, this.red] as const) f.resetForRematch()
+    this.black.yaw = Math.atan2(this.red.pos.x - this.black.pos.x, this.red.pos.z - this.black.pos.z)
+    this.red.yaw = Math.atan2(this.black.pos.x - this.red.pos.x, this.black.pos.z - this.red.pos.z)
+    this.black.syncRoot()
+    this.red.syncRoot()
+    this.firstStep = true
+    this.onHp?.(this.hp)
+    this.cam.resetView()
   }
 
   /** Keep the bodies from passing through each other. */
@@ -211,6 +290,8 @@ export class Game {
     this.hits.push(event)
     if (this.hits.length > 50) this.hits.shift()
     this.onHit?.(event)
+    // Blocked (arm) punches score nothing; every clean hit costs the opponent 10 points.
+    if (an.region !== 'arm') this.applyDamage(def.side)
   }
 
   // ---- Rendering ----------------------------------------------------------------------------

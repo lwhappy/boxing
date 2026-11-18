@@ -1,15 +1,19 @@
 import * as THREE from 'three'
 import { CONFIG } from './config'
 
+/** Default orbit yaw (radians): the player reads bottom-left, the opponent top-right (~20° tilt). */
+const START_ORBIT_YAW = -0.38
+
 /**
  * Broadcast-style side camera. It frames the midpoint of both fighters from the side of their line,
  * zooming to fit their separation for any aspect ratio. Drag to orbit, wheel/pinch to zoom,
- * double-click/tap to reset the view.
+ * double-click/tap to reset the view. The default yaw tilts the fight so the player reads bottom-left
+ * and the opponent top-right (about 20°).
  */
 export class FightCamera {
   readonly camera: THREE.PerspectiveCamera
-  private orbitYaw = 0.32
-  private orbitPitch = 0.1
+  private orbitYaw = START_ORBIT_YAW
+  private orbitPitch = 0.14
   private zoom = 1
   private shakeAmount = 0
   private readonly target = new THREE.Vector3(0, 1, 0)
@@ -62,8 +66,8 @@ export class FightCamera {
   }
 
   resetView(): void {
-    this.orbitYaw = 0.32
-    this.orbitPitch = 0.1
+    this.orbitYaw = START_ORBIT_YAW
+    this.orbitPitch = 0.14
     this.zoom = 1
   }
 

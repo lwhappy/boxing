@@ -253,3 +253,125 @@ html, body {
 @media (pointer: coarse) {
   .key { display: none; }
 }
+
+/* ---- HUD: health bars ------------------------------------------------------------------------ */
+.hud {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 4;
+  pointer-events: none;
+}
+.hud-side { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.hud-side.robot { flex-direction: row-reverse; }
+.hud-name { font: 700 12px/1 var(--font); letter-spacing: 0.16em; color: var(--muted); }
+.hud-side.you .hud-name { color: var(--yellow); }
+.hud-side.robot .hud-name { color: #ff6b7b; }
+.hud-score { font: 700 13px/1 var(--font); font-variant-numeric: tabular-nums; color: var(--text); }
+.hud-track {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 12px;
+  background: rgba(12, 15, 21, 0.72);
+  border: 1px solid var(--line);
+  transform: skewX(-14deg);
+  overflow: hidden;
+}
+.hud-track i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ffd23f, #ff9a3f);
+  transition: width 0.25s ease;
+}
+.hud-side.robot .hud-track i { background: linear-gradient(-90deg, #ff5a7a, #e2273a); }
+.hud-track i.low { animation: hpLow 0.7s ease-in-out infinite alternate; }
+@keyframes hpLow { to { opacity: 0.5; } }
+.hud-vs { font: 700 11px/1 var(--font); letter-spacing: 0.2em; color: var(--muted); align-self: center; }
+
+/* ---- Result overlay --------------------------------------------------------------------------- */
+.result {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  background: rgba(7, 7, 11, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 7;
+}
+.result[hidden] { display: none; }
+.result-card {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 20px 34px;
+  background: rgba(16, 16, 22, 0.92);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--yellow);
+}
+.result-word { font: 700 42px/1 var(--font); font-style: italic; letter-spacing: 0.06em; color: var(--yellow); }
+.result-word.lose { color: #ff6b7b; }
+.result-sub { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+/* ---- Touch pads (left footwork / right punches) ------------------------------------------------ */
+.pads { display: none; }
+@media (pointer: coarse) {
+  #controls {
+    background: transparent;
+    border-top: 0;
+    padding: 0;
+  }
+  .deck-row, .adjust { display: none; }
+  .pads {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 10px;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .pad { display: grid; gap: 7px; pointer-events: auto; }
+  .pad-left {
+    grid-template-areas: '. i .' 'l o r';
+    grid-template-columns: repeat(3, 52px);
+    grid-auto-rows: 52px;
+  }
+  .pad-left [data-move='in'] { grid-area: i; }
+  .pad-left [data-move='out'] { grid-area: o; }
+  .pad-left [data-move='left'] { grid-area: l; }
+  .pad-left [data-move='right'] { grid-area: r; }
+  .pad-right { grid-template-columns: repeat(2, 68px); grid-auto-rows: 46px; }
+  .pad-btn {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(16, 16, 22, 0.74);
+    color: var(--text);
+    border-radius: 12px;
+    font: 700 10px/1.1 var(--font);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: pointer;
+  }
+  .pad-btn small { font-size: 8px; opacity: 0.55; letter-spacing: 0.1em; }
+  .pad-btn.kind-attack { border-color: rgba(255, 210, 63, 0.45); }
+  .pad-btn.kind-stance { border-color: rgba(127, 232, 255, 0.45); }
+  .pad-btn.is-running { background: var(--yellow); color: var(--ink); }
+  .pad-btn.pressed { animation: press 0.16s ease; }
+}

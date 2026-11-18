@@ -1,9 +1,10 @@
-import { MENU_ACTIONS, type ActionDef } from '../game/actions'
+import { MENU_ACTIONS, ATTACKS, type ActionDef } from '../game/actions'
 import type { FighterTransform, Side } from '../game/config'
 
 export type ControlHooks = {
   action(id: string): void
   step(dir: 1 | -1): void
+  strafe(dir: 1 | -1): void
   toggle(name: 'robot' | 'anchors' | 'reach', on: boolean): void
   transform(side: Side, patch: Partial<FighterTransform>): void
   reset(): void
@@ -23,13 +24,25 @@ const SLIDERS: Omit<Slider, 'side'>[] = [
 
 const esc = (s: string) => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`)
 
-/** Buttons below the stage. Everything the page shows besides the 3D stage lives here. */
+type MoveKind = 'in' | 'out' | 'left' | 'right'
+const MOVE_HOOKS: Record<MoveKind, (h: ControlHooks) => void> = {
+  in: h => h.step(1),
+  out: h => h.step(-1),
+  left: h => h.strafe(-1),
+  right: h => h.strafe(1),
+}
+/** Repeat cadence while a movement key/pad button is held, ms. */
+const MOVE_REPEAT_MS = 130
+
+/** Buttons below the stage (desktop) plus left/right thumb pads (touch). */
 export class Controls {
   private readonly buttons = new Map<string, HTMLButtonElement>()
   private readonly inputs: { s: Slider; input: HTMLInputElement; out: HTMLOutputElement }[] = []
   private readonly adjust: HTMLElement
   private active = 'idle'
   private stance = 'idle'
+  private readonly held = new Set<MoveKind>()
+  private moveTimer: number | null = null
 
   constructor(private readonly root: HTMLElement, private readonly hooks: ControlHooks) {
     root.innerHTML = `
@@ -37,9 +50,7 @@ export class Controls {
         ${MENU_ACTIONS.map(a => `<button type="button" class="slab kind-${a.kind}" data-action="${a.id}" aria-keyshortcuts="${a.keyLabel}">
           <span class="key">${esc(a.keyLabel)}</span><span class="label">${esc(a.label)}</span></button>`).join('')}
       </div>
-      <div class="deck-row tools" role="group" aria-label="Footwork and setup">
-        <button type="button" class="slab tool" data-step="-1" aria-keyshortcuts="ArrowLeft"><span class="key">←</span><span class="label">Step Back</span></button>
-        <button type="button" class="slab tool" data-step="1" aria-keyshortcuts="ArrowRight"><span class="key">→</span><span class="label">Step In</span></button>
+      <div class="deck-row tools" role="group" aria-label="Setup">
         <button type="button" class="slab toggle is-on" data-toggle="robot" aria-pressed="true"><span class="label">Robot</span></button>
         <button type="button" class="slab toggle is-on" data-toggle="reach" aria-pressed="true"><span class="label">Auto Reach</span></button>
         <button type="button" class="slab toggle is-on" data-toggle="anchors" aria-pressed="true"><span class="label">Anchors</span></button>
@@ -56,6 +67,18 @@ export class Controls {
             </label>`).join('')}
           </fieldset>`).join('')}
         <button type="button" class="slab tool reset" data-reset><span class="label">Reset</span></button>
+      </div>
+      <div class="pads" aria-label="Touch controls">
+        <div class="pad pad-left" role="group" aria-label="Footwork">
+          <button type="button" class="pad-btn" data-move="left" aria-label="Move left"><span>◀</span><small>A</small></button>
+          <button type="button" class="pad-btn" data-move="out" aria-label="Step back"><span>▼</span><small>S</small></button>
+          <button type="button" class="pad-btn" data-move="in" aria-label="Step in"><span>▲</span><small>W</small></button>
+          <button type="button" class="pad-btn" data-move="right" aria-label="Move right"><span>▶</span><small>D</small></button>
+        </div>
+        <div class="pad pad-right" role="group" aria-label="Punches">
+          <button type="button" class="pad-btn kind-stance" data-action="guard"><span>GUARD</span><small>E</small></button>
+          ${ATTACKS.map(a => `<button type="button" class="pad-btn kind-attack" data-action="${a.id}"><span>${esc(a.label)}</span><small>${esc(a.keyLabel)}</small></button>`).join('')}
+        </div>
       </div>`
     this.adjust = root.querySelector('.adjust')!
 
@@ -67,12 +90,19 @@ export class Controls {
         this.pulse(b)
       })
     }
-    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-step]')) {
-      b.addEventListener('click', () => {
-        hooks.press()
-        hooks.step(Number(b.dataset.step) as 1 | -1)
+    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-move]')) {
+      const kind = b.dataset.move as MoveKind
+      const down = (e: PointerEvent) => {
+        e.preventDefault()
+        b.setPointerCapture(e.pointerId)
+        this.startMove(kind)
         this.pulse(b)
-      })
+      }
+      const up = () => this.stopMove(kind)
+      b.addEventListener('pointerdown', down)
+      b.addEventListener('pointerup', up)
+      b.addEventListener('pointercancel', up)
+      b.addEventListener('lostpointercapture', up)
     }
     for (const b of root.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
       b.addEventListener('click', () => {
@@ -104,22 +134,63 @@ export class Controls {
       })
     }
 
+    // Movement keys are held: W/S step in/out, A/D strafe (arrow keys mirror them).
+    const MOVE_KEYS: Record<string, MoveKind> = {
+      KeyW: 'in', ArrowUp: 'in',
+      KeyS: 'out', ArrowDown: 'out',
+      KeyA: 'left', ArrowLeft: 'left',
+      KeyD: 'right', ArrowRight: 'right',
+    }
     window.addEventListener('keydown', e => {
-      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT') return
+      const move = MOVE_KEYS[e.code]
+      if (move) {
+        if (!e.repeat) this.startMove(move)
+        e.preventDefault()
+        return
+      }
+      if (e.repeat) return
       const def = MENU_ACTIONS.find(a => a.key === e.code)
       if (def) {
         hooks.press()
         hooks.action(def.id)
         this.pulse(this.buttons.get(def.id)!)
         e.preventDefault()
-        return
       }
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { hooks.press(); hooks.step(-1); e.preventDefault() }
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') { hooks.press(); hooks.step(1); e.preventDefault() }
     })
+    window.addEventListener('keyup', e => {
+      const move = MOVE_KEYS[e.code]
+      if (move) this.stopMove(move)
+    })
+    window.addEventListener('blur', () => this.stopAllMoves())
     this.setActive(MENU_ACTIONS[0])
+  }
+
+  private startMove(kind: MoveKind): void {
+    this.hooks.press()
+    this.held.add(kind)
+    MOVE_HOOKS[kind](this.hooks)
+    if (this.moveTimer === null) this.moveTimer = window.setInterval(() => {
+      for (const k of this.held) MOVE_HOOKS[k](this.hooks)
+    }, MOVE_REPEAT_MS)
+  }
+
+  private stopMove(kind: MoveKind): void {
+    this.held.delete(kind)
+    if (this.held.size === 0 && this.moveTimer !== null) {
+      window.clearInterval(this.moveTimer)
+      this.moveTimer = null
+    }
+  }
+
+  private stopAllMoves(): void {
+    this.held.clear()
+    if (this.moveTimer !== null) {
+      window.clearInterval(this.moveTimer)
+      this.moveTimer = null
+    }
   }
 
   private format(s: Slider, v: number): string {

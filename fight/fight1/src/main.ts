@@ -1,4 +1,5 @@
 import './styles/fight.css'
+import * as THREE from 'three'
 import { Audio } from './engine/audio'
 import { GameLoop } from './engine/loop'
 import { CONFIG } from './game/config'
@@ -21,6 +22,71 @@ window.addEventListener('keydown', unlock, { capture: true })
 function progress(p: number, text?: string): void {
   fill.style.width = `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`
   if (text) status.textContent = text
+}
+
+/** Health bars + result overlay, built once and updated from game callbacks. */
+function buildHud(): {
+  set(hp: Record<'black' | 'red', number>): void
+  end(winner: 'black' | 'red'): void
+  reset(): void
+} {
+  const hud = document.createElement('div')
+  hud.className = 'hud'
+  hud.innerHTML = `
+    <div class="hud-side you">
+      <span class="hud-name">YOU</span>
+      <div class="hud-track"><i></i></div>
+      <span class="hud-score">200</span>
+    </div>
+    <div class="hud-vs">VS</div>
+    <div class="hud-side robot">
+      <span class="hud-name">ROBOT</span>
+      <div class="hud-track"><i></i></div>
+      <span class="hud-score">200</span>
+    </div>`
+  stage.appendChild(hud)
+
+  const result = document.createElement('div')
+  result.className = 'result'
+  result.hidden = true
+  result.innerHTML = `
+    <div class="result-card">
+      <div class="result-word"></div>
+      <div class="result-sub"></div>
+      <button type="button" class="slab tool rematch"><span class="label">Rematch</span></button>
+    </div>`
+  stage.appendChild(result)
+
+  const tracks = {
+    black: hud.querySelector<HTMLElement>('.you .hud-track i')!,
+    red: hud.querySelector<HTMLElement>('.robot .hud-track i')!,
+  }
+  const scores = {
+    black: hud.querySelector<HTMLElement>('.you .hud-score')!,
+    red: hud.querySelector<HTMLElement>('.robot .hud-score')!,
+  }
+  const word = result.querySelector<HTMLElement>('.result-word')!
+  const sub = result.querySelector<HTMLElement>('.result-sub')!
+
+  return {
+    set(hp) {
+      for (const side of ['black', 'red'] as const) {
+        tracks[side].style.width = `${(hp[side] / 200) * 100}%`
+        scores[side].textContent = String(hp[side])
+        tracks[side].classList.toggle('low', hp[side] <= 60)
+      }
+    },
+    end(winner) {
+      const win = winner === 'black'
+      word.textContent = win ? 'YOU WIN' : 'YOU LOSE'
+      word.classList.toggle('lose', !win)
+      sub.textContent = win ? 'The robot is down for the count.' : 'Knocked down. Train and come back.'
+      result.hidden = false
+    },
+    reset() {
+      result.hidden = true
+    },
+  }
 }
 
 /**
@@ -50,6 +116,18 @@ async function boot(): Promise<void> {
   const renderer = new Renderer(canvas, suggestQuality())
   const sfx = new FightSfx(audio.ctx, audio.sfx)
   const game: Game = new Game(renderer, gltf, sfx, stage)
+  progress(0.96, 'Loading end poses')
+  const [{ loadEndClips }] = await Promise.all([import('./game/endclips')])
+  // Reference clip gives the FBX position-unit scale; the rigs' bones are already canonically named.
+  const refTrack = gltf.animations.flatMap(a => a.tracks).find(t => t.name.endsWith('Hips.position'))!
+  const refClip = new THREE.AnimationClip('ref', -1, [refTrack])
+  const endClips = await loadEndClips(
+    `${import.meta.env.BASE_URL}models/action-Victory.fbx`,
+    `${import.meta.env.BASE_URL}models/action-Defeat.fbx`,
+    new Set(game.black.bones.keys()),
+    refClip,
+  )
+  game.setEndClips(endClips)
   // Compile shaders before revealing the stage so the first punches do not hitch.
   renderer.gl.compile(game.scene, game.cam.camera)
 
@@ -57,6 +135,7 @@ async function boot(): Promise<void> {
   const controls = new Controls(document.querySelector<HTMLElement>('#controls')!, {
     action: id => game.doAction(id),
     step: dir => game.stepBlack(dir),
+    strafe: dir => game.strafeBlack(dir),
     toggle: (name, on) => {
       if (name === 'robot') game.brain.enabled = on
       if (name === 'anchors') game.overlay.group.visible = on
@@ -70,6 +149,12 @@ async function boot(): Promise<void> {
   game.onAction = (side, def) => {
     if (side === 'black') controls.setActive(def)
   }
+
+  const hud = buildHud()
+  hud.set(game.hp)
+  game.onHp = hp => hud.set(hp)
+  game.onMatchEnd = winner => hud.end(winner)
+  resultRematch(game, hud)
 
   if (import.meta.env.DEV) {
     const [{ registerGameTuning }, { tuning }] = await Promise.all([
@@ -106,6 +191,13 @@ async function boot(): Promise<void> {
   window.setTimeout(() => { loader.hidden = true }, 500)
   // Debug/test hook (read-only use): smoke tests inspect fight state through it.
   ;(window as unknown as { __game: unknown }).__game = { game, ready: true }
+}
+
+function resultRematch(game: Game, hud: ReturnType<typeof buildHud>): void {
+  stage.querySelector('.rematch')!.addEventListener('click', () => {
+    hud.reset()
+    game.rematch()
+  })
 }
 
 function start(): void {
