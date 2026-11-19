@@ -145,57 +145,502 @@ const Sfx = {
 
 /* ------------------------------------------------------------------ fx */
 
+function canvas2d(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+
+function makeTex(c) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+function radialTex(draw) {
+  const s = 128;
+  const c = canvas2d(s, s);
+  draw(c.getContext('2d'), s);
+  return makeTex(c);
+}
+
+const FX_TEX = {
+  flash: radialTex((g, s) => {
+    const grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,.9)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,.22)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
+  }),
+  ring: radialTex((g, s) => {
+    g.strokeStyle = 'rgba(255,255,255,1)';
+    g.lineWidth = s * 0.05;
+    g.beginPath();
+    g.arc(s / 2, s / 2, s * 0.42, 0, Math.PI * 2);
+    g.stroke();
+  }),
+  star: radialTex((g, s) => {
+    g.translate(s / 2, s / 2);
+    g.fillStyle = 'rgba(255,255,255,1)';
+    const spikes = 8;
+    g.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const r = i % 2 === 0 ? s * 0.48 : s * 0.13;
+      const a = (i / (spikes * 2)) * Math.PI * 2;
+      g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.closePath();
+    g.fill();
+  }),
+  slash: radialTex((g, s) => {
+    g.translate(s / 2, s / 2);
+    g.strokeStyle = 'rgba(255,255,255,1)';
+    g.lineCap = 'round';
+    for (const rot of [0.62, -0.62]) {
+      g.save();
+      g.rotate(rot);
+      g.lineWidth = s * 0.065;
+      g.beginPath();
+      g.moveTo(-s * 0.44, 0);
+      g.lineTo(s * 0.44, 0);
+      g.stroke();
+      g.restore();
+    }
+  }),
+};
+
+/**
+ * Pooled impact effects. Everything is additive and ignores depth so the burst
+ * reads through gloves and heads instead of being hidden behind them.
+ * A hit spawns: white core flash, comic star, crossing slashes, two shockwave
+ * rings and a spray of instanced spark shards.
+ */
 class FX {
   constructor(scene) {
     this.scene = scene;
+    this.group = new THREE.Group();
+    scene.add(this.group);
+
+    this.bursts = [];
     this.pool = [];
-    this.live = [];
-    const geo = new THREE.RingGeometry(0.05, 0.075, 28);
-    for (let i = 0; i < 8; i++) {
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color: 0xffe27a, transparent: true, opacity: 0, side: THREE.DoubleSide,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-      }));
-      m.visible = false;
-      scene.add(m);
-      this.pool.push(m);
+    for (let i = 0; i < 56; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: FX_TEX.flash, transparent: true, opacity: 0, depthWrite: false, depthTest: false,
+        blending: THREE.AdditiveBlending, toneMapped: false,
+      });
+      const s = new THREE.Sprite(mat);
+      s.visible = false;
+      s.renderOrder = 20;
+      this.group.add(s);
+      this.pool.push(s);
+    }
+
+    this.maxSparks = 260;
+    const geo = new THREE.BoxGeometry(0.017, 0.017, 0.1);
+    const mat = new THREE.MeshBasicMaterial({
+      transparent: true, opacity: 0.95, depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending, toneMapped: false,
+    });
+    this.sparkMesh = new THREE.InstancedMesh(geo, mat, this.maxSparks);
+    this.sparkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.sparkMesh.frustumCulled = false;
+    this.sparkMesh.count = 0;
+    this.sparkMesh.renderOrder = 21;
+    this.group.add(this.sparkMesh);
+    this.sparks = [];
+
+    this._d = new THREE.Object3D();
+    this._v = new THREE.Vector3();
+  }
+
+  burst(kind, pos, color, from, to, dur, spin = 0) {
+    const s = this.pool.pop();
+    if (!s) return;
+    const m = s.material;
+    m.map = FX_TEX[kind] || FX_TEX.flash;
+    m.color.setHex(color);
+    m.opacity = 0;
+    m.rotation = Math.random() * Math.PI * 2;
+    s.position.copy(pos);
+    s.scale.setScalar(from);
+    s.visible = true;
+    this.bursts.push({ s, life: 0, dur, from, to, spin });
+  }
+
+  /**
+   * @param {THREE.Vector3} pos  world-space contact point
+   * @param {{color?:number, dir?:THREE.Vector3, power?:number}} opts
+   */
+  impact(pos, { color = 0xffd76a, dir = null, power = 1 } = {}) {
+    this.burst('flash', pos, 0xffffff, 0.16 * power, 0.95 * power, 0.17);
+    this.burst('star', pos, color, 0.2 * power, 1.05 * power, 0.24, 3);
+    this.burst('slash', pos, 0xffffff, 0.24 * power, 0.8 * power, 0.16);
+    this.burst('ring', pos, color, 0.32 * power, 2.0 * power, 0.38);
+    this.burst('ring', pos, 0xffffff, 0.14 * power, 1.05 * power, 0.26);
+
+    const d = dir ? this._v.copy(dir).normalize().clone() : new THREE.Vector3(0, 0, 1);
+    const n = Math.round(30 * power);
+    for (let i = 0; i < n; i++) {
+      const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.28, Math.random() - 0.5)
+        .normalize().addScaledVector(d, 1.15).normalize()
+        .multiplyScalar((2.2 + Math.random() * 4.8) * power);
+      if (this.sparks.length >= this.maxSparks) this.sparks.shift();
+      this.sparks.push({
+        p: pos.clone(),
+        v,
+        life: 0,
+        max: 0.18 + Math.random() * 0.3,
+        col: new THREE.Color(i % 4 === 0 ? 0xffffff : color),
+      });
     }
   }
-  ring(pos, color = 0xffe27a, scale = 1) {
-    const m = this.pool.pop();
-    if (!m) return;
-    m.material.color.setHex(color);
-    m.position.copy(pos);
-    m.visible = true;
-    m.userData.t = 0;
-    m.userData.scale = 0.55 * scale;
-    m.scale.setScalar(0.55 * scale);
-    m.lookAt(this.scene.userData.cam || pos.clone().add(new THREE.Vector3(0, 0, 1)));
-    this.live.push(m);
-  }
-  spark(pos, color = 0xffffff) {
-    const m = this.pool.pop();
-    if (!m) return;
-    m.material.color.setHex(color);
-    m.position.copy(pos);
-    m.visible = true;
-    m.userData.t = 0;
-    m.userData.scale = 0.34;
-    m.scale.setScalar(0.34);
-    this.live.push(m);
-  }
+
   update(dt) {
-    for (let i = this.live.length - 1; i >= 0; i--) {
-      const m = this.live[i];
-      m.userData.t += dt;
-      const k = m.userData.t / 0.34;
+    for (let i = this.bursts.length - 1; i >= 0; i--) {
+      const b = this.bursts[i];
+      b.life += dt;
+      const k = Math.min(1, b.life / b.dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      b.s.scale.setScalar(b.from + (b.to - b.from) * e);
+      // fade in fast, then out
+      b.s.material.opacity = k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88;
+      if (b.spin) b.s.material.rotation += dt * b.spin;
       if (k >= 1) {
-        m.visible = false; m.material.opacity = 0; this.live.splice(i, 1); this.pool.push(m);
-        continue;
+        b.s.visible = false;
+        b.s.material.opacity = 0;
+        this.pool.push(b.s);
+        this.bursts.splice(i, 1);
       }
-      m.scale.setScalar(m.userData.scale + k * 1.5);
-      m.material.opacity = (1 - k) * 0.9;
     }
+
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const s = this.sparks[i];
+      s.life += dt;
+      if (s.life >= s.max) { this.sparks.splice(i, 1); continue; }
+      s.p.addScaledVector(s.v, dt);
+      s.v.y -= 10 * dt;
+      s.v.multiplyScalar(Math.pow(0.05, dt));
+    }
+
+    const cap = Math.min(this.sparks.length, this.maxSparks);
+    for (let i = 0; i < cap; i++) {
+      const s = this.sparks[i];
+      const k = 1 - s.life / s.max;
+      const speed = s.v.length();
+      this._d.position.copy(s.p);
+      this._v.copy(s.p).add(s.v);
+      this._d.lookAt(this._v);
+      const w = 0.65 + 0.95 * k;
+      this._d.scale.set(w, w, 0.35 + speed * 0.14 * k);
+      this._d.updateMatrix();
+      this.sparkMesh.setMatrixAt(i, this._d.matrix);
+      this.sparkMesh.setColorAt(i, s.col);
+    }
+    this.sparkMesh.count = cap;
+    this.sparkMesh.instanceMatrix.needsUpdate = true;
+    if (this.sparkMesh.instanceColor) this.sparkMesh.instanceColor.needsUpdate = true;
+  }
+}
+
+/* ------------------------------------------------------------------ ring */
+
+const RING_X = 3.0;
+const RING_Z = 2.3;
+const ROPE_Y = [0.46, 0.82, 1.18];
+
+/** Printed ring canvas: weave, corner wedges, border rules, centre logo. */
+function canvasTexture() {
+  const s = 1024;
+  const c = canvas2d(s, s);
+  const g = c.getContext('2d');
+
+  const grad = g.createLinearGradient(0, 0, s, s);
+  grad.addColorStop(0, '#39495b');
+  grad.addColorStop(0.5, '#2f3e4e');
+  grad.addColorStop(1, '#26323f');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, s, s);
+
+  // canvas weave
+  for (let i = 0; i < 24000; i++) {
+    const a = Math.random() * 0.05;
+    g.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`;
+    g.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+  }
+
+  // corner wedges: blue at −X, red at +X
+  g.save();
+  g.globalAlpha = 0.55;
+  g.fillStyle = '#1e3f74';
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(s * 0.3, 0); g.lineTo(0, s * 0.3); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(0, s); g.lineTo(s * 0.3, s); g.lineTo(0, s * 0.7); g.closePath(); g.fill();
+  g.fillStyle = '#8c1f2c';
+  g.beginPath(); g.moveTo(s, 0); g.lineTo(s * 0.7, 0); g.lineTo(s, s * 0.3); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(s, s); g.lineTo(s * 0.7, s); g.lineTo(s, s * 0.7); g.closePath(); g.fill();
+  g.restore();
+
+  // border rules
+  g.strokeStyle = 'rgba(255,255,255,.16)';
+  g.lineWidth = 7;
+  g.strokeRect(26, 26, s - 52, s - 52);
+  g.strokeStyle = 'rgba(216,164,66,.55)';
+  g.lineWidth = 3;
+  g.strokeRect(44, 44, s - 88, s - 88);
+
+  // centre circle + gold slash
+  g.save();
+  g.translate(s / 2, s / 2);
+  g.beginPath();
+  g.arc(0, 0, s * 0.2, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(255,255,255,.045)';
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.16)';
+  g.lineWidth = 5;
+  g.stroke();
+  g.save();
+  g.rotate(-0.5);
+  g.fillStyle = 'rgba(216,164,66,.28)';
+  g.fillRect(-14, -s * 0.155, 28, s * 0.31);
+  g.restore();
+  g.fillStyle = 'rgba(255,255,255,.2)';
+  g.font = '700 40px ui-sans-serif, system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.fillText('SILENTJAB', 0, -s * 0.245);
+  g.fillText('SILENTJAB', 0, s * 0.29);
+  g.restore();
+
+  return makeTex(c);
+}
+
+function bannerTexture(withText = true) {
+  const w = 1024, h = 192;
+  const c = canvas2d(w, h);
+  const g = c.getContext('2d');
+
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#171d26');
+  grad.addColorStop(1, '#0a0d12');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+
+  g.save();
+  g.globalAlpha = 0.07;
+  g.strokeStyle = '#8fa6c0';
+  g.lineWidth = 10;
+  for (let x = -h; x < w + h; x += 62) {
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + h, h); g.stroke();
+  }
+  g.restore();
+
+  g.fillStyle = 'rgba(216,164,66,.8)';
+  g.fillRect(0, 9, w, 4);
+  g.fillStyle = 'rgba(216,164,66,.3)';
+  g.fillRect(0, h - 13, w, 2);
+
+  if (withText) {
+    g.textBaseline = 'middle';
+    g.textAlign = 'center';
+    g.fillStyle = '#d8a442';
+    g.font = '800 58px ui-sans-serif, system-ui, sans-serif';
+    g.fillText('SILENTJAB', w / 2, h / 2 + 3);
+    g.fillStyle = 'rgba(200,214,228,.42)';
+    g.font = '600 22px ui-sans-serif, system-ui, sans-serif';
+    g.fillText('BOXING SIMULATOR', w * 0.135, h / 2 + 3);
+    g.fillText('FREE SPARRING', w * 0.865, h / 2 + 3);
+  }
+
+  return makeTex(c);
+}
+
+/** Arena bowl seen behind the ring: dark bowl + suggestion of a crowd. */
+function bowlTexture() {
+  const w = 1024, h = 256;
+  const c = canvas2d(w, h);
+  const g = c.getContext('2d');
+
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#04060a');
+  grad.addColorStop(0.5, '#080d13');
+  grad.addColorStop(0.78, '#101822');
+  grad.addColorStop(1, '#05070a');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+
+  for (let i = 0; i < 3000; i++) {
+    const a = 0.03 + Math.random() * 0.1;
+    g.fillStyle = Math.random() < 0.55
+      ? `rgba(190,205,225,${a})`
+      : `rgba(255,175,120,${a * 0.75})`;
+    g.fillRect(Math.random() * w, h * 0.5 + Math.random() * h * 0.3, 2, 2);
+  }
+
+  const glow = g.createRadialGradient(w / 2, h * 0.72, 8, w / 2, h * 0.72, w * 0.55);
+  glow.addColorStop(0, 'rgba(96,140,190,.12)');
+  glow.addColorStop(1, 'rgba(96,140,190,0)');
+  g.fillStyle = glow;
+  g.fillRect(0, 0, w, h);
+
+  return makeTex(c);
+}
+
+/**
+ * Boxing ring: printed canvas, gold trim, skirt with a banner, four posts with
+ * coloured pads and three sagging ropes per side. Rope sides facing the camera
+ * fade out so they never sit between the lens and the fighters.
+ */
+class Ring {
+  constructor(scene) {
+    const G = this.group = new THREE.Group();
+    scene.add(G);
+    this.sides = [];
+
+    const W = RING_X * 2;
+    const D = RING_Z * 2;
+
+    const canvasMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(W, 0.16, D),
+      new THREE.MeshStandardMaterial({ map: canvasTexture(), roughness: 0.93, metalness: 0.01 }),
+    );
+    canvasMesh.position.y = -0.08;
+    G.add(canvasMesh);
+
+    const trim = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 0.12, 0.05, D + 0.12),
+      new THREE.MeshStandardMaterial({
+        color: 0xd8a442, roughness: 0.4, metalness: 0.55,
+        emissive: 0x2a1a04, emissiveIntensity: 0.8,
+      }),
+    );
+    trim.position.y = -0.185;
+    G.add(trim);
+
+    const apron = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 0.1, 1.06, D + 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 0.95 }),
+    );
+    apron.position.y = -0.73;
+    G.add(apron);
+
+    // skirt banners
+    const bannerH = 0.84;
+    const frontMat = new THREE.MeshBasicMaterial({ map: bannerTexture(true), toneMapped: false });
+    const sideMat = new THREE.MeshBasicMaterial({ map: bannerTexture(false), toneMapped: false });
+    for (const [z, rot] of [[D / 2 + 0.052, 0], [-D / 2 - 0.052, Math.PI]]) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(W, bannerH), frontMat);
+      p.position.set(0, -0.62, z);
+      p.rotation.y = rot;
+      G.add(p);
+    }
+    for (const [x, rot] of [[W / 2 + 0.052, Math.PI / 2], [-W / 2 - 0.052, -Math.PI / 2]]) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(D, bannerH), sideMat);
+      p.position.set(x, -0.62, 0);
+      p.rotation.y = rot;
+      G.add(p);
+    }
+
+    // posts, caps, turnbuckle pads
+    const postMat = new THREE.MeshStandardMaterial({ color: 0xb6c0cb, roughness: 0.32, metalness: 0.85 });
+    const postGeo = new THREE.CylinderGeometry(0.075, 0.075, 1.5, 14);
+    const capGeo = new THREE.SphereGeometry(0.09, 12, 8);
+    const padGeo = new THREE.BoxGeometry(0.23, 0.88, 0.23);
+    const corners = [
+      [-RING_X, -RING_Z, 0x1e3f74], [-RING_X, RING_Z, 0x1e3f74],
+      [RING_X, -RING_Z, 0x8c1f2c], [RING_X, RING_Z, 0x8c1f2c],
+    ];
+    for (const [x, z, col] of corners) {
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.set(x, 0.75, z);
+      G.add(post);
+      const cap = new THREE.Mesh(capGeo, postMat);
+      cap.position.set(x, 1.5, z);
+      G.add(cap);
+      const pad = new THREE.Mesh(padGeo, new THREE.MeshStandardMaterial({ color: col, roughness: 0.72 }));
+      pad.position.set(x - Math.sign(x) * 0.09, 0.84, z - Math.sign(z) * 0.09);
+      G.add(pad);
+    }
+
+    // ropes (3 rows, slight sag)
+    const ropeCols = [0xc8283c, 0xe7ebf0, 0x2b5aa8];
+    const sideDefs = [
+      { a: [-RING_X, RING_Z], b: [RING_X, RING_Z], n: new THREE.Vector3(0, 0, 1) },
+      { a: [RING_X, -RING_Z], b: [-RING_X, -RING_Z], n: new THREE.Vector3(0, 0, -1) },
+      { a: [RING_X, RING_Z], b: [RING_X, -RING_Z], n: new THREE.Vector3(1, 0, 0) },
+      { a: [-RING_X, -RING_Z], b: [-RING_X, RING_Z], n: new THREE.Vector3(-1, 0, 0) },
+    ];
+    for (const side of sideDefs) {
+      const mats = [];
+      for (let row = 0; row < ROPE_Y.length; row++) {
+        const mat = new THREE.MeshStandardMaterial({
+          color: ropeCols[row], roughness: 0.5, metalness: 0.06,
+          transparent: true, opacity: 1,
+        });
+        mats.push(mat);
+        const pts = [];
+        const N = 12;
+        for (let k = 0; k <= N; k++) {
+          const t = k / N;
+          pts.push(new THREE.Vector3(
+            side.a[0] + (side.b[0] - side.a[0]) * t,
+            ROPE_Y[row] - Math.sin(Math.PI * t) * 0.035,
+            side.a[1] + (side.b[1] - side.a[1]) * t,
+          ));
+        }
+        const rope = new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 26, 0.027, 6, false),
+          mat,
+        );
+        G.add(rope);
+      }
+      this.sides.push({ normal: side.n, mats });
+    }
+  }
+
+  /** Fade the rope sides that sit between the camera and the fight. */
+  update(camera, dt) {
+    const view = new THREE.Vector3(camera.position.x, 0, camera.position.z).normalize();
+    for (const side of this.sides) {
+      const target = side.normal.dot(view) > 0.3 ? 0.13 : 1;
+      for (const m of side.mats) {
+        m.opacity += (target - m.opacity) * Math.min(1, dt * 7);
+        m.depthWrite = m.opacity > 0.85;
+      }
+    }
+  }
+}
+
+/** Venue shell: dark arena floor, curved bowl wall, overhead beams. */
+function buildArena(scene) {
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(34, 64),
+    new THREE.MeshStandardMaterial({ color: 0x06080b, roughness: 1 }),
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -1.27;
+  scene.add(ground);
+
+  const bowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(23, 23, 20, 48, 1, true),
+    new THREE.MeshBasicMaterial({
+      map: bowlTexture(), side: THREE.BackSide, fog: false, depthWrite: false,
+    }),
+  );
+  bowl.position.y = 8;
+  scene.add(bowl);
+
+  for (const x of [-2.5, 2.5]) {
+    const beam = new THREE.Mesh(
+      new THREE.ConeGeometry(1.3, 7.2, 24, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff2d8, transparent: true, opacity: 0.035, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+      }),
+    );
+    beam.position.set(x, 3.8, -1.4);
+    scene.add(beam);
   }
 }
 
@@ -688,43 +1133,27 @@ async function boot() {
   game.camera = camera;
   scene.userData.cam = camera;
 
-  // lighting: studio IBL + key + rim
+  // lighting: studio IBL + key + rim + a warm overhead pool on the canvas
   try {
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   } catch (e) { /* IBL optional */ }
-  const hemi = new THREE.HemisphereLight(0xdce6ff, 0x1a1d22, 0.55);
+  const hemi = new THREE.HemisphereLight(0xdce6ff, 0x1a1d22, 0.5);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  const key = new THREE.DirectionalLight(0xffffff, 1.9);
   key.position.set(2.4, 4.2, 3.2);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x6ea8ff, 1.15);
+  const rim = new THREE.DirectionalLight(0x6ea8ff, 1.0);
   rim.position.set(-3, 2.6, -3.4);
   scene.add(rim);
+  const spot = new THREE.SpotLight(0xfff3e0, 78, 13, Math.PI / 4.6, 0.72, 1.25);
+  spot.position.set(0.4, 5.8, 1.3);
+  spot.target.position.set(0, 0, 0);
+  scene.add(spot, spot.target);
 
-  // ring floor
-  const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(4.2, 64),
-    new THREE.MeshStandardMaterial({ color: 0x15181d, roughness: 0.92, metalness: 0.04 }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
-
-  const line = new THREE.Mesh(
-    new THREE.RingGeometry(3.05, 3.12, 72),
-    new THREE.MeshBasicMaterial({ color: 0x2c333c }),
-  );
-  line.rotation.x = -Math.PI / 2;
-  line.position.y = 0.004;
-  scene.add(line);
-
-  const mat = new THREE.Mesh(
-    new THREE.CircleGeometry(1.55, 48),
-    new THREE.MeshStandardMaterial({ color: 0x1b2027, roughness: 0.85 }),
-  );
-  mat.rotation.x = -Math.PI / 2;
-  mat.position.y = 0.002;
-  scene.add(mat);
+  // ring + venue
+  buildArena(scene);
+  game.ring = new Ring(scene);
 
   game.fx = new FX(scene);
   game.clock = new THREE.Clock();
@@ -797,6 +1226,13 @@ game.resolveStrike = function (att) {
   const p = att.worldPoint(info.limb, _v1).clone();
   const gap = Math.abs(def.root.position.x - att.root.position.x);
 
+  // punch travel direction: attacker -> defender, lifted a little
+  const dir = new THREE.Vector3(
+    def.root.position.x - att.root.position.x,
+    0.18,
+    def.root.position.z - att.root.position.z,
+  ).normalize();
+
   // out of range: swing and miss
   if (gap > 1.45) { log('whiff-far'); Sfx.whiff(); return; }
 
@@ -816,29 +1252,100 @@ game.resolveStrike = function (att) {
     log('block ' + att.attackName + ' dG=' + dGlove.toFixed(2));
     def.playBlock();
     Sfx.block();
-    game.fx.spark(p, 0x9fd8ff);
+    game.fx.impact(p, { color: 0x9fd8ff, dir, power: 0.75 });
+    popAt(p, 'BLOCK', 'block');
+    hitstop(0.05);
+    shake(0.03);
     return;
   }
 
   let zone = null;
-  if (dHead < 0.38) zone = 'head';
-  else if (dChest < 0.48) zone = 'body';
+  let at = null;
+  if (dHead < 0.38) { zone = 'head'; at = head; }
+  else if (dChest < 0.48) { zone = 'body'; at = chest; }
   if (!zone) { log('whiff ' + att.attackName + ' dH=' + dHead.toFixed(2) + ' dC=' + dChest.toFixed(2) + ' dG=' + dGlove.toFixed(2)); Sfx.whiff(); return; }
   if (def.state === 'hit' && performance.now() < def.hitUntil) return;
 
+  const power = zone === 'head' ? 1.3 : 1.05;
   def.hp = Math.max(0, def.hp - info.dmg);
   def.playHit(zone);
   // haptic feedback when you're the one getting hit
-  if (def === game.player && navigator.vibrate) { try { navigator.vibrate(zone === 'head' ? 45 : 30); } catch (e) {} }
-  if (zone === 'head') { Sfx.punch(1.15); game.fx.ring(head, 0xffd76a, 1); }
-  else { Sfx.body(); game.fx.ring(chest, 0xff9d6a, 1.1); }
-  game.fx.spark(p, 0xffffff);
+  if (def === game.player && navigator.vibrate) { try { navigator.vibrate(zone === 'head' ? 55 : 35); } catch (e) {} }
+
+  // ---- impact feedback ----------------------------------------------------
+  game.fx.impact(at, { color: zone === 'head' ? 0xffd76a : 0xff9d6a, dir, power });
+  if (zone === 'head') Sfx.punch(1.15); else Sfx.body();
+  popAt(at, '-' + info.dmg, zone === 'head' ? 'big' : '');
+
+  hitstop(zone === 'head' ? 0.105 : 0.075);
+  shake(zone === 'head' ? 0.11 : 0.07);
+  camKick.addScaledVector(dir, zone === 'head' ? 0.075 : 0.045);
+  camKick.y += zone === 'head' ? 0.03 : 0.015;
+
+  if (def === game.player) screenFlash(zone === 'head' ? 0.34 : 0.22, 'rgba(255,90,80,.55)');
+  else screenFlash(zone === 'head' ? 0.2 : 0.12, 'rgba(255,236,190,.5)');
+
   updateHUD();
-  shake(0.05);
 
   log(zone + ' ' + att.attackName + ' dmg ' + info.dmg);
-  if (def.hp <= 0) endFight(att, def);
+  if (def.hp <= 0) {
+    // knockout: everything cranked up
+    game.fx.impact(at, { color: 0xffe08a, dir, power: 2.3 });
+    hitstop(0.18);
+    shake(0.18);
+    camKick.addScaledVector(dir, 0.16);
+    camKick.y += 0.05;
+    screenFlash(0.55, 'rgba(255,220,150,.6)');
+    endFight(att, def);
+  }
 };
+
+/* ---- impact feedback helpers ---- */
+
+let stopT = 0;                    // seconds of hit-stop left
+const camKick = new THREE.Vector3();
+
+/** Freeze the fight for a few frames — the single biggest "weight" cue. */
+function hitstop(sec) { stopT = Math.max(stopT, sec); }
+
+/** Brief full-screen bloom; warm for landing, red for taking one. */
+function screenFlash(strength, color) {
+  const el = document.getElementById('flash');
+  if (!el) return;
+  el.style.background =
+    `radial-gradient(circle at 50% 46%, ${color}, rgba(0,0,0,0) 62%)`;
+  el.animate([{ opacity: strength }, { opacity: 0 }], { duration: 240, easing: 'ease-out' });
+}
+
+const popPool = [];
+/** Floating damage number projected from the contact point. */
+function popAt(worldPos, text, cls) {
+  const box = document.getElementById('pops');
+  if (!box) return;
+  const v = worldPos.clone().project(game.camera);
+  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+
+  let el = popPool.pop();
+  if (!el) el = document.createElement('div');
+  el.className = 'pop ' + (cls || '');
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.opacity = '1';
+  box.appendChild(el);
+
+  const drift = (Math.random() - 0.5) * 26;
+  const anim = el.animate([
+    { transform: 'translate(-50%,-50%) scale(.55)', opacity: 0 },
+    { transform: 'translate(-50%,-58%) scale(1.18)', opacity: 1, offset: 0.18 },
+    { transform: `translate(calc(-50% + ${drift}px),-135%) scale(1)`, opacity: 0 },
+  ], { duration: 720, easing: 'cubic-bezier(.2,.7,.3,1)' });
+  anim.onfinish = () => {
+    el.remove();
+    if (popPool.length < 12) popPool.push(el);
+  };
+}
 
 const LOG = {};
 function log(msg) { LOG[msg.split(' ')[0]] = (LOG[msg.split(' ')[0]] || 0) + 1; LOG.last = msg; }
@@ -1103,8 +1610,16 @@ function buildTouch() {
 
 const _camTarget = new THREE.Vector3(0, 1.02, 0);
 function tick() {
-  const dt = Math.min(0.05, game.clock.getDelta());
+  const realDt = Math.min(0.05, game.clock.getDelta());
   const now = performance.now();
+
+  // hit-stop: the world (and the fighters' mixers) crawls for a few frames on
+  // impact, while the FX and the camera keep running at full speed.
+  let dt = realDt;
+  if (stopT > 0) {
+    stopT = Math.max(0, stopT - realDt);
+    dt = realDt * 0.08;
+  }
 
   if (game.started) {
     game.player.update(dt, now);
@@ -1162,16 +1677,20 @@ function tick() {
     }
   }
 
-  game.fx.update(dt);
+  game.fx.update(realDt);
+  if (game.ring) game.ring.update(game.camera, realDt);
 
   // camera: gentle follow of the pair + impact shake
   const midX = game.player ? (game.player.root.position.x + game.foe.root.position.x) / 2 : 0;
   _camTarget.set(midX * 0.35, 1.02, 0);
-  game.camera.position.x += (0.55 + midX * 0.28 - game.camera.position.x) * Math.min(1, dt * 3);
-  game.camera.position.y += (1.62 - game.camera.position.y) * Math.min(1, dt * 3);
-  shakeT *= Math.pow(0.001, dt);
-  game.camera.position.x += (Math.random() - 0.5) * shakeT;
-  game.camera.position.y += (Math.random() - 0.5) * shakeT;
+  game.camera.position.x += (0.55 + midX * 0.28 - game.camera.position.x) * Math.min(1, realDt * 3);
+  game.camera.position.y += (1.62 - game.camera.position.y) * Math.min(1, realDt * 3);
+  shakeT *= Math.pow(0.001, realDt);
+  // impact kick: shove the camera along the punch, then let it spring back
+  camKick.multiplyScalar(Math.pow(0.00035, realDt));
+  game.camera.position.x += (Math.random() - 0.5) * shakeT + camKick.x;
+  game.camera.position.y += (Math.random() - 0.5) * shakeT + camKick.y;
+  game.camera.position.z += (Math.random() - 0.5) * shakeT * 0.5 + camKick.z;
   game.camera.lookAt(_camTarget);
 
   game.renderer.render(game.scene, game.camera);

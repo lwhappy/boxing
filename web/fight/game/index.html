@@ -114,6 +114,15 @@
   @keyframes spin{0%,60%{transform:rotate(0)}80%,100%{transform:rotate(90deg)}}
   #hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);font-size:12px;
     color:#6f7c89;letter-spacing:.06em;pointer-events:none;z-index:11}
+  /* impact feedback: full-screen bloom + floating damage numbers */
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0}
+  #pops{position:fixed;inset:0;pointer-events:none;z-index:7;overflow:hidden}
+  .pop{position:absolute;left:0;top:0;font-weight:800;font-size:19px;letter-spacing:.02em;
+    color:#ffd76a;white-space:nowrap;font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 8px rgba(0,0,0,.85),0 0 16px rgba(255,180,60,.55)}
+  .pop.big{font-size:26px;color:#ffe9a8}
+  .pop.block{color:#9fd8ff;font-size:14px;letter-spacing:.12em;
+    text-shadow:0 2px 8px rgba(0,0,0,.85),0 0 14px rgba(90,170,255,.5)}
   /* landscape phones: everything must fit on one screen — compress the cards,
      shrink the portraits and keep the CTA above the fold */
   @media (orientation: landscape) and (max-height: 500px){
@@ -159,6 +168,9 @@
       <div class="track"><div class="fill" id="foeBar"></div></div></div>
   </div>
 </div>
+
+<div id="flash"></div>
+<div id="pops"></div>
 
 <div id="touch">
   <div class="pad" id="dpad">
@@ -236,6 +248,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=2"></script>
+<script type="module" src="./app.js?v=3"></script>
 </body>
 </html>
