@@ -18,7 +18,7 @@ import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
 
 /* ------------------------------------------------------------------ data */
 
-const HP_MAX = 200;
+const HP_MAX = 100;
 const TARGET_HEIGHT = 1.78;
 const ARENA_X = 2.35;
 const ARENA_Z = 1.0;

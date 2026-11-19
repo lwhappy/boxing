@@ -23,7 +23,7 @@ const UP = new THREE.Vector3(0, 1, 0)
 export type HitEvent = { attacker: Side; region: Anchor['region']; anchor: string; fist: string; point: THREE.Vector3; power: number; reacted: boolean }
 
 /** Score fight: both fighters start on this many points and lose HP_DAMAGE per clean hit. */
-export const START_HP = 200
+export const START_HP = 100
 export const HP_DAMAGE = 10
 
 type Overlap = { fist: string; anchor: string; strikeId: number; f: Fist; an: Anchor; att: Fighter; def: Fighter }

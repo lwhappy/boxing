@@ -36,13 +36,13 @@ function buildHud(): {
     <div class="hud-side you">
       <span class="hud-name">YOU</span>
       <div class="hud-track"><i></i></div>
-      <span class="hud-score">200</span>
+      <span class="hud-score">100</span>
     </div>
     <div class="hud-vs">VS</div>
     <div class="hud-side robot">
       <span class="hud-name">ROBOT</span>
       <div class="hud-track"><i></i></div>
-      <span class="hud-score">200</span>
+      <span class="hud-score">100</span>
     </div>`
   stage.appendChild(hud)
 
@@ -71,9 +71,9 @@ function buildHud(): {
   return {
     set(hp) {
       for (const side of ['black', 'red'] as const) {
-        tracks[side].style.width = `${(hp[side] / 200) * 100}%`
+        tracks[side].style.width = `${(hp[side] / 100) * 100}%`
         scores[side].textContent = String(hp[side])
-        tracks[side].classList.toggle('low', hp[side] <= 60)
+        tracks[side].classList.toggle('low', hp[side] <= 30)
       }
     },
     end(winner) {
