@@ -344,8 +344,8 @@ html, body {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
-/* ad unit sits in the card header */
-.ad-slot { margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+/* ad unit sits under the primary button */
+.ad-slot { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .ad-slot.is-empty { display: none; margin: 0; padding: 0; border: 0; }
 .ad-slot .ad-label {
   font-size: 9px;
