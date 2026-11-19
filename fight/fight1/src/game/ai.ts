@@ -6,7 +6,7 @@ import type { Fighter } from './fighter'
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 
 /** Weighted preferences: straight punches are most common, uppercuts rarer. */
-const WEIGHTS: Record<string, number> = { jab: 3, cross: 2.2, cross2: 1.6, leadHook: 1.6, rearHook: 1.4, leadUpper: 1, rearUpper: 1 }
+const WEIGHTS: Record<string, number> = { jab: 3, cross: 2.2, leadHook: 1.6, rearHook: 1.4, leadUpper: 1, rearUpper: 1 }
 
 /**
  * The red robot: alternates footwork (forward/back/side steps around its home spot) with attacks,
