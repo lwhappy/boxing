@@ -186,11 +186,15 @@ export class Fighter {
   request(def: ActionDef): void {
     if (this.ko) return
     if (def.kind === 'stance') {
+      const shown = this.actions.get(this.stance.id)!
+      const next = this.actions.get(def.id)!
       this.stance = def
       // Picking a stance mid-motion (hit react / punch / step-in) cuts straight to it: a crossfade
       // out of the crumpled hit pose read as "getting up off the floor", which players hated.
       if (this.state !== 'idle') this.cutToStance(def)
-      else this.fadeTo(this.actions.get(def.id)!, null)
+      // Same stance already on screen: do nothing. Re-fading from weight 0 would collapse the
+      // skeleton to its bind pose for a moment, which looked like sinking to the floor and rising.
+      else if (next !== shown) this.fadeTo(next, shown)
       this.onAction?.(this.current?.def ?? def)
       return
     }
@@ -260,6 +264,8 @@ export class Fighter {
   }
 
   private fadeTo(next: THREE.AnimationAction, prev: THREE.AnimationAction | null): void {
+    // Already the only visible clip: fading in again would start from weight 0 and flash the bind pose.
+    if (!prev && next.isRunning() && next.getEffectiveWeight() > 0.99) return
     const blend = CONFIG.fight.blend
     next.enabled = true
     next.setEffectiveWeight(1)
@@ -416,7 +422,8 @@ export class Fighter {
     }
     this.pos.copy(this.home)
     this.syncRoot()
-    this.fadeTo(this.actions.get(this.stance.id)!, null)
+    // Cut, don't fade: blending out of the clamped defeat pose dragged the body up off the mat.
+    this.cutToStance(this.stance)
     this.onAction?.(this.stance)
   }
 
