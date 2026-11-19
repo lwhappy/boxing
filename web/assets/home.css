@@ -286,11 +286,11 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   gap: 10px;
 }
 
-/* ---------------- hero 下方 CTA：训练模式入口 ---------------- */
+/* ---------------- hero 文案区 CTA：标题与正文之间 ---------------- */
 .hero-cta {
-  margin-top: 26px;
+  margin: 20px 0 2px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   flex-wrap: wrap;
 }
