@@ -258,7 +258,8 @@ html, body {
 .hud {
   position: absolute;
   top: 10px;
-  left: 12px;
+  /* 让开左上角的返回首页按钮（fixed 12px + 36px 宽） */
+  left: 58px;
   right: 12px;
   display: flex;
   align-items: flex-start;
