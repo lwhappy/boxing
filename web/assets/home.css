@@ -785,7 +785,8 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
     right: 8px;
     transform: none;
     flex-wrap: wrap;
-    justify-content: center;
+    /* 圆点和按钮共用底部一行：圆点贴左，按钮贴右，中间留白，不再上下叠 */
+    justify-content: flex-end;
     overflow: visible;
     gap: 4px;
   }

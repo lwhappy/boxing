@@ -143,7 +143,10 @@ function layoutCallouts() {
   }
   placeDots();
 }
-/* 手机端底部控制条会撑满整个宽度并盖住圆点，这里把圆点抬到控制条上方 */
+/* 手机端底部控制条撑满宽度：圆点不再抬到控制条上方（会压住左侧最后一张
+   标注卡），而是压到底部、和 Pause/×0.5 排在同一行 —— 圆点贴左，按钮贴右
+   （CSS 里窄屏 stage-bar 改成 flex-end）。这里只负责把两者的竖直中心对齐，
+   按钮字号/文案变化（Pause ↔ Resume）时也不会错行。 */
 function placeDots() {
   if (!barEl || barEl.hidden) return;
   const stageW = stage.clientWidth || 1;
@@ -153,9 +156,11 @@ function placeDots() {
     dotsEl.style.left = '';
     return;
   }
-  const barBottom = stage.clientHeight - (barEl.offsetTop + barEl.offsetHeight);
-  dotsEl.style.bottom = (barEl.offsetHeight + Math.max(0, barBottom) + 8) + 'px';
-  dotsEl.style.left = '12px';
+  const btn = barEl.querySelector('.stage-btn') || barEl;
+  /* 按钮的竖直中心，换算成距舞台底边的高度 */
+  const rowCenter = stage.clientHeight - (barEl.offsetTop + btn.offsetTop + btn.offsetHeight / 2);
+  dotsEl.style.bottom = Math.max(0, rowCenter - dotsEl.offsetHeight / 2) + 'px';
+  dotsEl.style.left = '10px';
 }
 
 window.addEventListener('resize', () => requestAnimationFrame(layoutCallouts));
