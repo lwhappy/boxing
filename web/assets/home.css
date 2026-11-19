@@ -581,6 +581,51 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   gap: 16px;
 }
 
+/* ---------------- AdSense banner (手动广告位) ---------------- */
+/* 卡片式横幅：和招式卡片同一套描边/底色，避免广告像贴上去的补丁。
+   .is-empty 由 site-ads.js 在「未填充 / 一直没响应」时加上，直接收掉整条，
+   否则被广告拦截器挡掉时会留一块空白卡片。 */
+.ad-banner {
+  margin-top: clamp(34px, 4.6vw, 56px);
+  padding: 12px 14px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(22, 26, 34, 0.55), rgba(13, 16, 22, 0.55));
+  overflow: hidden;
+}
+
+.ad-banner.is-empty {
+  display: none;
+}
+
+.ad-banner-tag {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.ad-banner ins.adsbygoogle {
+  display: block;
+  width: 100%;
+}
+
+@media (max-width: 820px) {
+  .ad-banner {
+    margin-top: 30px;
+    padding: 10px 10px 12px;
+    border-radius: 14px;
+  }
+
+  .ad-banner-tag {
+    margin-bottom: 8px;
+    font-size: 9px;
+  }
+}
+
 .card {
   position: relative;
   display: flex;
