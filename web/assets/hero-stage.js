@@ -112,36 +112,60 @@ const callEls = SLOTS.map((slot) => {
   return el;
 });
 
-/* 卡片按实际高度防重叠排布：同一列里自上而下推挤，保证相邻卡片至少隔 8px；
-   若推到溢出底部，则整列上移收口。手机端舞台矮、文字换行多，
-   固定百分比槽位会重合，这里在 load/resize/换动作时重算。 */
+/* 卡片按实际高度防重叠排布：同一列里自上而下推挤，理想间隔 10px，放不下就
+   逐级收到 8/6/4/2px，仍放不下再整列上移。手机端舞台矮、文字换行多，固定
+   百分比槽位会重合，这里在 load/resize/每轮标注开始前重算。 */
 function layoutCallouts() {
   const h = callsBox.clientHeight || stage.clientHeight;
   if (!h) return;
+  placeDots();   // 先摆圆点，下面按它的实际位置给左列留出空间
+  const barH = (barEl && barEl.offsetHeight ? barEl.offsetHeight + 14 : 54);
+  const dotsTop = dotsEl.offsetHeight ? dotsEl.offsetTop : Infinity;
+  /* 左列要让开左下角的圆点行（它比控制条高），右列只需让开控制条；
+     圆点盒子上方多留 6px —— 卡片入场时还有 6px 的 translateY，正好不碰 */
+  const limit = { l: Math.min(h - barH, dotsTop - 6), r: h - barH };
+  const limitTight = { l: Math.min(h - barH, dotsTop), r: h - barH };
+  /* 整列上移时顶部不要贴到舞台边缘；宁可先收紧间距 */
+  const minTop = Math.max(4, h * 0.022);
   for (const side of ['l', 'r']) {
     const order = SLOTS.map((s, i) => ({ s, i }))
       .filter(x => x.s.side === side)
       .sort((a, b) => a.s.top - b.s.top);
-    // 先按原槽位 + 最小间隔自上而下排
-    let prevBottom = -1;
-    const tops = [];
-    for (const { s, i } of order) {
-      const cardH = callEls[i].offsetHeight || 0;
-      const minTopPct = prevBottom < 0 ? s.top : Math.max(s.top, (prevBottom + 10) / h * 100);
-      tops.push(minTopPct);
-      prevBottom = (minTopPct / 100 * h) + cardH;
+
+    /* 给定卡片间隔排一遍，返回每张的 top 和最后一格的底边（单位 px） */
+    const plan = (gap) => {
+      const tops = [];
+      let prevBottom = null;
+      for (const { s, i } of order) {
+        const slotTop = (s.top / 100) * h;
+        const top = prevBottom === null ? slotTop : Math.max(slotTop, prevBottom + gap);
+        tops.push(top);
+        prevBottom = top + (callEls[i].offsetHeight || 0);
+      }
+      return { tops, bottom: prevBottom };
+    };
+
+    /* 在 bound 之内尽量少上移；ok 表示排完不越界 */
+    const room = limit[side];
+    const solve = (gap, topFloor, bound) => {
+      const cand = plan(gap);
+      const shift = Math.min(Math.max(0, cand.bottom - bound), Math.max(0, cand.tops[0] - topFloor));
+      for (let k = 0; k < cand.tops.length; k++) cand.tops[k] -= shift;
+      cand.bottom -= shift;
+      cand.ok = cand.bottom <= bound + 0.5;
+      return cand;
+    };
+
+    /* 间隔从宽到窄试：只要"整列上移、且顶部不贴边"能放下就采用，
+       窄屏不会白牺牲间距；实在放不下才退一步 —— 贴到 2px、让到圆点盒顶 */
+    let p = null;
+    for (const gap of [10, 8, 6, 4, 2]) {
+      const cand = solve(gap, minTop, room);
+      if (cand.ok) { p = cand; break; }
     }
-    // 溢出底部则整列上移（避开底部控制条，不低于 1%）
-    const last = order[order.length - 1];
-    const barH = (barEl && barEl.offsetHeight ? barEl.offsetHeight + 14 : 54);
-    const overflow = prevBottom - (h - barH);
-    if (overflow > 0) {
-      const shiftPct = overflow / h * 100;
-      for (let k = 0; k < tops.length; k++) tops[k] = Math.max(1, tops[k] - shiftPct);
-    }
-    order.forEach(({ i }, k) => { callEls[i].style.top = tops[k].toFixed(2) + '%'; });
+    if (!p) p = solve(2, 2, limitTight[side]);
+    order.forEach(({ i }, k) => { callEls[i].style.top = (p.tops[k] / h * 100).toFixed(2) + '%'; });
   }
-  placeDots();
 }
 /* 手机端底部控制条撑满宽度：圆点不再抬到控制条上方（会压住左侧最后一张
    标注卡），而是压到底部、和 Pause/×0.5 排在同一行 —— 圆点贴左，按钮贴右
@@ -500,15 +524,24 @@ function hideCallouts() {
   lineEls.forEach((l) => { l.g.style.opacity = '0'; });
 }
 
+/* 一轮标注开始前，先把五张卡的文案全部填好再排版一次。
+   卡片是逐张出现的，若每出现一张才填文案，后面卡片的高度会在观众眼皮底下
+   变化，整列被推挤（手机端实测第 2、3 张会往上跳 32px，看着像抖动）。
+   全部填好时卡片还是透明的，量到的就是最终高度，之后整轮位置不再变。 */
+function prefillCallouts() {
+  if (!current) return;
+  for (let i = 0; i < callEls.length; i++) {
+    const [tag, txt] = current.calls[i];
+    callEls[i].querySelector('.tag').textContent = tag;
+    callEls[i].querySelector('.txt').textContent = txt;
+  }
+  layoutCallouts();
+}
+
 function revealAt(i) {
-  const cfg = current;
-  const [tag, txt] = cfg.calls[i];
   const el = callEls[i];
-  el.querySelector('.tag').textContent = tag;
-  el.querySelector('.txt').textContent = txt;
   el.classList.add('show');
   lineEls[i].g.style.opacity = '1';
-  layoutCallouts();
 }
 
 /* ---------- callout anchors ---------- */
@@ -581,6 +614,7 @@ function frame() {
         state = 'reveal';
         revT = 0;
         shown = 0;
+        prefillCallouts();   // 文案先全部就位并排版，之后逐张露面不再重排
       }
     } else if (state === 'reveal') {
       revT += dt;

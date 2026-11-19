@@ -789,12 +789,20 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
     justify-content: flex-end;
     overflow: visible;
     gap: 4px;
+    /* 这条控制条铺满整个宽度（z-index 3，盖在圆点层之上），整条拦事件的话
+       左下角的圆点就点不动了 —— 让空白区域穿透，只有按钮自己接收点击 */
+    pointer-events: none;
   }
   .hero-stage .stage-btn {
     font-size: 9.5px;
     padding: 5px 7px;
     flex: 0 0 auto;
+    pointer-events: auto;
   }
+  /* 圆点是手指的落点，20px 太小；放大到 26px 命中区，视觉圆点尺寸不变。
+     选择器要压过文件后半段的 .hero-dots .hero-dot（同权重、顺序在后） */
+  .hero-stage .hero-dots { gap: 0; }
+  .hero-stage .hero-dots .hero-dot { width: 26px; height: 26px; }
   /* 非首页的 stage-bar 仍用单行横滑 */
   .stage-bar {
     bottom: 10px;
@@ -1009,4 +1017,10 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   .hero-word.pos-b { top: 6px; right: 50%; bottom: auto; text-align: center; transform: skewX(-7deg) translateX(50%); }
   .hero-word.pos-b.show { transform: skewX(-7deg) translateX(50%); }
   .hero-hint { display: none; }
+}
+
+/* 极窄屏（≤380）舞台只有 250px 高，左列三张卡 + 底部圆点行很挤：
+   上下内边距各收 1px，卡片之间才留得出可见间距 */
+@media (max-width: 380px) {
+  .hero-callout { padding: 5px 7px 6px; }
 }

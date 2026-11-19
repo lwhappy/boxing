@@ -48,13 +48,18 @@ ws.onopen = async () => {
     const b = document.getElementById('stage-bar').getBoundingClientRect();
     const btn = document.querySelector('#stage-bar .stage-btn').getBoundingClientRect();
     const r = (x) => [Math.round(x.left - s.left), Math.round(x.top - s.top), Math.round(x.width), Math.round(x.height)];
+    /* 用 offset* 读布局位置（不受入场 transform 影响） */
+    const dotsBox = document.querySelector('.hero-dots');
     const cards = [...document.querySelectorAll('.hero-callout')].map(el => {
-      const x = el.getBoundingClientRect();
+      const x = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight };
       return {
         tag: el.querySelector('.tag')?.textContent,
-        shown: getComputedStyle(el).opacity !== '0' && x.height > 0,
-        rect: r(x),
-        hitsDots: !(x.right <= d.left || x.left >= d.right || x.bottom <= d.top || x.top >= d.bottom)
+        shown: getComputedStyle(el).opacity !== '0',
+        rect: [x.left, x.top, x.width, x.height],
+        hitsDots: !(x.left + x.width <= dotsBox.offsetLeft ||
+                    x.left >= dotsBox.offsetLeft + dotsBox.offsetWidth ||
+                    x.top + x.height <= dotsBox.offsetTop ||
+                    x.top >= dotsBox.offsetTop + dotsBox.offsetHeight)
       };
     });
     return {
