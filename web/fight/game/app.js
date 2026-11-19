@@ -1506,11 +1506,14 @@ function fillAd(screen) {
     try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) { /* loader missing */ }
   }
   const settle = () => {
-    if (ins.getAttribute('data-ad-status') === 'unfilled') slot.classList.add('is-empty');
+    const st = ins.getAttribute('data-ad-status');
+    if (st === 'unfilled') slot.classList.add('is-empty');
+    else if (st === 'filled' || ins.querySelector('iframe')) slot.classList.remove('is-empty');
   };
   settle();
-  new MutationObserver(settle).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
-  setTimeout(() => { if (!ins.getAttribute('data-ad-status')) slot.classList.add('is-empty'); }, 8000);
+  new MutationObserver(settle).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'], childList: true });
+  // Google can answer late on slow links — only collapse when it stays silent for a long while.
+  setTimeout(() => { if (!ins.getAttribute('data-ad-status') && !ins.querySelector('iframe')) slot.classList.add('is-empty'); }, 15000);
 }
 
 function bindUI() {
