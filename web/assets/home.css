@@ -955,23 +955,39 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
   font-weight: 500;
 }
 
-/* 进度点 */
+/* 进度点：同时也是动作切换按钮 */
 .hero-dots {
   position: absolute;
-  left: 18px;
-  bottom: 18px;
+  left: 10px;
+  bottom: 10px;
   display: flex;
-  gap: 6px;
+  gap: 2px;
   align-items: center;
+  pointer-events: auto;
 }
-.hero-dots i {
+.hero-dots .hero-dot {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hero-dots .hero-dot::before {
+  content: '';
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: rgba(16, 20, 24, 0.2);
   transition: background 0.25s, transform 0.25s;
 }
-.hero-dots i.on { background: #ff7a3d; transform: scale(1.35); }
+.hero-dots .hero-dot:hover::before { background: rgba(16, 20, 24, 0.45); }
+.hero-dots .hero-dot.on::before { background: #ff7a3d; transform: scale(1.35); }
+.hero-dots .hero-dot:focus-visible { outline: 2px solid #ff7a3d; outline-offset: 1px; }
 
 .hero-hint {
   position: absolute;

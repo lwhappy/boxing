@@ -141,7 +141,23 @@ function layoutCallouts() {
     }
     order.forEach(({ i }, k) => { callEls[i].style.top = tops[k].toFixed(2) + '%'; });
   }
+  placeDots();
 }
+/* 手机端底部控制条会撑满整个宽度并盖住圆点，这里把圆点抬到控制条上方 */
+function placeDots() {
+  if (!barEl || barEl.hidden) return;
+  const stageW = stage.clientWidth || 1;
+  const fullWidthBar = barEl.offsetWidth >= stageW - 30 && barEl.offsetLeft <= 14;
+  if (!fullWidthBar) {
+    dotsEl.style.bottom = '';
+    dotsEl.style.left = '';
+    return;
+  }
+  const barBottom = stage.clientHeight - (barEl.offsetTop + barEl.offsetHeight);
+  dotsEl.style.bottom = (barEl.offsetHeight + Math.max(0, barBottom) + 8) + 'px';
+  dotsEl.style.left = '12px';
+}
+
 window.addEventListener('resize', () => requestAnimationFrame(layoutCallouts));
 if (document.readyState === 'complete') layoutCallouts();
 else window.addEventListener('load', layoutCallouts);
@@ -159,11 +175,29 @@ const lineEls = SLOTS.map(() => {
   return { g, line, dot };
 });
 
-const dotEls = ACTIONS.map(() => {
-  const i = document.createElement('i');
-  dotsEl.appendChild(i);
-  return i;
+/* 进度点兼做导航：点哪个点就立刻播哪个动作 */
+const dotEls = ACTIONS.map((cfg, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'hero-dot';
+  b.title = cfg.word;
+  b.setAttribute('aria-label', 'Play the ' + cfg.word.toLowerCase() + ' demo');
+  b.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    jumpTo(i);
+  });
+  dotsEl.appendChild(b);
+  return b;
 });
+
+/* 手动选动作：清掉暂停，重置节奏，从头播 */
+function jumpTo(i) {
+  if (!ACTIONS[i] || !ACTIONS[i].action) return;   // 模型还没加载好
+  if (paused) setPaused(false);
+  startAction(i);
+  startLoop();
+}
 
 /* ---------- renderer / scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -372,6 +406,7 @@ function onLoaded(gltf) {
   loadingEl.classList.add('hidden');
   barEl.hidden = false;
   buildButtons();
+  layoutCallouts();
   startAction(0);
   startLoop();
 
