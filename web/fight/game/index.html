@@ -91,19 +91,23 @@
   .pick .t{font-weight:600;margin-top:8px}
   .pick .d{font-size:12px;color:var(--dim);margin-top:3px}
 
-  /* ---------- ad slot inside the intro / select cards ----------
-     Sits under the primary button, above the footer line, so neither the card's
-     layout nor the button position depends on it. Collapses (display:none via
-     .is-empty) when Google has no ad, so a blocked request cannot leave a hole. */
-  .ad-slot{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+  /* ---------- ad slot：弹窗上/下方的空白处（不再塞进卡片里） ----------
+     intro 弹窗上方一个、select 弹窗下方一个，宽度与卡片对齐；
+     Google 无广告填充时折叠（.is-empty），不会留下空洞。 */
+  #intro.on,#select.on{grid-template-rows:minmax(16px,1fr) auto minmax(16px,1fr)}
+  .ad-slot{width:min(680px,94vw);justify-self:center}
+  #intro .ad-slot{grid-row:1;align-self:end;margin-bottom:16px}
+  #select .ad-slot{grid-row:3;align-self:start;margin-top:16px}
+  #intro .card,#select .card{grid-row:2}
   .ad-slot.is-empty{display:none}
   .ad-slot .ad-label{font-size:9px;letter-spacing:.24em;text-transform:uppercase;
     color:#5d6874;margin-bottom:7px}
   .ad-slot ins.adsbygoogle{display:block;width:100%;min-height:60px;
     background:#0b0e12;border-radius:8px}
   @media (orientation:landscape) and (max-height:500px){
-    .ad-slot{margin-top:10px;padding-top:9px}
     .ad-slot ins.adsbygoogle{min-height:50px}
+    #intro .ad-slot{margin-bottom:10px}
+    #select .ad-slot{margin-top:10px}
   }
 
   /* ---------- touch ---------- */
@@ -201,6 +205,16 @@
 
 <!-- intro -->
 <div class="screen on" id="intro">
+  <!-- AdSense unit — slot 8282427964 (game01)：弹窗上方空白处 -->
+  <div class="ad-slot">
+    <div class="ad-label">Advertisement</div>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-8470399807799168"
+         data-ad-slot="8282427964"
+         data-ad-format="horizontal"></ins>
+  </div>
+
   <div class="card">
     <div class="kicker">Boxing Simulator</div>
     <h1>Spar in the ring. Land clean, block smart.</h1>
@@ -223,16 +237,6 @@
 
     <button class="cta" id="startBtn">Start training</button>
 
-    <!-- AdSense unit — slot 8282427964 (game01) -->
-    <div class="ad-slot">
-      <div class="ad-label">Advertisement</div>
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-8470399807799168"
-           data-ad-slot="8282427964"
-           data-ad-format="horizontal"></ins>
-    </div>
-
     <div class="foot">
       <span id="loadState">loading fighters…</span>
       <a href="/fight/">← back to fight</a>
@@ -252,17 +256,17 @@
     </div>
     <button class="cta" id="goBtn" disabled>Enter the ring</button>
 
-    <!-- AdSense unit — slot 7025186612 (game02) -->
-    <div class="ad-slot">
-      <div class="ad-label">Advertisement</div>
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-8470399807799168"
-           data-ad-slot="7025186612"
-           data-ad-format="horizontal"></ins>
-    </div>
-
     <div class="foot"><span id="pickState">pick one to continue</span><a href="#" id="backIntro">← back</a></div>
+  </div>
+
+  <!-- AdSense unit — slot 7025186612 (game02)：弹窗下方空白处 -->
+  <div class="ad-slot">
+    <div class="ad-label">Advertisement</div>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-8470399807799168"
+         data-ad-slot="7025186612"
+         data-ad-format="horizontal"></ins>
   </div>
 </div>
 
