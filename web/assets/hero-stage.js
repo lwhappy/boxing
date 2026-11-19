@@ -111,6 +111,41 @@ const callEls = SLOTS.map((slot) => {
   callsBox.appendChild(el);
   return el;
 });
+
+/* 卡片按实际高度防重叠排布：同一列里自上而下推挤，保证相邻卡片至少隔 8px；
+   若推到溢出底部，则整列上移收口。手机端舞台矮、文字换行多，
+   固定百分比槽位会重合，这里在 load/resize/换动作时重算。 */
+function layoutCallouts() {
+  const h = callsBox.clientHeight || stage.clientHeight;
+  if (!h) return;
+  for (const side of ['l', 'r']) {
+    const order = SLOTS.map((s, i) => ({ s, i }))
+      .filter(x => x.s.side === side)
+      .sort((a, b) => a.s.top - b.s.top);
+    // 先按原槽位 + 最小间隔自上而下排
+    let prevBottom = -1;
+    const tops = [];
+    for (const { s, i } of order) {
+      const cardH = callEls[i].offsetHeight || 0;
+      const minTopPct = prevBottom < 0 ? s.top : Math.max(s.top, (prevBottom + 8) / h * 100);
+      tops.push(minTopPct);
+      prevBottom = (minTopPct / 100 * h) + cardH;
+    }
+    // 溢出底部则整列上移（避开底部控制条，不低于 1%）
+    const last = order[order.length - 1];
+    const barH = (barEl && barEl.offsetHeight ? barEl.offsetHeight + 14 : 54);
+    const overflow = prevBottom - (h - barH);
+    if (overflow > 0) {
+      const shiftPct = overflow / h * 100;
+      for (let k = 0; k < tops.length; k++) tops[k] = Math.max(1, tops[k] - shiftPct);
+    }
+    order.forEach(({ i }, k) => { callEls[i].style.top = tops[k].toFixed(2) + '%'; });
+  }
+}
+window.addEventListener('resize', () => requestAnimationFrame(layoutCallouts));
+if (document.readyState === 'complete') layoutCallouts();
+else window.addEventListener('load', layoutCallouts);
+setTimeout(layoutCallouts, 300);
 const lineEls = SLOTS.map(() => {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
@@ -433,6 +468,7 @@ function revealAt(i) {
   el.querySelector('.txt').textContent = txt;
   el.classList.add('show');
   lineEls[i].g.style.opacity = '1';
+  layoutCallouts();
 }
 
 /* ---------- callout anchors ---------- */
