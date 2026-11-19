@@ -1484,6 +1484,35 @@ function onKey(e, down) {
 
 /* ---------- ui ---------- */
 
+/* In-card AdSense units (intro + select).
+ * #select stays display:none until the player leaves the intro, and an <ins>
+ * inside a hidden box measures 0×0 — Google never fills it. So each unit is
+ * pushed the first time its screen actually becomes visible, in DOM order.
+ * When Google answers "unfilled" (or never answers because the request was
+ * blocked) the whole slot is dropped, so the card keeps its shape instead of
+ * showing an empty strip. */
+const adFilled = new WeakSet();
+function fillAd(screen) {
+  if (!screen || adFilled.has(screen)) return;
+  const slot = screen.querySelector('.ad-slot');
+  const ins = slot && slot.querySelector('ins.adsbygoogle');
+  if (!ins) return;
+  adFilled.add(screen);
+
+  const id = (ins.getAttribute('data-ad-slot') || '').trim();
+  if (!/^\d{9,10}$/.test(id)) { slot.classList.add('is-empty'); return; }
+
+  if (!ins.getAttribute('data-adsbygoogle-status')) {
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) { /* loader missing */ }
+  }
+  const settle = () => {
+    if (ins.getAttribute('data-ad-status') === 'unfilled') slot.classList.add('is-empty');
+  };
+  settle();
+  new MutationObserver(settle).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+  setTimeout(() => { if (!ins.getAttribute('data-ad-status')) slot.classList.add('is-empty'); }, 8000);
+}
+
 function bindUI() {
   let pickedSex = 'woman'; // woman pre-selected
   let level = 1;
@@ -1497,6 +1526,8 @@ function bindUI() {
   const select = document.getElementById('select');
   const over = document.getElementById('over');
 
+  fillAd(intro);           // intro is on screen from the first frame
+
   document.getElementById('diffSeg').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-diff]');
     if (!b) return;
@@ -1508,6 +1539,7 @@ function bindUI() {
     Sfx.init(); Sfx.resume();
     intro.classList.remove('on');
     select.classList.add('on');
+    fillAd(select);        // first show is the first moment the unit has a size
     lockLandscape();
   });
 

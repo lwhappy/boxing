@@ -91,6 +91,21 @@
   .pick .t{font-weight:600;margin-top:8px}
   .pick .d{font-size:12px;color:var(--dim);margin-top:3px}
 
+  /* ---------- ad slot inside the intro / select cards ----------
+     Sits under the primary button, above the footer line, so neither the card's
+     layout nor the button position depends on it. Collapses (display:none via
+     .is-empty) when Google has no ad, so a blocked request cannot leave a hole. */
+  .ad-slot{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+  .ad-slot.is-empty{display:none}
+  .ad-slot .ad-label{font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+    color:#5d6874;margin-bottom:7px}
+  .ad-slot ins.adsbygoogle{display:block;width:100%;min-height:60px;
+    background:#0b0e12;border-radius:8px}
+  @media (orientation:landscape) and (max-height:500px){
+    .ad-slot{margin-top:10px;padding-top:9px}
+    .ad-slot ins.adsbygoogle{min-height:50px}
+  }
+
   /* ---------- touch ---------- */
   #touch{position:fixed;inset:0;display:none;pointer-events:none;z-index:12}
   #touch.on{display:block}
@@ -207,6 +222,17 @@
     </div>
 
     <button class="cta" id="startBtn">Start training</button>
+
+    <!-- AdSense unit — slot 8282427964 (game01) -->
+    <div class="ad-slot">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-8470399807799168"
+           data-ad-slot="8282427964"
+           data-ad-format="horizontal"></ins>
+    </div>
+
     <div class="foot">
       <span id="loadState">loading fighters…</span>
       <a href="/fight/">← back to fight</a>
@@ -225,6 +251,17 @@
       <button class="pick" data-sex="man"><img class="ico" src="./icon-man.png" alt="" /><div class="t">Marcus</div><div class="d">male · orthodox</div></button>
     </div>
     <button class="cta" id="goBtn" disabled>Enter the ring</button>
+
+    <!-- AdSense unit — slot 7025186612 (game02) -->
+    <div class="ad-slot">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-8470399807799168"
+           data-ad-slot="7025186612"
+           data-ad-format="horizontal"></ins>
+    </div>
+
     <div class="foot"><span id="pickState">pick one to continue</span><a href="#" id="backIntro">← back</a></div>
   </div>
 </div>
@@ -248,6 +285,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=4"></script>
+<script type="module" src="./app.js?v=5"></script>
 </body>
 </html>
