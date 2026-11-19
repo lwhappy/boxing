@@ -15,6 +15,8 @@
     <meta property="og:description" content="Watch two women box a full fight in interactive 3D — real punches, blocks and footwork. Orbit the camera and study how a match flows." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="preload" href="./fonts/ManusCC0-Bold.ttf" as="font" type="font/ttf" crossorigin />
+    <meta name="google-adsense-account" content="ca-pub-8470399807799168" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-0SCT9KVVQ6"></script>
     <script>
@@ -23,8 +25,8 @@
       gtag('js', new Date());
       gtag('config', 'G-0SCT9KVVQ6');
     </script>
-    <script type="module" crossorigin src="./assets/index-BW0Thrg_.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-I1y580Ow.css">
+    <script type="module" crossorigin src="./assets/index-BviBBkRY.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D-weWI1Q.css">
   </head>
   <body>
     <a href="/" aria-label="Back to SilentJab home" style="position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);text-decoration:none;">
@@ -43,5 +45,58 @@
       </main>
       <nav id="controls" aria-label="Controls"></nav>
     </div>
+
+    <!-- Start modal: rules + start button. The AdSense unit sits in the card header. -->
+    <div class="start on" id="start">
+      <div class="start-card">
+        <!-- AdSense unit — slot 7025186612 (game02) -->
+        <div class="ad-slot">
+          <div class="ad-label">Advertisement</div>
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-8470399807799168"
+               data-ad-slot="7025186612"
+               data-ad-format="horizontal"
+               data-full-width-responsive="true"></ins>
+        </div>
+
+        <div class="start-kicker">Boxing simulator · sparring</div>
+        <h2 class="start-title">Two women boxing — full fight</h2>
+        <p class="start-lead">You take the black corner. Land cleaner than the robot and take its 100 points before it takes yours.</p>
+
+        <ul class="start-rules">
+          <li><b>Footwork</b><span><kbd>W</kbd><kbd>S</kbd> step in / out · <kbd>A</kbd><kbd>D</kbd> circle</span></li>
+          <li><b>Punches</b><span><kbd>U</kbd> jab · <kbd>I</kbd> cross · <kbd>O</kbd> lead hook · <kbd>J</kbd> rear hook · <kbd>K</kbd> lead uppercut · <kbd>L</kbd> rear uppercut</span></li>
+          <li><b>Stance</b><span><kbd>Q</kbd> idle · <kbd>E</kbd> guard — guard smothers incoming shots</span></li>
+          <li><b>Scoring</b><span>100 points each · −10 per clean hit · first to zero hits the canvas</span></li>
+          <li><b>Camera</b><span>drag to orbit · scroll or pinch to zoom · double-click resets the view</span></li>
+          <li><b>Touch</b><span>footwork pad bottom-left · punches bottom-right</span></li>
+        </ul>
+
+        <button type="button" class="start-btn" id="startBtn" disabled>Loading fighters…</button>
+        <p class="start-note">Sound on · best in landscape on a phone.</p>
+      </div>
+    </div>
+
+    <script>
+      /* Fill the modal's ad unit and collapse it when Google has nothing to show,
+         so the card header never keeps an empty strip. */
+      (function () {
+        var slot = document.querySelector('#start .ad-slot');
+        if (!slot) return;
+        var ins = slot.querySelector('ins.adsbygoogle');
+        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) { /* loader blocked */ }
+        function settle() {
+          var st = ins.getAttribute('data-ad-status');
+          if (st === 'unfilled') slot.classList.add('is-empty');
+          else if (st === 'filled' || ins.querySelector('iframe')) slot.classList.remove('is-empty');
+        }
+        settle();
+        new MutationObserver(settle).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'], childList: true });
+        setTimeout(function () {
+          if (!ins.getAttribute('data-ad-status') && !ins.querySelector('iframe')) slot.classList.add('is-empty');
+        }, 15000);
+      })();
+    </script>
   </body>
 </html>

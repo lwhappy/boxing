@@ -13,6 +13,11 @@ const bar = loader.querySelector<HTMLElement>('.bar')!
 const fill = bar.querySelector<HTMLElement>('i')!
 const status = loader.querySelector<HTMLElement>('.status')!
 const retry = loader.querySelector<HTMLButtonElement>('.retry')!
+const startScreen = document.querySelector<HTMLElement>('#start')!
+const startBtn = document.querySelector<HTMLButtonElement>('#startBtn')!
+
+/** The match only begins once the player leaves the rules modal. */
+let running = false
 
 const audio = new Audio()
 const unlock = () => audio.unlock()
@@ -20,8 +25,10 @@ window.addEventListener('pointerdown', unlock, { capture: true })
 window.addEventListener('keydown', unlock, { capture: true })
 
 function progress(p: number, text?: string): void {
-  fill.style.width = `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`
+  const pct = Math.round(Math.max(0, Math.min(1, p)) * 100)
+  fill.style.width = `${pct}%`
   if (text) status.textContent = text
+  if (!running && startBtn.disabled) startBtn.textContent = `Loading fighters… ${pct}%`
 }
 
 /** Health bars + result overlay, built once and updated from game callbacks. */
@@ -172,7 +179,8 @@ async function boot(): Promise<void> {
   let volume = -1
   let syncTimer = 0
   const loop = new GameLoop({
-    step: dt => game.step(dt),
+    // Fight logic stays frozen behind the rules modal; only the scene keeps rendering.
+    step: dt => { if (running) game.step(dt) },
     render: (_alpha, frameSeconds) => {
       if (volume !== CONFIG.fx.volume) {
         volume = CONFIG.fx.volume
@@ -195,9 +203,20 @@ async function boot(): Promise<void> {
   progress(1, 'Ready')
   loader.classList.add('is-done')
   window.setTimeout(() => { loader.hidden = true }, 500)
+  startBtn.disabled = false
+  startBtn.textContent = 'Start the fight'
   // Debug/test hook (read-only use): smoke tests inspect fight state through it.
-  ;(window as unknown as { __game: unknown }).__game = { game, ready: true }
+  ;(window as unknown as { __game: unknown }).__game = { game, ready: true, start: startMatch }
 }
+
+/** Leave the rules modal and let the fight begin. */
+function startMatch(): void {
+  if (running) return
+  running = true
+  startScreen.classList.remove('on')
+  audio.unlock()
+}
+startBtn.addEventListener('click', startMatch)
 
 function resultRematch(game: Game, hud: ReturnType<typeof buildHud>): void {
   stage.querySelector('.rematch')!.addEventListener('click', () => {
