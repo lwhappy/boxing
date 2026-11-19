@@ -70,13 +70,13 @@ const ACTIONS = [
   },
 ];
 
-/* 标注卡的固定槽位（左右两列，避开中间的人物） */
+/* 标注卡的固定槽位（左右两列，避开中间的人物；上下拉得更开，手机端也不挤） */
 const SLOTS = [
-  { side: 'l', top: 23 },
-  { side: 'r', top: 20 },
-  { side: 'l', top: 42 },
-  { side: 'l', top: 60 },
-  { side: 'r', top: 47 },
+  { side: 'l', top: 13 },
+  { side: 'r', top: 13 },
+  { side: 'l', top: 40 },
+  { side: 'l', top: 69 },
+  { side: 'r', top: 55 },
 ];
 
 const STAGGER = 0.72;   // 每条标注之间的间隔（秒）
@@ -127,7 +127,7 @@ function layoutCallouts() {
     const tops = [];
     for (const { s, i } of order) {
       const cardH = callEls[i].offsetHeight || 0;
-      const minTopPct = prevBottom < 0 ? s.top : Math.max(s.top, (prevBottom + 8) / h * 100);
+      const minTopPct = prevBottom < 0 ? s.top : Math.max(s.top, (prevBottom + 10) / h * 100);
       tops.push(minTopPct);
       prevBottom = (minTopPct / 100 * h) + cardH;
     }
@@ -511,6 +511,8 @@ function updateCallouts() {
 
 /* ---------- loop ---------- */
 let running = false;
+let lastStageW = 0;
+let lastStageH = 0;
 function startLoop() {
   if (running) return;
   clock.getDelta();
@@ -521,6 +523,15 @@ function startLoop() {
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (mixer) mixer.update(dt);
+
+  /* 舞台尺寸变化（手机地址栏收起、旋转、字体加载完成）时重排标注卡 */
+  const sw = stage.clientWidth;
+  const sh = stage.clientHeight;
+  if (sw !== lastStageW || sh !== lastStageH) {
+    lastStageW = sw;
+    lastStageH = sh;
+    layoutCallouts();
+  }
 
   if (!paused) {
     if (state === 'play' && current) {
