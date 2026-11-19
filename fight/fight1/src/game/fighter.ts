@@ -187,7 +187,10 @@ export class Fighter {
     if (this.ko) return
     if (def.kind === 'stance') {
       this.stance = def
-      if (this.state === 'idle') this.fadeTo(this.actions.get(def.id)!, null)
+      // Picking a stance mid-motion (hit react / punch / step-in) cuts straight to it: a crossfade
+      // out of the crumpled hit pose read as "getting up off the floor", which players hated.
+      if (this.state !== 'idle') this.cutToStance(def)
+      else this.fadeTo(this.actions.get(def.id)!, null)
       this.onAction?.(this.current?.def ?? def)
       return
     }
@@ -201,6 +204,19 @@ export class Fighter {
       return
     }
     this.beginAttack(def)
+  }
+
+  /** Hard-cut to a looping stance: stop whatever is playing and show the stance pose at once. */
+  private cutToStance(def: ActionDef): void {
+    this.pending = null
+    this.footwork = null
+    this.aim = 0
+    this.current = null
+    this.state = 'idle'
+    this.restTimer = 0
+    const next = this.actions.get(def.id)!
+    for (const a of this.actions.values()) if (a !== next) a.stop()
+    next.reset().setEffectiveWeight(1).play()
   }
 
   private beginAttack(def: ActionDef): void {
