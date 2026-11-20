@@ -31,8 +31,6 @@ const MOVE_HOOKS: Record<MoveKind, (h: ControlHooks) => void> = {
   left: h => h.strafe(-1),
   right: h => h.strafe(1),
 }
-/** Repeat cadence while a movement key/pad button is held, ms. */
-const MOVE_REPEAT_MS = 130
 
 /** Buttons below the stage (desktop) plus left/right thumb pads (touch). */
 export class Controls {
@@ -41,8 +39,6 @@ export class Controls {
   private readonly adjust: HTMLElement
   private active = 'idle'
   private stance = 'idle'
-  private readonly held = new Set<MoveKind>()
-  private moveTimer: number | null = null
 
   constructor(private readonly root: HTMLElement, private readonly hooks: ControlHooks) {
     root.innerHTML = `
@@ -92,17 +88,13 @@ export class Controls {
     }
     for (const b of root.querySelectorAll<HTMLButtonElement>('[data-move]')) {
       const kind = b.dataset.move as MoveKind
-      const down = (e: PointerEvent) => {
+      // One press = one step. No hold-to-repeat: long-pressing a pad pops the
+      // context menu on many mobile browsers, so holding does nothing by design.
+      b.addEventListener('pointerdown', (e) => {
         e.preventDefault()
-        b.setPointerCapture(e.pointerId)
         this.startMove(kind)
         this.pulse(b)
-      }
-      const up = () => this.stopMove(kind)
-      b.addEventListener('pointerdown', down)
-      b.addEventListener('pointerup', up)
-      b.addEventListener('pointercancel', up)
-      b.addEventListener('lostpointercapture', up)
+      })
     }
     for (const b of root.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
       b.addEventListener('click', () => {
@@ -134,7 +126,8 @@ export class Controls {
       })
     }
 
-    // Movement keys are held: W/S step in/out, A/D strafe (arrow keys mirror them).
+    // Movement keys keep hold-to-repeat on desktop (no context-menu risk there);
+    // touch pads fire once per press so long-pressing never lingers on the button.
     const MOVE_KEYS: Record<string, MoveKind> = {
       KeyW: 'in', ArrowUp: 'in',
       KeyS: 'out', ArrowDown: 'out',
@@ -147,7 +140,7 @@ export class Controls {
       if (target?.tagName === 'INPUT') return
       const move = MOVE_KEYS[e.code]
       if (move) {
-        if (!e.repeat) this.startMove(move)
+        if (!e.repeat) this.startKeyMove(move)
         e.preventDefault()
         return
       }
@@ -162,34 +155,44 @@ export class Controls {
     })
     window.addEventListener('keyup', e => {
       const move = MOVE_KEYS[e.code]
-      if (move) this.stopMove(move)
+      if (move) this.stopKeyMove(move)
     })
-    window.addEventListener('blur', () => this.stopAllMoves())
+    window.addEventListener('blur', () => this.stopKeyMoves())
     this.setActive(MENU_ACTIONS[0])
   }
 
   private startMove(kind: MoveKind): void {
     this.hooks.press()
-    this.held.add(kind)
     MOVE_HOOKS[kind](this.hooks)
-    if (this.moveTimer === null) this.moveTimer = window.setInterval(() => {
-      for (const k of this.held) MOVE_HOOKS[k](this.hooks)
-    }, MOVE_REPEAT_MS)
   }
 
-  private stopMove(kind: MoveKind): void {
-    this.held.delete(kind)
-    if (this.held.size === 0 && this.moveTimer !== null) {
-      window.clearInterval(this.moveTimer)
-      this.moveTimer = null
+  /** Keyboard hold-to-repeat (desktop only; cadence 130 ms). */
+  private readonly keyHeld = new Set<MoveKind>()
+  private keyTimer: number | null = null
+
+  private startKeyMove(kind: MoveKind): void {
+    this.startMove(kind)
+    this.keyHeld.add(kind)
+    if (this.keyTimer === null) {
+      this.keyTimer = window.setInterval(() => {
+        for (const k of this.keyHeld) MOVE_HOOKS[k](this.hooks)
+      }, 130)
     }
   }
 
-  private stopAllMoves(): void {
-    this.held.clear()
-    if (this.moveTimer !== null) {
-      window.clearInterval(this.moveTimer)
-      this.moveTimer = null
+  private stopKeyMove(kind: MoveKind): void {
+    this.keyHeld.delete(kind)
+    if (this.keyHeld.size === 0 && this.keyTimer !== null) {
+      window.clearInterval(this.keyTimer)
+      this.keyTimer = null
+    }
+  }
+
+  private stopKeyMoves(): void {
+    this.keyHeld.clear()
+    if (this.keyTimer !== null) {
+      window.clearInterval(this.keyTimer)
+      this.keyTimer = null
     }
   }
 

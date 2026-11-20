@@ -1447,6 +1447,11 @@ function updateHUD() {
 
 /* ---------- input ---------- */
 
+// Long-pressing pads on touch devices pops the browser context menu — suppress it there.
+if (window.matchMedia('(pointer:coarse)').matches) {
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
 const held = { fwd: false, back: false, left: false, right: false };
 
 function movement() {
