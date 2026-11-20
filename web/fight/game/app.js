@@ -1577,16 +1577,8 @@ function bindUI() {
   window.addEventListener('keydown', (e) => onKey(e, true));
   window.addEventListener('keyup', (e) => onKey(e, false));
 
-  // rotate prompt on phones
-  const rot = document.getElementById('rotate');
-  const checkRot = () => {
-    const portrait = window.innerHeight > window.innerWidth;
-    const coarse = window.matchMedia('(pointer:coarse)').matches;
-    rot.classList.toggle('on', portrait && coarse && game.started);
-  };
-  window.addEventListener('resize', checkRot);
-  window.addEventListener('orientationchange', () => setTimeout(checkRot, 250));
-  setInterval(checkRot, 800);
+  // No rotate prompt: some browsers cannot rotate (or the lock silently fails),
+  // so the game stays fully playable in portrait — the touch pads just get narrower.
 }
 
 function lockLandscape() {
