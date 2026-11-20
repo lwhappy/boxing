@@ -27,6 +27,16 @@
     </script>
     <script type="module" crossorigin src="./assets/index-BgE2yDpX.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BtqHSg91.css">
+    <style>
+      /* 开始弹窗要盖住左上角「返回首页」的悬浮按钮（那个是 position:fixed; z-index:60） */
+      .start { z-index: 70; }
+
+      /* 加载进度只属于「开打之后」：进来先看到干净的开始弹窗，点了 Start 才露出 loader。
+         舞台里的 .loader 默认就在，这里先藏起来；body.fight-started 由下面的脚本加上。
+         :not([hidden]) 是为了让打包脚本加载完成后自己设的 hidden 仍然生效。 */
+      .loader { display: none !important; }
+      body.fight-started .loader:not([hidden]) { display: grid !important; }
+    </style>
   </head>
   <body>
     <a href="/" aria-label="Back to SilentJab home" style="position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);text-decoration:none;">
@@ -62,7 +72,7 @@
           <li><b>Touch</b><span>footwork pad bottom-left · punches bottom-right</span></li>
         </ul>
 
-        <button type="button" class="start-btn" id="startBtn" disabled>Loading fighters…</button>
+        <button type="button" class="start-btn" id="startBtn">Start the fight</button>
 
         <!-- AdSense unit — slot 7025186612 (game02)：按钮下方 -->
         <div class="ad-slot">
@@ -78,6 +88,22 @@
         <p class="start-note">Sound on · best in landscape on a phone.</p>
       </div>
     </div>
+
+    <script>
+      /* 开始按钮一进门就能点，加载进度不在按钮上显示。
+         打包后的 app 只在 button.disabled 为真时才把 "Loading fighters… NN%"
+         写进按钮，所以这里先把 disabled 摘掉、文案固定成 Start the fight，
+         资源在后台照常预取；点下去之后才把 loader 放出来（见上面的 style）。 */
+      (function () {
+        var btn = document.getElementById('startBtn');
+        if (!btn) return;
+        btn.disabled = false;
+        btn.textContent = 'Start the fight';
+        btn.addEventListener('click', function () {
+          document.body.classList.add('fight-started');
+        }, true);   /* capture：先于 app 自己的 handler，关弹窗的同一帧 loader 就在位 */
+      })();
+    </script>
 
     <script>
       /* Fill the modal's ad unit and collapse it when Google has nothing to show,
