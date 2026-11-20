@@ -95,13 +95,19 @@ const LEVELS = [
 
 const Sfx = {
   ctx: null, master: null, noise: null,
+  muted: false,   // persisted preference, applied to the master gain
+  setMuted(m) {
+    this.muted = m;
+    try { localStorage.setItem('sj-game-muted', m ? '1' : '0'); } catch (e) {}
+    if (this.master) this.master.gain.value = m ? 0 : 0.85;
+  },
   init() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = this.muted ? 0 : 0.85;
     this.master.connect(this.ctx.destination);
     const len = Math.floor(this.ctx.sampleRate * 0.4);
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -1915,3 +1921,15 @@ window.__game = game;   // debug handle (harmless in production)
 game.LOG = LOG;
 game.setGap = (v) => { MIN_GAP = Math.max(0.3, Math.min(1.2, Number(v))); };
 game.getGap = () => MIN_GAP;
+
+/* ---------- sound toggle ---------- */
+try { Sfx.muted = localStorage.getItem('sj-game-muted') === '1'; } catch (e) {}
+const muteBtn = document.getElementById('mute');
+if (muteBtn) {
+  const paintMute = () => {
+    muteBtn.classList.toggle('muted', Sfx.muted);
+    muteBtn.setAttribute('aria-pressed', String(Sfx.muted));
+  };
+  muteBtn.addEventListener('click', (e) => { e.preventDefault(); Sfx.setMuted(!Sfx.muted); paintMute(); });
+  paintMute();
+}
