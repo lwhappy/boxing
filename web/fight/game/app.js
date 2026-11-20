@@ -1193,8 +1193,10 @@ async function boot() {
   document.getElementById('startBtn').disabled = true;
   try {
     const [man, woman] = await Promise.all([
-      loadGLB('../../media/glb/boxer-man.glb', prog),
-      loadGLB('../../media/glb/boxer-woman.glb', prog),
+      // ?v=2: the kick clip replaced the headbutt — without a new URL a visitor
+      // who cached the old model keeps a fighter that has no 'kick' action
+      loadGLB('../../media/glb/boxer-man.glb?v=2', prog),
+      loadGLB('../../media/glb/boxer-woman.glb?v=2', prog),
     ]);
     game.manGltf = man; game.womanGltf = woman;
     st.textContent = 'ready — pick a difficulty';
