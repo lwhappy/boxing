@@ -121,6 +121,22 @@
     letter-spacing:.02em;backdrop-filter:blur(4px)}
   #acts button:active{background:rgba(226,59,59,.55)}
   #acts button.wide{grid-column:span 2}
+  #acts button.on{border-color:var(--red);background:rgba(226,59,59,.32);color:#fff}
+  /* rotate-screen toggle: bottom-left, stacked just above the d-pad.
+     The icon redraws itself in the orientation the screen is in right now, so
+     the button reads as "this is portrait" / "this is landscape" at a glance. */
+  #touch{--rot-b:170px;--rot-l:12px}
+  #rot{position:absolute;left:var(--rot-l);bottom:var(--rot-b);display:grid;place-items:center;
+    width:44px;height:44px;padding:0;border-radius:12px;pointer-events:auto;
+    background:rgba(12,15,19,.68);border:1px solid rgba(255,255,255,.18);color:#dfe6ee;
+    backdrop-filter:blur(6px);transition:background .15s,transform .12s}
+  #rot:active{background:rgba(226,59,59,.5);transform:scale(.94)}
+  #rot svg{width:23px;height:23px;display:block}
+  #rotTip{position:absolute;left:calc(var(--rot-l) + 52px);bottom:calc(var(--rot-b) + 11px);padding:5px 9px;
+    font-size:11px;color:#c9d3dd;background:rgba(10,12,15,.88);border:1px solid var(--line);
+    border-radius:8px;white-space:nowrap;opacity:0;transform:translateX(-4px);
+    pointer-events:none;transition:opacity .18s,transform .18s}
+  #rotTip.on{opacity:1;transform:none}
   #hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);font-size:12px;
     color:#6f7c89;letter-spacing:.06em;pointer-events:none;z-index:11}
   /* impact feedback: full-screen bloom + floating damage numbers */
@@ -197,6 +213,17 @@
     <div class="sp"></div><button data-move="back">▼</button><div class="sp"></div>
   </div>
   <div class="pad" id="acts"></div>
+  <!-- screen rotate: tap → landscape, tap again → portrait -->
+  <button id="rot" type="button" aria-label="Switch to landscape" title="Switch to landscape">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect id="rotRect" x="5.4" y="4" width="7" height="16" rx="2.2"/>
+      <path id="rotBar" d="M7.8 17.3h2.2"/>
+      <path d="M14.7 4.6A3.4 3.4 0 0 1 20.2 4.1"/>
+      <path d="M17.9 2.5 20.2 4.1 18.6 6.3"/>
+    </svg>
+  </button>
+  <div id="rotTip">Rotate your device to change screen orientation</div>
 </div>
 
 <div id="hint">WASD move · Y U I O P H J K L N M , . attack · ; guard · ' taunt</div>
@@ -278,6 +305,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=8"></script>
+<script type="module" src="./app.js?v=9"></script>
 </body>
 </html>

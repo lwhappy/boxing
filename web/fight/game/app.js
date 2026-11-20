@@ -1189,6 +1189,7 @@ async function boot() {
       setInterval(() => game.player && game.player.attack(spamAtk === '1' ? 'jab' : spamAtk), 1300);
       if (q.get('hp')) setTimeout(() => { if (game.foe) game.foe.hp = Number(q.get('hp')); updateHUD(); }, 1200);
       if (q.get('guard')) setInterval(() => game.player && game.player.setGuard(true), 250);
+      if (q.get('touch')) buildTouch();     // QA: pads + rotate button without the menus
       game.spam = true;
     }
   } catch (e) {
@@ -1566,7 +1567,6 @@ function bindUI() {
     intro.classList.remove('on');
     select.classList.add('on');
     fillAd(select);        // first show is the first moment the unit has a size
-    lockLandscape();
   });
 
   document.getElementById('picks').addEventListener('click', (e) => {
@@ -1600,22 +1600,109 @@ function bindUI() {
   window.addEventListener('keydown', (e) => onKey(e, true));
   window.addEventListener('keyup', (e) => onKey(e, false));
 
-  // No rotate prompt: some browsers cannot rotate (or the lock silently fails),
-  // so the game stays fully playable in portrait — the touch pads just get narrower.
+  // No auto-rotate and no rotate prompt: some browsers cannot rotate (or the
+  // lock silently fails), so the game never forces a screen orientation. The
+  // player toggles it from the button above the d-pad (see setupRotate()).
 }
 
-function lockLandscape() {
+/* ---------- screen orientation ---------- */
+
+function orientationNow() {
+  return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+}
+
+/** Redraw the button: the phone glyph mirrors the orientation on screen now. */
+function paintRot() {
+  const rect = document.getElementById('rotRect');
+  const bar = document.getElementById('rotBar');
+  if (!rect) return;
+  const landscape = orientationNow() === 'landscape';
+  if (landscape) {
+    rect.setAttribute('x', '4.2'); rect.setAttribute('y', '7.4');
+    rect.setAttribute('width', '15.6'); rect.setAttribute('height', '8.4');
+    rect.setAttribute('rx', '2.4');
+    bar.setAttribute('d', 'M18 11v1.6');
+  } else {
+    rect.setAttribute('x', '5.4'); rect.setAttribute('y', '4');
+    rect.setAttribute('width', '7'); rect.setAttribute('height', '16');
+    rect.setAttribute('rx', '2.2');
+    bar.setAttribute('d', 'M7.8 17.3h2.2');
+  }
+  const btn = document.getElementById('rot');
+  if (btn) {
+    const next = landscape ? 'portrait' : 'landscape';
+    btn.setAttribute('aria-label', 'Switch to ' + next);
+    btn.title = 'Switch to ' + next;
+  }
+}
+
+/** Keep the button clear of the d-pad, whatever size the pad ends up. */
+function placeRot() {
+  const touch = document.getElementById('touch');
+  const dpad = document.getElementById('dpad');
+  if (!touch || !dpad) return;
+  const r = dpad.getBoundingClientRect();
+  const landscape = orientationNow() === 'landscape';
+  if (landscape) {
+    // wide screen: there is room beside the pad, so it stays on the floor line
+    touch.style.setProperty('--rot-b', Math.round(window.innerHeight - r.bottom) + 'px');
+    touch.style.setProperty('--rot-l', Math.round(r.right + 10) + 'px');
+  } else {
+    // narrow screen: stack it just above the pad, same left edge
+    touch.style.setProperty('--rot-b', Math.round(window.innerHeight - r.top + 10) + 'px');
+    touch.style.setProperty('--rot-l', '12px');
+  }
+}
+
+let tipTimer = 0;
+function rotTip() {
+  const tip = document.getElementById('rotTip');
+  if (!tip) return;
+  placeRot();
+  tip.classList.add('on');
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => tip.classList.remove('on'), 2200);
+}
+
+async function toggleOrientation() {
+  const next = orientationNow() === 'portrait' ? 'landscape' : 'portrait';
   const root = document.documentElement;
-  if (!window.matchMedia('(pointer:coarse)').matches) return;
+  // Chrome/Safari only honour an orientation lock from fullscreen.
   try {
-    if (root.requestFullscreen) root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
-  } catch (e) {}
+    if (root.requestFullscreen && !document.fullscreenElement) {
+      await root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    }
+  } catch (e) { /* fullscreen blocked — the lock will just fail below */ }
+
+  let locked = false;
   try {
-    if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
-  } catch (e) {}
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock(next);
+      locked = true;
+    }
+  } catch (e) { locked = false; }
+
+  // iOS Safari and some Android browsers refuse the lock: tell the player to
+  // turn the phone instead of leaving a dead button.
+  if (!locked) rotTip();
+  setTimeout(paintRot, 260);
+}
+
+function setupRotate() {
+  const btn = document.getElementById('rot');
+  if (!btn) return;
+  btn.addEventListener('click', (e) => { e.preventDefault(); toggleOrientation(); });
+  paintRot();
+  placeRot();
+  window.addEventListener('resize', () => { placeRot(); paintRot(); });
+  if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', () => setTimeout(paintRot, 60));
+  }
 }
 
 let touchBuilt = false;
+let guardBtn = null;
+let guardShown = false;
 function buildTouch() {
   if (touchBuilt) return;
   if (!window.matchMedia('(pointer:coarse)').matches) return;
@@ -1632,9 +1719,18 @@ function buildTouch() {
   const guard = document.createElement('button');
   guard.textContent = 'GUARD';
   guard.className = 'wide';
-  guard.addEventListener('pointerdown', (e) => { e.preventDefault(); game.player && game.player.setGuard(true); });
-  guard.addEventListener('pointerup', () => { game.player && game.player.setGuard(false); });
-  guard.addEventListener('pointercancel', () => { game.player && game.player.setGuard(false); });
+  // Tap to hold the guard up, tap again to drop it. Holding the button down
+  // would drop it the moment the thumb slides off (and phones fire pointerup
+  // on any drift), so it is a latching toggle instead of press-and-hold.
+  guard.addEventListener('click', (e) => {
+    e.preventDefault();
+    const p = game.player;
+    if (!p) return;
+    p.setGuard(!p.guarding);
+    guard.classList.toggle('on', p.guarding);
+  });
+  guardBtn = guard;
+  guardShown = false;
   acts.appendChild(guard);
 
   const taunt = document.createElement('button');
@@ -1654,6 +1750,7 @@ function buildTouch() {
   });
 
   document.getElementById('touch').classList.add('on');
+  setupRotate();
 }
 
 /* ---------- loop ---------- */
@@ -1662,6 +1759,13 @@ const _camTarget = new THREE.Vector3(0, 1.02, 0);
 function tick() {
   const realDt = Math.min(0.05, game.clock.getDelta());
   const now = performance.now();
+
+  // the guard button is a latch — keep its lit state in step with the fighter
+  // (rematch and knockdowns both drop the guard under it)
+  if (guardBtn && game.player && game.player.guarding !== guardShown) {
+    guardShown = game.player.guarding;
+    guardBtn.classList.toggle('on', guardShown);
+  }
 
   // hit-stop: the world (and the fighters' mixers) crawls for a few frames on
   // impact, while the FX and the camera keep running at full speed.
