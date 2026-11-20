@@ -1132,6 +1132,7 @@ async function boot() {
   camera.lookAt(0, 1.02, 0);
   game.camera = camera;
   scene.userData.cam = camera;
+  frameCamera();
 
   // lighting: studio IBL + key + rim + a warm overhead pool on the canvas
   try {
@@ -1199,14 +1200,31 @@ async function boot() {
   renderer.setAnimationLoop(tick);
 }
 
+/* Camera framing differs per viewport class: phones sit further back so the ring
+ * (ropes, posts and both fighters' feet) stays in frame instead of filling it. */
+let camBaseY = 1.62;
+let camBaseZ = 4.35;
+
+function frameCamera() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const portrait = h > w;
+  const short = h <= 500;
+  camBaseY = portrait ? 1.98 : short ? 1.82 : 1.62;
+  camBaseZ = portrait ? 6.1 : short ? 5.45 : 4.35;
+  if (!game.camera) return;
+  // Portrait phones keep a wider lens so the ring still fits vertically.
+  game.camera.aspect = w / h;
+  game.camera.fov = w / h < 1 ? 54 : 38;
+  game.camera.updateProjectionMatrix();
+  game.camera.position.set(0.55, camBaseY, camBaseZ);
+  game.camera.lookAt(0, 1.02, 0);
+}
+
 function onResize() {
   if (!game.renderer) return;
   const w = window.innerWidth, h = window.innerHeight;
   game.renderer.setSize(w, h);
-  game.camera.aspect = w / h;
-  const fov = w / h < 1 ? 52 : 38;
-  game.camera.fov = fov;
-  game.camera.updateProjectionMatrix();
+  frameCamera();
 }
 
 /* ---------- strike resolution ---------- */
@@ -1716,7 +1734,8 @@ function tick() {
   const midX = game.player ? (game.player.root.position.x + game.foe.root.position.x) / 2 : 0;
   _camTarget.set(midX * 0.35, 1.02, 0);
   game.camera.position.x += (0.55 + midX * 0.28 - game.camera.position.x) * Math.min(1, realDt * 3);
-  game.camera.position.y += (1.62 - game.camera.position.y) * Math.min(1, realDt * 3);
+  game.camera.position.y += (camBaseY - game.camera.position.y) * Math.min(1, realDt * 3);
+  game.camera.position.z += (camBaseZ - game.camera.position.z) * Math.min(1, realDt * 3);
   shakeT *= Math.pow(0.001, realDt);
   // impact kick: shove the camera along the punch, then let it spring back
   camKick.multiplyScalar(Math.pow(0.00035, realDt));

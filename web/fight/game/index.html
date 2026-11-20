@@ -152,14 +152,23 @@
     .pick .ico{width:58px;height:58px;border-radius:10px}
     .pick .t{margin-top:5px;font-size:14px}
     .pick .d{font-size:11px;margin-top:2px}
-    #dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:5px;left:12px}
+    #dpad{grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;left:12px}
     #dpad button{font-size:15px}
     #acts{gap:5px;right:10px}
     #acts button{padding:10px 2px;font-size:11px}
   }
   @media (max-width:560px){ .rules span{min-width:78px} .card{padding:20px 18px} .pick .ico{width:72px;height:72px} }
-  /* portrait phones: keep the two pads from colliding in portrait play */
-  @media (orientation: portrait){ #acts{width:46vw} }
+  /* portrait phones: shrink the d-pad, give the punch pad 3 columns so every
+     label fits on one line, and keep the two pads clear of each other */
+  @media (orientation: portrait){
+    #dpad{left:12px;gap:5px;
+      grid-template-columns:repeat(3,clamp(38px,10.5vw,50px));
+      grid-template-rows:repeat(3,clamp(38px,10.5vw,50px))}
+    #dpad button{font-size:15px;border-radius:10px}
+    #acts{right:10px;width:min(52vw,240px);gap:5px;grid-template-columns:repeat(3,1fr)}
+    #acts button{padding:10px 2px;font-size:10.5px}
+    #acts button.wide{grid-column:span 3}
+  }
 </style>
 <!-- Google AdSense -->
 <meta name="google-adsense-account" content="ca-pub-8470399807799168" />
@@ -269,6 +278,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=7"></script>
+<script type="module" src="./app.js?v=8"></script>
 </body>
 </html>
