@@ -298,10 +298,10 @@ function onLoaded(gltf) {
       }
     }
   });
-  // 面向屏幕左侧，再往镜头方向转 45°：出拳方向 = 左前方 45°（朝观众这侧），
-  // 即 3/4 正面视角。原始 GLB 的出拳方向正对相机（-Z），135° 旋转后
-  // 拳头朝 (-0.707, 0, +0.707) 打出去。
-  model.rotation.y = THREE.MathUtils.degToRad(135);
+  // 面向屏幕左侧，再往屏幕里侧转 45°：人物以背面 3/4 视角出现，出拳方向
+  // = 左前方 45° 打进画面深处。原始 GLB 的出拳方向正对相机（-Z），
+  // 45° 旋转后拳头朝 (-0.707, 0, -0.707) 打出去。
+  model.rotation.y = THREE.MathUtils.degToRad(45);
   scene.add(model);
 
   mixer = new THREE.AnimationMixer(model);
