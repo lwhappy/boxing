@@ -4,12 +4,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Boxing Simulator Online — Free Sparring Game | SilentJab</title>
-<meta name="description" content="A free boxing simulator you play in the browser: pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and headbutts — every hit tracked, every punch landed." />
+<meta name="description" content="A free boxing simulator you play in the browser: pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and kicks — every hit tracked, every punch landed." />
 <link rel="canonical" href="https://silentjab.com/fight/game/" />
 <meta name="theme-color" content="#0b0d10" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Boxing Simulator Online — Free Sparring Game" />
-<meta property="og:description" content="Pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and headbutts." />
+<meta property="og:description" content="Pick a fighter, choose a difficulty and spar in the ring. Jab, cross, hooks, uppercuts, elbows, knees and kicks." />
 <style>
   :root{
     --bg:#0a0c0f; --panel:#12161b; --line:rgba(255,255,255,.10);
@@ -30,7 +30,9 @@
   #hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;
        padding:max(12px,env(safe-area-inset-top)) 14px 0;gap:6px;opacity:0;transition:opacity .35s}
   #hud.on{opacity:1}
-  .bars{display:flex;align-items:flex-start;gap:14px}
+  /* the home button lives in the very top-left corner; slide the health bars
+     clear of it instead of stacking them under it */
+  .bars{display:flex;align-items:flex-start;gap:14px;padding-left:44px}
   .bar{flex:1;min-width:0}
   .bar .nm{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--dim);margin-bottom:5px}
@@ -106,6 +108,13 @@
     .ad-slot{margin-top:10px;padding-top:9px}
     .ad-slot ins.adsbygoogle{min-height:50px}
   }
+
+  /* ---------- home link ---------- */
+  #home{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;z-index:30;
+    display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;
+    border-radius:10px;background:rgba(12,15,19,.68);border:1px solid rgba(255,255,255,.18);
+    color:#fff;text-decoration:none;backdrop-filter:blur(6px);transition:background .15s,transform .12s}
+  #home:active{background:rgba(226,59,59,.5);transform:scale(.94)}
 
   /* ---------- touch ---------- */
   #touch{position:fixed;inset:0;display:none;pointer-events:none;z-index:12}
@@ -183,6 +192,10 @@
     #acts button{padding:10px 2px;font-size:11px}
   }
   @media (max-width:560px){ .rules span{min-width:78px} .card{padding:20px 18px} .pick .ico{width:72px;height:72px} }
+  /* phones: leave the top-left corner to the home button so the kicker line is
+     never hidden behind it (portrait only — landscape cards are narrow enough
+     to clear the button on their own) */
+  @media (max-width:700px) and (orientation:portrait){ .screen{padding:58px 20px 20px} }
   /* portrait phones: shrink the d-pad, give the punch pad 3 columns so every
      label fits on one line, and keep the two pads clear of each other */
   @media (orientation: portrait){
@@ -200,6 +213,9 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
 </head>
 <body>
+<a href="/" aria-label="Back to SilentJab home" id="home" title="SilentJab home">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+</a>
 <div id="stage"></div>
 
 <div id="hud">
@@ -245,7 +261,7 @@
     <p class="sub">Two fighters, one ring, 100 points each. Every punch is tracked frame by frame — hit the head, hit the body, or get caught on the gloves.</p>
 
     <div class="rules">
-      <div><span>Basic punches</span><b>jab · cross · hook · uppercut · elbow · knee · headbutt — 5 points</b></div>
+      <div><span>Basic punches</span><b>jab · cross · hook · uppercut · elbow · knee · kick — 5 points</b></div>
       <div><span>Combo 1</span><b>jab → cross → hook — 10 points</b></div>
       <div><span>Combo 2</span><b>knee jabs / punch-to-elbow — 15 points</b></div>
       <div><span>Blocked</span><b>lands on the gloves — no damage</b></div>
@@ -314,6 +330,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=11"></script>
+<script type="module" src="./app.js?v=12"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
  *   each = 1 skinned boxer + 25 clips, exported from Blender at 30fps.
  *   clip: idle guard block hit-head hit-body defeat win taunt
  *         jab cross jab-cross combo1 lead-hook rear-hook
- *         lead-uppercut rear-uppercut elbow knee headbutt
+ *         lead-uppercut rear-uppercut elbow knee kick
  *         combo2-knee combo2-elbow (step clips are exported but unused: WASD
  *         translates the fighter directly, no locomotion clips)
  *
@@ -53,7 +53,9 @@ const ATTACKS = {
   /* the knee peaks at 1.00 s, 0.16 m from the defender's hips; judge it there
    * and against the midsection, not the chin */
   knee:            { label: 'Knee', hits: [{ t: 1.00, limb: 'RightLeg', dmg: 5, aim: 'body' }] },
-  headbutt:        { label: 'Headbutt', hits: [{ t: 0.87, limb: 'Head', dmg: 5 }] },
+  /* a high kick: the foot peaks at 0.70 s (1.03 m forward, 1.31 m off the
+   * floor) — judge it just before that, when the boot reaches the chest/chin */
+  kick:            { label: 'Kick', hits: [{ t: 0.65, limb: 'RightFoot', dmg: 5 }] },
   /* clinch → knee → right hand: the knee at 1.70 s is the one you see land */
   'combo2-knee':   { label: 'Combo 2', hits: [
                        { t: 1.03, limb: 'RightHand', dmg: 10 },
@@ -74,12 +76,12 @@ for (const a of Object.values(ATTACKS)) {
 const KEY_ATTACK = {
   KeyY: 'jab', KeyU: 'cross', KeyI: 'jab-cross', KeyO: 'combo1', KeyP: 'combo2-knee',
   KeyH: 'combo2-elbow', KeyJ: 'lead-hook', KeyK: 'rear-hook', KeyL: 'lead-uppercut',
-  KeyN: 'rear-uppercut', KeyM: 'elbow', Comma: 'headbutt', Period: 'knee',
+  KeyN: 'rear-uppercut', KeyM: 'elbow', Comma: 'kick', Period: 'knee',
 };
 const TOUCH_LABEL = {
   jab: 'JAB', cross: 'CROSS', 'jab-cross': 'JAB·CR', combo1: 'COMBO1',
   'lead-hook': 'L HOOK', 'rear-hook': 'R HOOK', 'lead-uppercut': 'L UPPER',
-  'rear-uppercut': 'R UPPER', elbow: 'ELBOW', knee: 'KNEE', headbutt: 'HEAD',
+  'rear-uppercut': 'R UPPER', elbow: 'ELBOW', knee: 'KNEE', kick: 'KICK',
   'combo2-knee': 'COMBO2', 'combo2-elbow': 'CMB2·E',
 };
 
@@ -1493,8 +1495,10 @@ function endFight(winner, loser) {
   // bottom-docked) panel fades in over the still-running scene.
   setTimeout(() => {
     const won = winner === game.player;
-    document.getElementById('overKicker').textContent = won ? 'you win' : 'you lose';
-    document.getElementById('overTitle').textContent = won ? 'Knockout!' : 'You hit the canvas';
+    const kicker = document.getElementById('overKicker');
+    kicker.textContent = won ? 'you win' : '';
+    kicker.style.display = won ? '' : 'none';
+    document.getElementById('overTitle').textContent = won ? 'Knockout!' : 'You lose';
     document.getElementById('overText').textContent =
       `${winner.name} wins with ${winner.hp} / ${HP_MAX} left. Difficulty: ${LEVELS[game.level].name}.`;
     document.getElementById('over').classList.add('on');
@@ -1762,7 +1766,7 @@ function buildTouch() {
   touchBuilt = true;
   const acts = document.getElementById('acts');
   const order = ['jab', 'cross', 'jab-cross', 'combo1', 'lead-hook', 'rear-hook',
-    'lead-uppercut', 'rear-uppercut', 'elbow', 'knee', 'headbutt', 'combo2-knee'];
+    'lead-uppercut', 'rear-uppercut', 'elbow', 'knee', 'kick', 'combo2-knee'];
   for (const name of order) {
     const b = document.createElement('button');
     b.textContent = TOUCH_LABEL[name] || name;
