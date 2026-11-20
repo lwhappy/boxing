@@ -32,22 +32,44 @@ const SAME_LINE_Z = 0.35;     // beyond this lateral offset the pair is "off lin
 const KO_SEP_GAP = 1.9;       // distance the pair steps apart before the ending clips
 const KO_SEP_SEC = 0.62;      // ...and how long that step-back takes
 
-/** t = seconds from clip start to the moment the strike lands (measured in Blender). */
+/** Each strike lists its own contacts: t = seconds into the clip, limb = the bone
+ *  that lands it, aim = 'body' for strikes that come up under the guard.
+ *  A combo switches hands (and knees) mid-clip, so one limb for the whole attack
+ *  mis-judges every contact after the first — that is why the knee used to whiff:
+ *  it was measured against the left glove at a frame where the knee was still down.
+ *  Every t below was re-measured from the posed skeleton at a 0.6 m gap. */
 const ATTACKS = {
-  jab:             { dmg: 5,  t: [0.50],         limb: 'LeftHand',     label: 'Jab' },
-  cross:           { dmg: 5,  t: [0.67],         limb: 'RightHand',    label: 'Cross' },
-  'jab-cross':     { dmg: 5,  t: [0.37],         limb: 'LeftHand',     label: 'Jab-Cross' },
-  combo1:          { dmg: 10, t: [0.50, 0.93],   limb: 'LeftHand',     label: 'Combo 1' },
-  'lead-hook':     { dmg: 5,  t: [0.63],         limb: 'LeftHand',     label: 'Lead Hook' },
-  'rear-hook':     { dmg: 5,  t: [0.73],         limb: 'RightHand',    label: 'Rear Hook' },
-  'lead-uppercut': { dmg: 5,  t: [0.70],         limb: 'LeftHand',     label: 'Lead Uppercut' },
-  'rear-uppercut': { dmg: 5,  t: [0.70],         limb: 'RightHand',    label: 'Rear Uppercut' },
-  elbow:           { dmg: 5,  t: [0.67],         limb: 'RightForeArm', label: 'Elbow' },
-  knee:            { dmg: 5,  t: [0.47, 0.93],   limb: 'RightLeg',     label: 'Knee' },
-  headbutt:        { dmg: 5,  t: [0.87],         limb: 'Head',         label: 'Headbutt' },
-  'combo2-knee':   { dmg: 15, t: [1.03, 2.40],   limb: 'LeftHand',     label: 'Combo 2' },
-  'combo2-elbow':  { dmg: 15, t: [0.60, 2.97],   limb: 'LeftHand',     label: 'Combo 2' },
+  jab:             { label: 'Jab',   hits: [{ t: 0.50, limb: 'LeftHand', dmg: 5 }] },
+  cross:           { label: 'Cross', hits: [{ t: 0.67, limb: 'RightHand', dmg: 5 }] },
+  'jab-cross':     { label: 'Jab-Cross', hits: [{ t: 0.37, limb: 'LeftHand', dmg: 5 }] },
+  combo1:          { label: 'Combo 1', hits: [
+                       { t: 0.50, limb: 'LeftHand', dmg: 10 },
+                       { t: 0.93, limb: 'LeftHand', dmg: 10 }] },
+  'lead-hook':     { label: 'Lead Hook', hits: [{ t: 0.63, limb: 'LeftHand', dmg: 5 }] },
+  'rear-hook':     { label: 'Rear Hook', hits: [{ t: 0.73, limb: 'RightHand', dmg: 5 }] },
+  'lead-uppercut': { label: 'Lead Uppercut', hits: [{ t: 0.70, limb: 'LeftHand', dmg: 5 }] },
+  'rear-uppercut': { label: 'Rear Uppercut', hits: [{ t: 0.70, limb: 'RightHand', dmg: 5 }] },
+  elbow:           { label: 'Elbow', hits: [{ t: 0.67, limb: 'RightForeArm', dmg: 5 }] },
+  /* the knee peaks at 1.00 s, 0.16 m from the defender's hips; judge it there
+   * and against the midsection, not the chin */
+  knee:            { label: 'Knee', hits: [{ t: 1.00, limb: 'RightLeg', dmg: 5, aim: 'body' }] },
+  headbutt:        { label: 'Headbutt', hits: [{ t: 0.87, limb: 'Head', dmg: 5 }] },
+  /* clinch → knee → right hand: the knee at 1.70 s is the one you see land */
+  'combo2-knee':   { label: 'Combo 2', hits: [
+                       { t: 1.03, limb: 'RightHand', dmg: 10 },
+                       { t: 1.70, limb: 'RightLeg', dmg: 5, aim: 'body' },
+                       { t: 2.40, limb: 'RightHand', dmg: 15 }] },
+  'combo2-elbow':  { label: 'Combo 2', hits: [
+                       { t: 0.60, limb: 'LeftHand', dmg: 10 },
+                       { t: 3.04, limb: 'RightForeArm', dmg: 5 }] },
 };
+
+/* flat views kept for the AI (reads the first contact) and the HUD */
+for (const a of Object.values(ATTACKS)) {
+  a.t = a.hits.map((h) => h.t);
+  a.limb = a.hits[0].limb;
+  a.dmg = a.hits[0].dmg;
+}
 
 const KEY_ATTACK = {
   KeyY: 'jab', KeyU: 'cross', KeyI: 'jab-cross', KeyO: 'combo1', KeyP: 'combo2-knee',
@@ -824,8 +846,8 @@ class Fighter {
     const info = ATTACKS[name];
     const act = this.fade(name, 0.1, ATTACK_SPEED);
     if (!act) return false;
-    this.pending = info.t.map((t) => t);
-    this.attackReturnAt = info.t[info.t.length - 1] * 0.92 + 0.42;
+    this.pending = info.hits.map((h) => ({ ...h }));
+    this.attackReturnAt = info.hits[info.hits.length - 1].t * 0.92 + 0.42;
     act.clampWhenFinished = true;
     Sfx.whiff();
     return true;
@@ -883,13 +905,13 @@ class Fighter {
       const a = this.actions[this.attackName];
       const t = a.time;
       // short forward lunge into the punch (stops at the impact frame)
-      if (this.pending.length && t < this.pending[0] * 0.85) {
+      if (this.pending.length && t < this.pending[0].t * 0.85) {
         const fwd = this.side < 0 ? 1 : -1;
         this.root.position.x += fwd * 0.45 * dt;
       }
-      while (this.pending.length && t >= this.pending[0]) {
-        this.pending.shift();
-        game.resolveStrike(this);
+      while (this.pending.length && t >= this.pending[0].t) {
+        const hit = this.pending.shift();
+        game.resolveStrike(this, hit);
       }
       if (t >= this.attackReturnAt || a.time >= a.getClip().duration - 0.02) {
         this.attackName = null;
@@ -1234,15 +1256,22 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _v4 = new THREE.Vector3();
+const _v5 = new THREE.Vector3();
+const _v6 = new THREE.Vector3();
 
-game.resolveStrike = function (att) {
+game.resolveStrike = function (att, hit) {
   const def = att.foe;
   if (!def || game.over) return;
   if (def.state === 'ko') return;
   const info = ATTACKS[att.attackName || ''];
   if (!info) return;
 
-  const p = att.worldPoint(info.limb, _v1).clone();
+  /* each contact brings its own bone and value: a combo lands with a hand, then
+   * a knee, then the other hand */
+  const limb = (hit && hit.limb) || info.limb;
+  const dmg = hit && hit.dmg != null ? hit.dmg : info.dmg;
+  const aim = (hit && hit.aim) || 'auto';
+  const p = att.worldPoint(limb, _v1).clone();
   const gap = Math.abs(def.root.position.x - att.root.position.x);
 
   // punch travel direction: attacker -> defender, lifted a little
@@ -1257,6 +1286,8 @@ game.resolveStrike = function (att) {
 
   const head = def.worldPoint('Head', _v2).clone().add(new THREE.Vector3(0, 0.06, 0));
   const chest = def.worldPoint('Spine2', _v3).clone();
+  const belly = def.worldPoint('Spine', _v5).clone();
+  const hips = def.worldPoint('Hips', _v6).clone();
   const lh = def.worldPoint('LeftHand', _v4).clone();
   const rh = def.worldPoint('RightHand', new THREE.Vector3()).clone();
 
@@ -1265,9 +1296,10 @@ game.resolveStrike = function (att) {
   const dGlove = Math.min(p.distanceTo(lh), p.distanceTo(rh));
 
   // glove contact = blocked, but only when the defender is actively covering up —
-  // idle hands sit near the chin and would otherwise block everything
+  // idle hands sit near the chin and would otherwise block everything. A knee
+  // comes up under the hands, so it can never be caught on the gloves.
   const covering = def.state === 'guard' || def.state === 'block';
-  if (covering && dGlove < 0.34) {
+  if (aim !== 'body' && covering && dGlove < 0.34) {
     log('block ' + att.attackName + ' dG=' + dGlove.toFixed(2));
     def.playBlock();
     Sfx.block();
@@ -1280,13 +1312,28 @@ game.resolveStrike = function (att) {
 
   let zone = null;
   let at = null;
-  if (dHead < 0.38) { zone = 'head'; at = head; }
-  else if (dChest < 0.48) { zone = 'body'; at = chest; }
-  if (!zone) { log('whiff ' + att.attackName + ' dH=' + dHead.toFixed(2) + ' dC=' + dChest.toFixed(2) + ' dG=' + dGlove.toFixed(2)); Sfx.whiff(); return; }
+  if (aim === 'body') {
+    /* body strikes (knee) are aimed at the trunk: an uppercut-like knee meets the
+     * belly/hips, which sits a good half-metre below the chest bone, so judging it
+     * against Spine2 threw away every clean hit. Take the nearest of the three. */
+    const body = [
+      { d: dChest, at: chest },
+      { d: p.distanceTo(belly), at: belly },
+      { d: p.distanceTo(hips), at: hips },
+    ].sort((a, b) => a.d - b.d)[0];
+    if (body.d < 0.42) { zone = 'body'; at = body.at; }
+  } else {
+    if (dHead < 0.38) { zone = 'head'; at = head; }
+    else if (dChest < 0.48) { zone = 'body'; at = chest; }
+  }
+  if (!zone) {
+    log('whiff ' + att.attackName + ' dH=' + dHead.toFixed(2) + ' dC=' + dChest.toFixed(2) + ' dG=' + dGlove.toFixed(2));
+    Sfx.whiff(); return;
+  }
   if (def.state === 'hit' && performance.now() < def.hitUntil) return;
 
   const power = zone === 'head' ? 1.3 : 1.05;
-  def.hp = Math.max(0, def.hp - info.dmg);
+  def.hp = Math.max(0, def.hp - dmg);
   def.playHit(zone);
   // haptic feedback when you're the one getting hit
   if (def === game.player && navigator.vibrate) { try { navigator.vibrate(zone === 'head' ? 55 : 35); } catch (e) {} }
@@ -1294,7 +1341,7 @@ game.resolveStrike = function (att) {
   // ---- impact feedback ----------------------------------------------------
   game.fx.impact(at, { color: zone === 'head' ? 0xffd76a : 0xff9d6a, dir, power });
   if (zone === 'head') Sfx.punch(1.15); else Sfx.body();
-  popAt(at, '-' + info.dmg, zone === 'head' ? 'big' : '');
+  popAt(at, '-' + dmg, zone === 'head' ? 'big' : '');
 
   hitstop(zone === 'head' ? 0.105 : 0.075);
   shake(zone === 'head' ? 0.11 : 0.07);
@@ -1306,7 +1353,7 @@ game.resolveStrike = function (att) {
 
   updateHUD();
 
-  log(zone + ' ' + att.attackName + ' dmg ' + info.dmg);
+  log(zone + ' ' + att.attackName + ' (' + limb + ') dmg ' + dmg);
   if (def.hp <= 0) {
     // knockout: everything cranked up
     game.fx.impact(at, { color: 0xffe08a, dir, power: 2.3 });
@@ -1496,7 +1543,11 @@ function onKey(e, down) {
     if (down) p.attack(KEY_ATTACK[code]);
     return;
   }
-  if (code === 'Semicolon') { e.preventDefault(); p.setGuard(down); return; }
+  /* ';' is a latch, exactly like the on-screen GUARD button: one tap puts the hands
+   * up and they stay up, a second tap drops them. It used to mirror the key state,
+   * so a normal tap (down + up) flashed the guard for a few milliseconds and the
+   * pose was gone before you could see it. Auto-repeat must not toggle it either. */
+  if (code === 'Semicolon') { e.preventDefault(); if (down && !e.repeat) p.setGuard(!p.guarding); return; }
   if (code === 'Quote') { e.preventDefault(); if (down) p.playTaunt(); return; }
   if (code === 'KeyW' || code === 'KeyS' || code === 'KeyA' || code === 'KeyD') {
     e.preventDefault();
