@@ -298,6 +298,9 @@ function onLoaded(gltf) {
       }
     }
   });
+  // 面向屏幕左侧、出拳方向与屏幕平面成 45°（3/4 视角）：原始 GLB 的出拳方向
+  // 基本正对相机（-Z），绕 Y 转 +45° 后拳头朝左前 45° 打出去。
+  model.rotation.y = THREE.MathUtils.degToRad(45);
   scene.add(model);
 
   mixer = new THREE.AnimationMixer(model);
