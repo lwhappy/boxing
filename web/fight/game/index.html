@@ -16,10 +16,12 @@
     --ink:#f2f4f7; --dim:#93a0ad; --red:#e23b3b; --red-dim:#8f2222;
     --blue:#3f8cff; --ok:#38d178;
   }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
     font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    overflow:hidden;overscroll-behavior:none}
+    overflow:hidden;overscroll-behavior:none;
+    -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
   #stage{position:fixed;inset:0}
   canvas{display:block;width:100%;height:100%}
@@ -112,8 +114,15 @@
   .pad{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));pointer-events:auto}
   #dpad{left:16px;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px}
   #dpad button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
-    border-radius:12px;font-size:18px;color:#dfe6ee;backdrop-filter:blur(4px)}
+    border-radius:12px;font-size:0;color:#dfe6ee;backdrop-filter:blur(4px)}
   #dpad button:active{background:rgba(226,59,59,.5)}
+  /* arrows are CSS shapes, not glyphs: a long press has no text to select */
+  #dpad button::before{content:"";display:block;width:0;height:0;margin:0 auto;
+    border:7px solid transparent}
+  #dpad button[data-move="fwd"]::before{border-top-width:0;border-bottom:10px solid #dfe6ee}
+  #dpad button[data-move="back"]::before{border-bottom-width:0;border-top:10px solid #dfe6ee}
+  #dpad button[data-move="left"]::before{border-left-width:0;border-right:10px solid #dfe6ee}
+  #dpad button[data-move="right"]::before{border-right-width:0;border-left:10px solid #dfe6ee}
   #dpad .sp{visibility:hidden}
   #acts{right:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(52vw,340px)}
   #acts button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
@@ -208,9 +217,9 @@
 
 <div id="touch">
   <div class="pad" id="dpad">
-    <div class="sp"></div><button data-move="fwd">▲</button><div class="sp"></div>
-    <button data-move="left">◀</button><div class="sp"></div><button data-move="right">▶</button>
-    <div class="sp"></div><button data-move="back">▼</button><div class="sp"></div>
+    <div class="sp"></div><button data-move="fwd" aria-label="Step in"></button><div class="sp"></div>
+    <button data-move="left" aria-label="Move left"></button><div class="sp"></div><button data-move="right" aria-label="Move right"></button>
+    <div class="sp"></div><button data-move="back" aria-label="Step back"></button><div class="sp"></div>
   </div>
   <div class="pad" id="acts"></div>
   <!-- screen rotate: tap → landscape, tap again → portrait -->
@@ -305,6 +314,6 @@
   }
 }
 </script>
-<script type="module" src="./app.js?v=9"></script>
+<script type="module" src="./app.js?v=10"></script>
 </body>
 </html>

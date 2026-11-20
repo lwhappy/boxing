@@ -1466,10 +1466,12 @@ function updateHUD() {
 
 /* ---------- input ---------- */
 
-// Long-pressing pads on touch devices pops the browser context menu — suppress it there.
-if (window.matchMedia('(pointer:coarse)').matches) {
-  window.addEventListener('contextmenu', (e) => e.preventDefault());
-}
+// Long-pressing a pad used to pop the context menu and start a text selection on
+// the button labels / arrow glyphs. Both are suppressed for the whole page: there
+// is nothing here a player needs to select or drag.
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+window.addEventListener('selectstart', (e) => e.preventDefault());
+window.addEventListener('dragstart', (e) => e.preventDefault());
 
 const held = { fwd: false, back: false, left: false, right: false };
 

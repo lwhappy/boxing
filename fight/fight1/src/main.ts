@@ -23,10 +23,11 @@ const audio = new Audio()
 const unlock = () => audio.unlock()
 window.addEventListener('pointerdown', unlock, { capture: true })
 window.addEventListener('keydown', unlock, { capture: true })
-// Long-pressing a pad on touch devices pops the browser context menu — suppress it there.
-if (window.matchMedia('(pointer:coarse)').matches) {
-  window.addEventListener('contextmenu', e => e.preventDefault())
-}
+// Long-pressing a pad used to pop the context menu and start a text selection on
+// the button labels — both are suppressed (nothing on this page needs selecting).
+window.addEventListener('contextmenu', e => e.preventDefault())
+window.addEventListener('selectstart', e => e.preventDefault())
+window.addEventListener('dragstart', e => e.preventDefault())
 
 function progress(p: number, text?: string): void {
   const pct = Math.round(Math.max(0, Math.min(1, p)) * 100)
