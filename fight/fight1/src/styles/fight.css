@@ -255,12 +255,38 @@ html, body {
   .key { display: none; }
 }
 
+/* ---- sound toggle: next to the home button, top-left ----------------------------------------- */
+#mute {
+  position: fixed;
+  top: 12px;
+  left: 56px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#mute:active { background: rgba(226, 39, 58, 0.5); transform: scale(0.94); }
+#mute .slash { display: none; }
+#mute.muted .slash { display: block; }
+#mute.muted .wave { display: none; }
+
 /* ---- HUD: health bars ------------------------------------------------------------------------ */
 .hud {
   position: absolute;
   top: 10px;
-  /* 让开左上角的返回首页按钮（fixed 12px + 36px 宽） */
-  left: 58px;
+  /* 让开左上角的返回首页按钮 + 声音开关（fixed 12px + 36px 宽，两个并排） */
+  left: 102px;
   right: 12px;
   display: flex;
   align-items: flex-start;

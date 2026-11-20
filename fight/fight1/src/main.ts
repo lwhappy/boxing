@@ -23,6 +23,23 @@ const audio = new Audio()
 const unlock = () => audio.unlock()
 window.addEventListener('pointerdown', unlock, { capture: true })
 window.addEventListener('keydown', unlock, { capture: true })
+
+/** Sound toggle: on by default, persisted per browser. The GameLoop applies it
+ * to the master gain (see the render hook), so the button works even before boot. */
+let soundMuted = false
+try { soundMuted = localStorage.getItem('sj-fight1-muted') === '1' } catch { /* storage blocked */ }
+
+const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
+function paintMute(): void {
+  muteBtn.classList.toggle('muted', soundMuted)
+  muteBtn.setAttribute('aria-pressed', String(soundMuted))
+}
+muteBtn.addEventListener('click', () => {
+  soundMuted = !soundMuted
+  try { localStorage.setItem('sj-fight1-muted', soundMuted ? '1' : '0') } catch { /* storage blocked */ }
+  paintMute()
+})
+paintMute()
 // Long-pressing a pad used to pop the context menu and start a text selection on
 // the button labels — both are suppressed (nothing on this page needs selecting).
 window.addEventListener('contextmenu', e => e.preventDefault())
@@ -182,14 +199,16 @@ async function boot(): Promise<void> {
   }
 
   let volume = -1
+  let muted = !soundMuted   // force one apply on the first frame
   let syncTimer = 0
   const loop = new GameLoop({
     // Fight logic stays frozen behind the rules modal; only the scene keeps rendering.
     step: dt => { if (running) game.step(dt) },
     render: (_alpha, frameSeconds) => {
-      if (volume !== CONFIG.fx.volume) {
+      if (volume !== CONFIG.fx.volume || muted !== soundMuted) {
         volume = CONFIG.fx.volume
-        audio.setVolume(volume)
+        muted = soundMuted
+        audio.setVolume(volume, muted)
       }
       syncTimer += frameSeconds
       if (syncTimer > 0.2) {

@@ -25,23 +25,20 @@
       gtag('js', new Date());
       gtag('config', 'G-0SCT9KVVQ6');
     </script>
-    <script type="module" crossorigin src="./assets/index-BgE2yDpX.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BtqHSg91.css">
-    <style>
-      /* 开始弹窗要盖住左上角「返回首页」的悬浮按钮（那个是 position:fixed; z-index:60） */
-      .start { z-index: 70; }
-
-      /* 加载进度只属于「开打之后」：进来先看到干净的开始弹窗，点了 Start 才露出 loader。
-         舞台里的 .loader 默认就在，这里先藏起来；body.fight-started 由下面的脚本加上。
-         :not([hidden]) 是为了让打包脚本加载完成后自己设的 hidden 仍然生效。 */
-      .loader { display: none !important; }
-      body.fight-started .loader:not([hidden]) { display: grid !important; }
-    </style>
+    <script type="module" crossorigin src="./assets/index-74hfEeYn.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CYzk-2dw.css">
   </head>
   <body>
     <a href="/" aria-label="Back to SilentJab home" style="position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);text-decoration:none;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
     </a>
+    <button id="mute" type="button" aria-label="Toggle sound" title="Sound on / off" aria-pressed="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4z"/>
+        <path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+        <path class="slash" d="M16 9l6 6M22 9l-6 6"/>
+      </svg>
+    </button>
     <div id="app">
       <main id="stage">
         <canvas id="game" tabindex="-1" aria-label="Boxing ring: drag to orbit, scroll or pinch to zoom, double-click to reset view"></canvas>
@@ -72,7 +69,7 @@
           <li><b>Touch</b><span>footwork pad bottom-left · punches bottom-right</span></li>
         </ul>
 
-        <button type="button" class="start-btn" id="startBtn">Start the fight</button>
+        <button type="button" class="start-btn" id="startBtn" disabled>Loading fighters…</button>
 
         <!-- AdSense unit — slot 7025186612 (game02)：按钮下方 -->
         <div class="ad-slot">
@@ -88,22 +85,6 @@
         <p class="start-note">Sound on · best in landscape on a phone.</p>
       </div>
     </div>
-
-    <script>
-      /* 开始按钮一进门就能点，加载进度不在按钮上显示。
-         打包后的 app 只在 button.disabled 为真时才把 "Loading fighters… NN%"
-         写进按钮，所以这里先把 disabled 摘掉、文案固定成 Start the fight，
-         资源在后台照常预取；点下去之后才把 loader 放出来（见上面的 style）。 */
-      (function () {
-        var btn = document.getElementById('startBtn');
-        if (!btn) return;
-        btn.disabled = false;
-        btn.textContent = 'Start the fight';
-        btn.addEventListener('click', function () {
-          document.body.classList.add('fight-started');
-        }, true);   /* capture：先于 app 自己的 handler，关弹窗的同一帧 loader 就在位 */
-      })();
-    </script>
 
     <script>
       /* Fill the modal's ad unit and collapse it when Google has nothing to show,
