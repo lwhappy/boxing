@@ -930,7 +930,9 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
 .hero-word.show { opacity: 1; }
 .hero-word.pos-a { left: 50%; top: 10px; transform: skewX(-7deg) translateX(calc(-50% - 10px)); }
 .hero-word.pos-a.show { transform: skewX(-7deg) translateX(-50%); }
-.hero-word.pos-b { right: 16px; bottom: 64px; text-align: right; transform: skewX(-7deg) translateX(10px); }
+/* right 留出 34px：斜切（skewX -7°）会把下面一行的字往右推 ~12px，
+   长词（LEFT UPPERCUT）按原来的 16px 会被卡片右边缘切掉最后一两个字母 */
+.hero-word.pos-b { right: 34px; bottom: 64px; text-align: right; transform: skewX(-7deg) translateX(10px); }
 .hero-word.pos-b.show { transform: skewX(-7deg) translateX(0); }
 
 /* 标注卡 */

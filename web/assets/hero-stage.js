@@ -60,6 +60,7 @@ const ACTIONS = [
     clip: 'left-uppercut',
     word: 'LEFT UPPERCUT',
     hand: 'LeftHand',
+    freeze: 'apex',
     calls: [
       ['Left fist', 'Lead fist dips slightly, then drives up under the chin, palm up.'],
       ['Right fist', 'Rear hand stays tight at the temple as a shield.'],
@@ -319,18 +320,23 @@ function groundAndFaceLeft(root) {
   root.updateMatrixWorld(true);
 }
 
-/* 打到最远的一帧：出拳手的世界 x 最小（角色朝 -X 出拳） */
-function findImpact(clipName, handBone, action) {
+/* 定格帧：
+ *   'reach'（默认）—— 拳头伸得最远的一帧（世界 -X 方向），直拳/勾拳用；
+ *   'apex'         —— 拳头举得最高的一帧，上勾拳用。若按 reach 取，uppercut
+ *                     会停在收拳后手甩到身体侧面的姿势，看着像打偏到旁边去了。 */
+function findImpact(clipName, handBone, action, mode) {
   const dur = action.getClip().duration;
   action.reset();
   action.play();
   mixer.setTime(0);
-  let best = { t: 0, x: Infinity };
+  const score = mode === 'apex' ? (p) => -p.y : (p) => p.x;
+  let best = { t: 0, s: Infinity };
   const sample = (t) => {
     mixer.setTime(t);
     model.updateMatrixWorld(true);
     handBone.getWorldPosition(_v);
-    if (_v.x < best.x) best = { t, x: _v.x };
+    const s = score(_v);
+    if (s < best.s) best = { t, s };
   };
   for (let i = 0; i <= 56; i++) sample((dur * i) / 56);
   const step = dur / 56;
@@ -404,18 +410,8 @@ function onLoaded(gltf) {
   mixer.setTime(first.duration * 0.05);
   groundAndFaceLeft(model);
 
-  // 取景：按当前姿势的高度拟合
+  // 取景基准：开场抱架姿势
   const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const mid = box.getCenter(new THREE.Vector3());
-  const dist = (size.y / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / 0.82;
-  controls.target.set(mid.x, mid.y * 0.94, mid.z);
-  camera.position.set(
-    controls.target.x + dist * 0.34,
-    controls.target.y + dist * 0.12,
-    controls.target.z + dist * 0.94,
-  );
-  controls.update();
   probe.stop();
   mixer.setTime(0);
 
@@ -429,8 +425,36 @@ function onLoaded(gltf) {
     action.setLoop(THREE.LoopOnce, 1);
     action.clampWhenFinished = true;
     cfg.action = action;
-    cfg.impact = findImpact(cfg.clip, bones[cfg.hand] || model, action);
+    cfg.impact = findImpact(cfg.clip, bones[cfg.hand] || model, action, cfg.freeze);
   });
+
+  /* 把四个定格姿势的骨骼点并进包围盒再拟合距离：uppercut 顶点拳头会高过
+     头顶，只按开场姿势取景的话，手机竖屏会把拳套切在画面外。 */
+  const bp = new THREE.Vector3();
+  ACTIONS.forEach((cfg) => {
+    if (!cfg.action) return;
+    cfg.action.reset();
+    cfg.action.play();
+    mixer.setTime(cfg.impact);
+    model.updateMatrixWorld(true);
+    model.traverse((o) => {
+      if (o.isBone) box.expandByPoint(o.getWorldPosition(bp));
+    });
+    cfg.action.stop();
+  });
+  box.expandByScalar(0.02);
+  mixer.setTime(0);
+
+  const size = box.getSize(new THREE.Vector3());
+  const mid = box.getCenter(new THREE.Vector3());
+  const dist = (size.y / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / 0.82;
+  controls.target.set(mid.x, mid.y * 0.94, mid.z);
+  camera.position.set(
+    controls.target.x + dist * 0.34,
+    controls.target.y + dist * 0.12,
+    controls.target.z + dist * 0.94,
+  );
+  controls.update();
 
   loadingEl.classList.add('hidden');
   barEl.hidden = false;
