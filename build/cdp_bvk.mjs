@@ -45,7 +45,7 @@ for (let i = 0; i < 60; i++) {
 }
 console.log('ready:', ready);
 
-const beats = [[0.6, 'hop-in'], [1.1, 'landed'], [3.14, 'kick1-contact'], [5.3, 'flykick-contact'], [6.0, 'landed2'], [9.9, 'uppercut-contact'], [10.2, 'hit-peak'], [10.5, 'ko-transition'], [12.5, 'ko-text'], [14.5, 'down'], [15.3, 'ko-hold'], [15.9, 'hop-back-man'], [16.5, 'hop-back-woman'], [17.3, 'idle']];
+const beats = [[0.6, 'hop-in'], [1.1, 'landed'], [3.15, 'kick1-contact'], [3.5, 'kick1-recoil'], [5.3, 'kick2-contact'], [7.05, 'flykick-contact'], [7.3, 'flykick-rebound'], [9.35, 'jab-contact'], [9.52, 'cross-contact'], [11.13, 'uppercut-contact'], [11.35, 'hit-peak'], [12.2, 'falling'], [13.4, 'ko-text'], [14.8, 'down'], [15.7, 'ko-hold'], [16.6, 'hop-back-man'], [17.2, 'hop-back-woman'], [18.3, 'idle']];
 for (const [s, name] of beats) {
   await send('Runtime.evaluate', { expression: `window.__bvk.stepTo(${s})`, returnByValue: true }, sid);
   await sleep(150);

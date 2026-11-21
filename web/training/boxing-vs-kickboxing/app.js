@@ -29,7 +29,7 @@ const tagKick = document.getElementById('tag-kickboxing');
 /* ---------- renderer / scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
+renderer.toneMappingExposure = 1.42;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -45,8 +45,8 @@ controls.maxDistance = 12;
 controls.target.set(-0.2, 1.0, 0);
 controls.update();
 
-scene.add(new THREE.HemisphereLight(0xd9e8ff, 0x3a3630, 2.0));
-const keyLight = new THREE.DirectionalLight(0xffe8d2, 3.4);
+scene.add(new THREE.HemisphereLight(0xdcebff, 0x4a4640, 2.9));
+const keyLight = new THREE.DirectionalLight(0xffe8d2, 4.2);
 keyLight.position.set(2.2, 3.2, 2.6);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(1024, 1024);
@@ -55,10 +55,10 @@ keyLight.shadow.camera.right = 4;
 keyLight.shadow.camera.top = 4;
 keyLight.shadow.camera.bottom = -4;
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x86b8ff, 2.0);
+const rimLight = new THREE.DirectionalLight(0x9cc6ff, 2.5);
 rimLight.position.set(-2.4, 2.0, -2.6);
 scene.add(rimLight);
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.8);
 fillLight.position.set(0, 1.4, 4);
 scene.add(fillLight);
 
@@ -149,7 +149,7 @@ class Fighter {
     this.mixer.stopAllAction();
     this.ready = true;
   }
-  play(name, { fade = 0.2, clamp = false, rev = 0 } = {}) {
+  play(name, { fade = 0.2, clamp = false, rev = 0, rate = 1 } = {}) {
     const next = this.actions[name];
     if (!next) return;
     /* Is this clip already the one posing the rig? (e.g. knock-out replayed
@@ -171,7 +171,7 @@ class Fighter {
       next.time = Math.max(0.01, next.getClip().duration - 0.02);
       next.setEffectiveTimeScale(-rev);
     } else {
-      next.setEffectiveTimeScale(TS);
+      next.setEffectiveTimeScale(TS * rate);
     }
     if (fade <= 0 || dominant) { next.setEffectiveWeight(1); next.play(); }
     else next.fadeIn(fade).play();
@@ -260,11 +260,12 @@ const CLIP_DUR = {
  * positions). dx = small residual x-correction applied to the attacker just
  * before the contact frame (ramped in, held to clip end, eased back out). */
 const HITS = {
-  roundhouse: { frac: 0.443, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0.065, fx: 'block', snd: 'kick' },
-  flying:     { frac: 0.167, atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.375,  fx: 'block', snd: 'kick' },
-  jab:        { frac: 0.27,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0.013,  fx: 'punch', snd: 'punch' },
-  cross:      { frac: 0.353, atkBone: 'RightHand',    defBone: 'Head',     dx: 0.065,  fx: 'punch', snd: 'punch' },
-  uppercut:   { frac: 0.39,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0,      fx: 'ko',    snd: 'ko', ko: true },
+  roundhouse1: { frac: 0.443, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0.106, fx: 'block', snd: 'kick' },
+  roundhouse2: { frac: 0.443, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0.065, fx: 'block', snd: 'kick' },
+  flying:     { frac: 0.167, atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.026, fx: 'block', snd: 'kick' },
+  jab:        { frac: 0.27,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0,  fx: 'punch', snd: 'punch' },
+  cross:      { frac: 0.353, atkBone: 'RightHand',    defBone: 'Head',     dx: 0.1, fx: 'punch', snd: 'punch' },
+  uppercut:   { frac: 0.39,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0.06,   fx: 'ko',    snd: 'ko', ko: true },
 };
 
 const TL = [
@@ -275,41 +276,52 @@ const TL = [
   { t: 0.2,  who: 'm', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
   { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
 
-  /* --- kickboxer opens at long range --- */
-  { t: 2.3,  who: 'w', clip: 'roundhouse-kick', move: -0.32, clamp: true, hit: 'roundhouse' },
-  { t: 2.45, who: 'm', clip: 'block', clamp: true },           // gloves meet the kick
-  { t: 3.7,  who: 'm', clip: 'guard' },                        // settle back to guard
-  { t: 4.35, who: 'w', clip: 'guard' },                        // she settles too (no re-kick loop)
+  /* --- kick 1: gloves go up in front of the kick, he only gives ground
+   *     AFTER the shin lands on them (no leaning away early) --- */
+  { t: 2.30, who: 'w', clip: 'roundhouse-kick', move: -0.22, clamp: true, hit: 'roundhouse1' },
+  { t: 2.55, who: 'm', clip: 'block', clamp: true },            // gloves up, standing tall
+  { t: 3.22, who: 'm', clip: 'step-backward', move: -0.45, fade: 0.1, clamp: true },  // pushed back by the impact
+  { t: 3.95, who: 'm', clip: 'guard' },
+  { t: 4.22, who: 'w', clip: 'guard' },
 
-  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.75, tweenDur: 0.5, clamp: true, hit: 'flying' }, // leaps in
-  { t: 5.15, who: 'm', clip: 'step-backward', move: -0.55, clamp: true },  // gives ground as she flies in
-  { t: 5.9,  who: 'w', move: 0.9, tweenDur: 0.55 },            // rebounded off his gloves
-  { t: 6.0,  who: 'm', clip: 'guard' },                        // settle after the step-back
-  { t: 6.35, who: 'w', clip: 'guard' },
-  { t: 6.65, who: 'w', move: 0.85, tweenDur: 0.6 },            // backs off to punch range
+  /* --- kick 2: she closes the gap kick 1 opened, kicks again --- */
+  { t: 4.45, who: 'w', clip: 'roundhouse-kick', move: -0.5, tweenDur: 0.42, clamp: true, hit: 'roundhouse2' },
+  { t: 4.95, who: 'm', clip: 'block', clamp: true },
+  { t: 5.74, who: 'm', clip: 'step-backward', move: -0.42, fade: 0.1, clamp: true },
+  { t: 6.35, who: 'm', clip: 'guard' },
+  { t: 6.55, who: 'w', clip: 'guard' },
 
-  /* --- boxer closes and finishes --- */
-  { t: 6.8,  who: 'm', clip: 'step-forward', move: 0.98, clamp: true },
-  { t: 7.5,  who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
-  { t: 9.5,  who: 'm', clip: 'uppercut', clamp: true, hit: 'uppercut' },   // reaction fired on contact
-  { t: 10.7, who: 'm', clip: 'guard' },
-  { t: 12.2, ko: true },                                       // big KO slam
+  /* --- flying kick: her foot has to land ON his gloves --- */
+  { t: 6.87, who: 'w', clip: 'flying-kick', move: -1.95, tweenDur: 0.5, clamp: true, hit: 'flying' },
+  { t: 6.95, who: 'm', clip: 'block', clamp: true },
+  { t: 7.00, who: 'm', move: -0.32, tweenDur: 0.45 },           // shoved back by the impact
+  { t: 7.14, who: 'w', move: 0.9, tweenDur: 0.45 },             // rebounds off his gloves
+  { t: 7.85, who: 'm', clip: 'guard' },
+  { t: 7.95, who: 'w', clip: 'guard' },
+  { t: 8.05, who: 'w', x: -0.45, tweenDur: 0.5 },               // backs off to boxing range
+
+  /* --- boxer closes the gap fast and finishes --- */
+  { t: 8.60, who: 'm', clip: 'step-forward', x: -1.18, tweenDur: 0.28, rate: 2.2, clamp: true },
+  { t: 8.95, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
+  { t: 10.75, who: 'm', clip: 'uppercut', clamp: true, hit: 'uppercut' },
+  { t: 11.95, who: 'm', clip: 'guard' },
+  { t: 13.2, ko: true },                                       // big KO slam
 
   /* --- KO hold, then both hop back to the screen edge --- */
-  { t: 15.3, who: 'w', clip: 'knock-out', rev: 8.1, fade: 0.25 },  // replayed backwards = she stands up
-  { t: 15.4, koOff: true },
-  { t: 15.6, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 15.95, who: 'w', clip: 'guard', fade: 0.15 },
-  { t: 16.25, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 16.05, who: 'w', clip: 'knock-out', rev: 8.1, fade: 0.25 }, // replayed backwards = she stands up
+  { t: 16.15, koOff: true },
+  { t: 16.35, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 16.7, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 17.0, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 17.3;
+const END_T = 18.1;
 const KO_FALL_DELAY = 0.32;   // uppercut contact -> peak backward lean -> knock-out clip
 
 /* derived contact list */
 const contacts = [];
 for (const e of TL) {
   if (!e.hit || !e.clip) continue;
-  const cd = CLIP_DUR[e.who][e.clip] / TS;
+  const cd = CLIP_DUR[e.who][e.clip] / TS / (e.rate || 1);
   for (const hname of Array.isArray(e.hit) ? e.hit : [e.hit]) {
     const h = HITS[hname];
     contacts.push({
@@ -529,7 +541,9 @@ function fireContact(c, t) {
   AudioFX.hit(c.snd);
   shake(c.fx);
   if (c.ko) {
-    pending.push({ t: t, fn: () => woman.play('hit-uppercut', { fade: 0.05 }) });
+    /* the hit reaction has to start on the very contact frame — no pending
+     * hop, the head snaps back the instant the fist lands */
+    woman.play('hit-uppercut', { fade: 0.05 });
     pending.push({ t: t + KO_FALL_DELAY, fn: () => woman.play('knock-out', { clamp: true, fade: 0.18 }) });
   }
 }
@@ -545,12 +559,16 @@ function updateBout(dt = 0) {
     if (b.ko) { koEl.classList.add('on'); continue; }
     if (b.koOff) { koEl.classList.remove('on'); continue; }
     const f = whoOf[b.who];
-    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, rev: b.rev || 0, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
+    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, rev: b.rev || 0, rate: b.rate || 1, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
     if (b.moveTo) {
       const target = (b.moveTo === 'fight' ? HOME : homeOut())[b.who];
       tweenX(b.who, target - f.baseX, b.tweenDur || 0.6, b.hopH || 0);
+    } else if (b.x !== undefined) {
+      /* absolute stage position — the choreography is tuned on absolute
+       * spacing (boxing range ~0.7 m between roots), not on relative steps */
+      tweenX(b.who, b.x - f.baseX, b.tweenDur || 0.4, b.hopH || 0);
     } else if (b.move) {
-      tweenX(b.who, b.move, b.tweenDur || (b.clip ? (CLIP_DUR[b.who][b.clip] / TS) : 0.6));
+      tweenX(b.who, b.move, b.tweenDur || (b.clip ? (CLIP_DUR[b.who][b.clip] / TS / (b.rate || 1)) : 0.6));
     }
   }
 
@@ -571,7 +589,9 @@ function updateBout(dt = 0) {
   resetNudges();
   for (const c of contacts) {
     const r = nudgeRamp(c, t);
-    if (r) whoOf[c.atk].nudgeX += c.dx * r;
+    /* dx is measured as a world-space gap: positive always closes it, no
+     * matter which side the attacker is on (the woman closes from +x) */
+    if (r) whoOf[c.atk].nudgeX += c.dx * r * (c.atk === 'w' ? -1 : 1);
   }
   man.group.position.x = man.baseX + man.nudgeX;
   woman.group.position.x = woman.baseX + woman.nudgeX;
