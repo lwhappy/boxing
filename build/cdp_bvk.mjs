@@ -45,7 +45,7 @@ for (let i = 0; i < 60; i++) {
 }
 console.log('ready:', ready);
 
-const beats = [[1.2, 'guard'], [2.4,'kick1'],[4.05,'stepback'],[5.1,'flykick'], [8.9, 'jabcross'], [10.75, 'uppercut'], [12.5, 'falling'], [14.6, 'ko']];
+const beats = [[0.8, 'guard'], [1.96, 'kick1-contact'], [2.9, 'stepback'], [4.12, 'flykick-contact'], [5.6, 'landed'], [6.7, 'jab-contact'], [6.9, 'cross-contact'], [8.72, 'uppercut-contact'], [9.4, 'reaction'], [11.3, 'ko-text'], [13.0, 'down']];
 for (const [s, name] of beats) {
   await send('Runtime.evaluate', { expression: `window.__bvk.stepTo(${s})`, returnByValue: true }, sid);
   await sleep(150);
