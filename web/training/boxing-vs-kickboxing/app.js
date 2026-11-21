@@ -236,7 +236,7 @@ const CLIP_DUR = {
  * before the contact frame (ramped in, held to clip end, eased back out). */
 const HITS = {
   roundhouse: { frac: 0.443, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0.065, fx: 'block', snd: 'kick' },
-  flying:     { frac: 0.167, atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: -0.344, fx: 'block', snd: 'kick' },
+  flying:     { frac: 0.167, atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.375,  fx: 'block', snd: 'kick' },
   jab:        { frac: 0.27,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0.013,  fx: 'punch', snd: 'punch' },
   cross:      { frac: 0.353, atkBone: 'RightHand',    defBone: 'Head',     dx: 0.065,  fx: 'punch', snd: 'punch' },
   uppercut:   { frac: 0.39,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0,      fx: 'ko',    snd: 'ko', ko: true },
@@ -253,12 +253,12 @@ const TL = [
   /* --- kickboxer opens at long range --- */
   { t: 2.3,  who: 'w', clip: 'roundhouse-kick', move: -0.32, hit: 'roundhouse' },
   { t: 2.45, who: 'm', clip: 'block' },                        // gloves meet the kick
-  { t: 3.8,  who: 'm', clip: 'step-backward', move: -0.55 },   // shove the range back out
+  { t: 3.7,  who: 'm', clip: 'guard' },                        // settle back to guard
 
-  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.2, tweenDur: 0.7, hit: 'flying' }, // leaps in
-  { t: 5.2,  who: 'm', clip: 'block' },                        // meets it on the gloves
+  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.75, tweenDur: 0.5, hit: 'flying' }, // leaps in
+  { t: 5.15, who: 'm', clip: 'step-backward', move: -0.55 },   // gives ground as she flies in
   { t: 6.35, who: 'w', clip: 'guard' },
-  { t: 6.65, who: 'w', move: 1.2, tweenDur: 0.6 },             // backs off to punch range
+  { t: 6.65, who: 'w', move: 1.75, tweenDur: 0.6 },            // backs off to punch range
 
   /* --- boxer closes and finishes --- */
   { t: 6.8,  who: 'm', clip: 'step-forward', move: 0.98 },
@@ -274,7 +274,7 @@ const TL = [
   { t: 16.0, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
 const END_T = 17.0;
-const KO_FALL_DELAY = 0.87;   // uppercut contact -> knock-out clip
+const KO_FALL_DELAY = 0.32;   // uppercut contact -> peak backward lean -> knock-out clip
 
 /* derived contact list */
 const contacts = [];
@@ -501,7 +501,7 @@ function fireContact(c, t) {
   shake(c.fx);
   if (c.ko) {
     pending.push({ t: t, fn: () => woman.play('hit-uppercut', { fade: 0.05 }) });
-    pending.push({ t: t + KO_FALL_DELAY, fn: () => woman.play('knock-out', { clamp: true, fade: 0.1 }) });
+    pending.push({ t: t + KO_FALL_DELAY, fn: () => woman.play('knock-out', { clamp: true, fade: 0.18 }) });
   }
 }
 
