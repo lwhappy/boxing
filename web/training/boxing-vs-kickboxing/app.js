@@ -303,17 +303,26 @@ const TL = [
   { t: 4.65, who: 'm', clip: 'guard' },
   { t: 4.95, who: 'w', clip: 'guard' },
 
-  /* --- flying kick: her foot has to land ON his gloves --- */
-  { t: 5.52, who: 'w', clip: 'flying-kick', move: -1.95, tweenDur: 0.5, clamp: true, hit: 'flying' },
-  { t: 5.60, who: 'm', clip: 'block', clamp: true },
-  { t: 5.65, who: 'm', move: -0.32, tweenDur: 0.45 },           // shoved back by the impact
-  { t: 5.79, who: 'w', move: 0.9, tweenDur: 0.45 },             // rebounds off his gloves
-  { t: 6.50, who: 'm', clip: 'guard' },
-  { t: 6.60, who: 'w', clip: 'guard' },
-  { t: 6.70, who: 'w', x: -0.45, tweenDur: 0.5 },               // backs off to boxing range
+  /* --- reset the stage for the flying kick: she steps out to the right,
+   *     he takes the centre of the screen --- */
+  { t: 5.02, who: 'w', x: 1.30, tweenDur: 0.55 },
+  { t: 5.02, who: 'm', x: -0.10, tweenDur: 0.55 },
+
+  /* --- flying kick: she launches from the right, the kick lands on his
+   *     gloves, then she drops straight down and does not move again. The
+   *     forward travel is split in two tweens: a short explosive burst that
+   *     puts her foot on his guard (fast, so the leap covers it), then a
+   *     slow drift to where she touches down --- */
+  { t: 5.62, who: 'w', clip: 'flying-kick', move: -0.58, tweenDur: 0.24, clamp: true, hit: 'flying' },
+  { t: 5.70, who: 'm', clip: 'block', clamp: true },             // gloves just in time again
+  { t: 5.87, who: 'w', move: -0.26, tweenDur: 0.45 },           // airborne drift, touch down, stay put
+  { t: 5.84, who: 'm', move: -0.62, tweenDur: 0.6 },            // driven back the instant she lands
+  { t: 6.00, who: 'm', clip: 'step-backward', fade: 0.12, clamp: true },
+  { t: 6.60, who: 'm', clip: 'guard' },
+  { t: 6.75, who: 'w', clip: 'guard', fade: 0.25 },             // she has landed: hold, no rebound
 
   /* --- boxer closes the gap fast and finishes --- */
-  { t: 7.25, who: 'm', clip: 'step-forward', x: -1.18, tweenDur: 0.28, rate: 2.2, clamp: true },
+  { t: 7.25, who: 'm', clip: 'step-forward', x: -0.27, tweenDur: 0.28, rate: 2.2, clamp: true },
   { t: 7.60, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
   /* the cross has just snapped back to guard: cut straight into the uppercut's
    * wind-up (the clip's first 0.18 s of idle hands is skipped) so the 1-2-3
