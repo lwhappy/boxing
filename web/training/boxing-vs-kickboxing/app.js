@@ -149,7 +149,7 @@ class Fighter {
     this.mixer.stopAllAction();
     this.ready = true;
   }
-  play(name, { fade = 0.2, clamp = false, rev = 0, rate = 1 } = {}) {
+  play(name, { fade = 0.2, clamp = false, rev = 0, rate = 1, start = 0 } = {}) {
     const next = this.actions[name];
     if (!next) return;
     /* Is this clip already the one posing the rig? (e.g. knock-out replayed
@@ -167,10 +167,15 @@ class Fighter {
     next.setLoop(looping ? THREE.LoopRepeat : THREE.LoopOnce, looping ? Infinity : 1);
     if (rev > 0) {
       /* play the clip backwards (e.g. knock-out reversed = standing up);
-       * it clamps on its first frame when time reaches 0 */
-      next.time = Math.max(0.01, next.getClip().duration - 0.02);
+       * it clamps on its first frame when time reaches 0. `start` lets the
+       * reversal begin part-way in, so a long lying-still tail can be cut. */
+      const from = start > 0 ? Math.min(start, next.getClip().duration - 0.02) : next.getClip().duration - 0.02;
+      next.time = Math.max(0.01, from);
       next.setEffectiveTimeScale(-rev);
     } else {
+      /* `start` skips a slow lead-in (wind-up already covered by the previous
+       * clip) so a combo reads as one continuous motion */
+      next.time = Math.min(Math.max(0, start), Math.max(0, next.getClip().duration - 0.02));
       next.setEffectiveTimeScale(TS * rate);
     }
     if (fade <= 0 || dominant) { next.setEffectiveWeight(1); next.play(); }
@@ -235,8 +240,10 @@ woman.group.position.set(homeOut().w, 0, 0);
 scene.add(man.group, woman.group);
 
 /* ---------- timeline ----------
- * { t, who, clip, moveTo?, tweenDur?, hop?, clamp?, fade?, hit? } — t in
- * real seconds. Clips play at TS x speed, so real clip duration = CLIP_DUR/TS.
+ * { t, who, clip, moveTo?, tweenDur?, hop?, clamp?, fade?, start?, hit? } —
+ * t in real seconds. Clips play at TS x speed, so real clip duration =
+ * CLIP_DUR/TS. `start` skips into the clip (raw clip seconds) — used to chain
+ * combos without the dead air at the head/tail of a take.
  * `hit` names a contact in HITS below; contact time = t + frac*clipDur.
  */
 
@@ -246,7 +253,6 @@ scene.add(man.group, woman.group);
  * moveTo: 'fight' | 'out' — hop/tween toward those home positions. */
 const TS = 1.35;
 const INTRO_T = 1.2;          // fight entries start after the hop-in lands
-const KO_HOLD = 1.0;          // extra hold after the fall ends, then hop back
 const HOP_IN = { dur: 0.8, h: 0.5 };
 const HOP_OUT = { dur: 0.8, h: 0.45 };
 
@@ -303,29 +309,40 @@ const TL = [
   /* --- boxer closes the gap fast and finishes --- */
   { t: 8.60, who: 'm', clip: 'step-forward', x: -1.18, tweenDur: 0.28, rate: 2.2, clamp: true },
   { t: 8.95, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
-  { t: 10.75, who: 'm', clip: 'uppercut', clamp: true, hit: 'uppercut' },
-  { t: 11.95, who: 'm', clip: 'guard' },
-  { t: 13.2, ko: true },                                       // big KO slam
+  /* the cross has just snapped back to guard: cut straight into the uppercut's
+   * wind-up (the clip's first 0.18 s of idle hands is skipped) so the 1-2-3
+   * reads as one continuous flurry instead of three separate clips */
+  { t: 9.60, who: 'm', clip: 'uppercut', start: 0.18, fade: 0.1, clamp: true, hit: 'uppercut' },
+  { t: 10.55, who: 'm', clip: 'guard' },
+  /* she hits the mat 0.37 s into the knocked-out clip (KO slam on landing) */
+  { t: 10.50, ko: true },
 
-  /* --- KO hold, then both hop back to the screen edge --- */
-  { t: 16.05, who: 'w', clip: 'knock-out', rev: 8.1, fade: 0.25 }, // replayed backwards = she stands up
-  { t: 16.15, koOff: true },
-  { t: 16.35, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 16.7, who: 'w', clip: 'guard', fade: 0.15 },
-  { t: 17.0, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  /* --- 1 s lying still, then both hop back to the screen edge --- */
+  { t: 11.50, who: 'w', clip: 'knock-out', rev: 6.5, start: 3.68, fade: 0.2 }, // replayed backwards = she stands up
+  { t: 11.60, koOff: true },
+  { t: 11.85, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 12.20, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 12.50, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 18.1;
-const KO_FALL_DELAY = 0.32;   // uppercut contact -> peak backward lean -> knock-out clip
+const END_T = 13.6;
+/* uppercut contact -> her head is at its furthest back at 0.35 s into the
+ * hit-uppercut clip (0.26 s real): hand over to the knock-out clip right there,
+ * entering it mid-topple so the fall starts on the same frame */
+const KO_FALL_DELAY = 0.26;
+const KO_CLIP_START = 1.80;   // knock-out clip time where she is already buckling
 
 /* derived contact list */
 const contacts = [];
 for (const e of TL) {
   if (!e.hit || !e.clip) continue;
-  const cd = CLIP_DUR[e.who][e.clip] / TS / (e.rate || 1);
+  const rawDur = CLIP_DUR[e.who][e.clip];
+  const start = e.start || 0;
+  const scale = TS * (e.rate || 1);
+  const clipEnd = e.t + (rawDur - start) / scale;
   for (const hname of Array.isArray(e.hit) ? e.hit : [e.hit]) {
     const h = HITS[hname];
     contacts.push({
-      t: e.t + h.frac * cd, clipEnd: e.t + cd,
+      t: e.t + Math.max(0, h.frac * rawDur - start) / scale, clipEnd,
       atk: e.who, def: e.who === 'm' ? 'w' : 'm',
       atkBone: h.atkBone, defBone: h.defBone, dx: h.dx || 0,
       fx: h.fx, snd: h.snd, ko: !!h.ko, fired: false,
@@ -543,8 +560,11 @@ function fireContact(c, t) {
   if (c.ko) {
     /* the hit reaction has to start on the very contact frame — no pending
      * hop, the head snaps back the instant the fist lands */
-    woman.play('hit-uppercut', { fade: 0.05 });
-    pending.push({ t: t + KO_FALL_DELAY, fn: () => woman.play('knock-out', { clamp: true, fade: 0.18 }) });
+    woman.play('hit-uppercut', { fade: 0.03 });
+    pending.push({
+      t: t + KO_FALL_DELAY,
+      fn: () => woman.play('knock-out', { clamp: true, fade: 0.12, start: KO_CLIP_START }),
+    });
   }
 }
 
@@ -559,7 +579,10 @@ function updateBout(dt = 0) {
     if (b.ko) { koEl.classList.add('on'); continue; }
     if (b.koOff) { koEl.classList.remove('on'); continue; }
     const f = whoOf[b.who];
-    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, rev: b.rev || 0, rate: b.rate || 1, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
+    if (b.clip) f.play(b.clip, {
+      clamp: !!b.clamp, rev: b.rev || 0, rate: b.rate || 1, start: b.start || 0,
+      fade: b.fade ?? (b.clamp ? 0.12 : 0.2),
+    });
     if (b.moveTo) {
       const target = (b.moveTo === 'fight' ? HOME : homeOut())[b.who];
       tweenX(b.who, target - f.baseX, b.tweenDur || 0.6, b.hopH || 0);
