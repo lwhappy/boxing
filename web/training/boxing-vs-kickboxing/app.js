@@ -252,7 +252,6 @@ scene.add(man.group, woman.group);
  * hop back to the edge and idle in guard. Replay hops them in again.
  * moveTo: 'fight' | 'out' — hop/tween toward those home positions. */
 const TS = 1.35;
-const INTRO_T = 1.2;          // fight entries start after the hop-in lands
 const HOP_IN = { dur: 0.8, h: 0.5 };
 const HOP_OUT = { dur: 0.8, h: 0.45 };
 
@@ -278,53 +277,56 @@ const TL = [
   { t: 0.0,  who: 'm', clip: 'guard' },
   { t: 0.0,  who: 'w', clip: 'guard' },
 
-  /* --- both hop from the stage edge into the center --- */
+  /* --- both hop from the stage edge into the center, then square up almost
+   *     at once (0.55 s of guard, no long staredown) --- */
   { t: 0.2,  who: 'm', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
   { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
 
   /* --- kick 1: gloves go up in front of the kick, he only gives ground
    *     AFTER the shin lands on them (no leaning away early) --- */
-  { t: 2.30, who: 'w', clip: 'roundhouse-kick', move: -0.22, clamp: true, hit: 'roundhouse1' },
-  { t: 2.55, who: 'm', clip: 'block', clamp: true },            // gloves up, standing tall
-  { t: 3.22, who: 'm', clip: 'step-backward', move: -0.45, fade: 0.1, clamp: true },  // pushed back by the impact
-  { t: 3.95, who: 'm', clip: 'guard' },
-  { t: 4.22, who: 'w', clip: 'guard' },
+  { t: 1.55, who: 'w', clip: 'roundhouse-kick', x: 0.35, tweenDur: 0.55, clamp: true, hit: 'roundhouse1' },
+  { t: 1.80, who: 'm', clip: 'block', clamp: true },            // gloves up, standing tall
+  { t: 2.47, who: 'm', clip: 'step-backward', move: -0.45, fade: 0.1, clamp: true },  // pushed back by the impact
 
-  /* --- kick 2: she closes the gap kick 1 opened, kicks again --- */
-  { t: 4.45, who: 'w', clip: 'roundhouse-kick', move: -0.5, tweenDur: 0.42, clamp: true, hit: 'roundhouse2' },
-  { t: 4.95, who: 'm', clip: 'block', clamp: true },
-  { t: 5.74, who: 'm', clip: 'step-backward', move: -0.42, fade: 0.1, clamp: true },
-  { t: 6.35, who: 'm', clip: 'guard' },
-  { t: 6.55, who: 'w', clip: 'guard' },
+  /* --- kick 2: she re-chambers the instant the first kick is down and kicks
+   *     again (1.55 s after kick 1, clipped off the slow tail of the take) --- */
+  { t: 3.10, who: 'w', clip: 'roundhouse-kick', x: -0.27, tweenDur: 0.42, clamp: true, hit: 'roundhouse2' },
+  { t: 3.10, who: 'm', clip: 'guard' },                          // gloves recover from kick 1
+  /* block has to be 0.32 s in at the contact frame (same phase as kick 1) —
+   * earlier than that the gloves are still coming up and her shin passes them */
+  { t: 3.60, who: 'm', clip: 'block', clamp: true },
+  { t: 4.02, who: 'm', clip: 'step-backward', move: -0.42, fade: 0.1, clamp: true },
+  { t: 4.65, who: 'm', clip: 'guard' },
+  { t: 4.95, who: 'w', clip: 'guard' },
 
   /* --- flying kick: her foot has to land ON his gloves --- */
-  { t: 6.87, who: 'w', clip: 'flying-kick', move: -1.95, tweenDur: 0.5, clamp: true, hit: 'flying' },
-  { t: 6.95, who: 'm', clip: 'block', clamp: true },
-  { t: 7.00, who: 'm', move: -0.32, tweenDur: 0.45 },           // shoved back by the impact
-  { t: 7.14, who: 'w', move: 0.9, tweenDur: 0.45 },             // rebounds off his gloves
-  { t: 7.85, who: 'm', clip: 'guard' },
-  { t: 7.95, who: 'w', clip: 'guard' },
-  { t: 8.05, who: 'w', x: -0.45, tweenDur: 0.5 },               // backs off to boxing range
+  { t: 5.52, who: 'w', clip: 'flying-kick', move: -1.95, tweenDur: 0.5, clamp: true, hit: 'flying' },
+  { t: 5.60, who: 'm', clip: 'block', clamp: true },
+  { t: 5.65, who: 'm', move: -0.32, tweenDur: 0.45 },           // shoved back by the impact
+  { t: 5.79, who: 'w', move: 0.9, tweenDur: 0.45 },             // rebounds off his gloves
+  { t: 6.50, who: 'm', clip: 'guard' },
+  { t: 6.60, who: 'w', clip: 'guard' },
+  { t: 6.70, who: 'w', x: -0.45, tweenDur: 0.5 },               // backs off to boxing range
 
   /* --- boxer closes the gap fast and finishes --- */
-  { t: 8.60, who: 'm', clip: 'step-forward', x: -1.18, tweenDur: 0.28, rate: 2.2, clamp: true },
-  { t: 8.95, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
+  { t: 7.25, who: 'm', clip: 'step-forward', x: -1.18, tweenDur: 0.28, rate: 2.2, clamp: true },
+  { t: 7.60, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
   /* the cross has just snapped back to guard: cut straight into the uppercut's
    * wind-up (the clip's first 0.18 s of idle hands is skipped) so the 1-2-3
    * reads as one continuous flurry instead of three separate clips */
-  { t: 9.60, who: 'm', clip: 'uppercut', start: 0.18, fade: 0.1, clamp: true, hit: 'uppercut' },
-  { t: 10.55, who: 'm', clip: 'guard' },
+  { t: 8.25, who: 'm', clip: 'uppercut', start: 0.18, fade: 0.1, clamp: true, hit: 'uppercut' },
+  { t: 9.20, who: 'm', clip: 'guard' },
   /* she hits the mat 0.37 s into the knocked-out clip (KO slam on landing) */
-  { t: 10.50, ko: true },
+  { t: 9.15, ko: true },
 
   /* --- 1 s lying still, then both hop back to the screen edge --- */
-  { t: 11.50, who: 'w', clip: 'knock-out', rev: 6.5, start: 3.68, fade: 0.2 }, // replayed backwards = she stands up
-  { t: 11.60, koOff: true },
-  { t: 11.85, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 12.20, who: 'w', clip: 'guard', fade: 0.15 },
-  { t: 12.50, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 10.15, who: 'w', clip: 'knock-out', rev: 6.5, start: 3.68, fade: 0.2 }, // replayed backwards = she stands up
+  { t: 10.25, koOff: true },
+  { t: 10.50, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 10.85, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 11.15, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 13.6;
+const END_T = 12.25;
 /* uppercut contact -> her head is at its furthest back at 0.35 s into the
  * hit-uppercut clip (0.26 s real): hand over to the knock-out clip right there,
  * entering it mid-topple so the fall starts on the same frame */
