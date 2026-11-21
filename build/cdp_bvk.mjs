@@ -35,7 +35,7 @@ const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatt
 await send('Page.enable', {}, sid);
 await send('Runtime.enable', {}, sid);
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: MOB ? 2 : 1, mobile: MOB }, sid);
-await send('Page.navigate', { url: 'http://127.0.0.1:8945/training/boxing-vs-kickboxing/' }, sid);
+await send('Page.navigate', { url: 'http://127.0.0.1:8945/training/boxing-vs-kickboxing/?cb=' + Date.now() }, sid);
 
 let ready = false;
 for (let i = 0; i < 60; i++) {

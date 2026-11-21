@@ -10,7 +10,7 @@ const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
 const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
 await send('Page.enable', {}, sid); await send('Runtime.enable', {}, sid);
 await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sid);
-await send('Page.navigate', { url: 'http://127.0.0.1:8945/training/boxing-vs-kickboxing/' }, sid);
+await send('Page.navigate', { url: 'http://127.0.0.1:8945/training/boxing-vs-kickboxing/?cb=' + Date.now() }, sid);
 let ready = false;
 for (let i = 0; i < 60; i++) { await sleep(300); const r = await send('Runtime.evaluate', { expression: `window.__bvk && !!window.__bvk.stepTo`, returnByValue: true }, sid); if (r.result.value) { ready = true; break; } }
 console.log('ready:', ready);

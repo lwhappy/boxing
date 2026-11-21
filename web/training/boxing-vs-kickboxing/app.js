@@ -146,12 +146,20 @@ class Fighter {
     this.mixer.stopAllAction();
     this.ready = true;
   }
-  play(name, { fade = 0.2, clamp = false } = {}) {
+  play(name, { fade = 0.2, clamp = false, rev = 0 } = {}) {
     const next = this.actions[name];
     if (!next) return;
     next.reset();
-    next.clampWhenFinished = clamp;
-    next.setLoop(clamp ? THREE.LoopOnce : THREE.LoopRepeat);
+    next.clampWhenFinished = clamp || rev > 0;
+    next.setLoop(THREE.LoopOnce);
+    if (rev > 0) {
+      /* play the clip backwards (e.g. knock-out reversed = standing up);
+       * it clamps on its first frame when time reaches 0 */
+      next.time = Math.max(0.01, next.getClip().duration - 0.02);
+      next.setEffectiveTimeScale(-rev);
+    } else {
+      next.setEffectiveTimeScale(TS);
+    }
     if (fade <= 0) { next.setEffectiveWeight(1); next.play(); }
     else next.fadeIn(fade).play();
     for (const a of Object.values(this.actions)) {
@@ -251,29 +259,33 @@ const TL = [
   { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
 
   /* --- kickboxer opens at long range --- */
-  { t: 2.3,  who: 'w', clip: 'roundhouse-kick', move: -0.32, hit: 'roundhouse' },
-  { t: 2.45, who: 'm', clip: 'block' },                        // gloves meet the kick
+  { t: 2.3,  who: 'w', clip: 'roundhouse-kick', move: -0.32, clamp: true, hit: 'roundhouse' },
+  { t: 2.45, who: 'm', clip: 'block', clamp: true },           // gloves meet the kick
   { t: 3.7,  who: 'm', clip: 'guard' },                        // settle back to guard
+  { t: 4.35, who: 'w', clip: 'guard' },                        // she settles too (no re-kick loop)
 
-  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.75, tweenDur: 0.5, hit: 'flying' }, // leaps in
-  { t: 5.15, who: 'm', clip: 'step-backward', move: -0.55 },   // gives ground as she flies in
+  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.75, tweenDur: 0.5, clamp: true, hit: 'flying' }, // leaps in
+  { t: 5.15, who: 'm', clip: 'step-backward', move: -0.55, clamp: true },  // gives ground as she flies in
+  { t: 5.9,  who: 'w', move: 0.9, tweenDur: 0.55 },            // rebounded off his gloves
+  { t: 6.0,  who: 'm', clip: 'guard' },                        // settle after the step-back
   { t: 6.35, who: 'w', clip: 'guard' },
-  { t: 6.65, who: 'w', move: 1.75, tweenDur: 0.6 },            // backs off to punch range
+  { t: 6.65, who: 'w', move: 0.85, tweenDur: 0.6 },            // backs off to punch range
 
   /* --- boxer closes and finishes --- */
-  { t: 6.8,  who: 'm', clip: 'step-forward', move: 0.98 },
-  { t: 7.5,  who: 'm', clip: 'jab-cross', hit: ['jab', 'cross'] },
-  { t: 9.5,  who: 'm', clip: 'uppercut', hit: 'uppercut' },    // reaction fired on contact
+  { t: 6.8,  who: 'm', clip: 'step-forward', move: 0.98, clamp: true },
+  { t: 7.5,  who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
+  { t: 9.5,  who: 'm', clip: 'uppercut', clamp: true, hit: 'uppercut' },   // reaction fired on contact
   { t: 10.7, who: 'm', clip: 'guard' },
   { t: 12.2, ko: true },                                       // big KO slam
 
-  /* --- KO hold, then both hop back to the stage edge --- */
+  /* --- KO hold, then both hop back to the screen edge --- */
+  { t: 15.3, who: 'w', clip: 'knock-out', rev: 8.1, fade: 0.25 },  // replayed backwards = she stands up
   { t: 15.4, koOff: true },
-  { t: 15.4, who: 'w', clip: 'guard', fade: 0.45 },            // she gets up
   { t: 15.6, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 16.0, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 15.95, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 16.25, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 17.0;
+const END_T = 17.3;
 const KO_FALL_DELAY = 0.32;   // uppercut contact -> peak backward lean -> knock-out clip
 
 /* derived contact list */
@@ -516,7 +528,7 @@ function updateBout(dt = 0) {
     if (b.ko) { koEl.classList.add('on'); continue; }
     if (b.koOff) { koEl.classList.remove('on'); continue; }
     const f = whoOf[b.who];
-    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
+    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, rev: b.rev || 0, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
     if (b.moveTo) {
       const target = (b.moveTo === 'fight' ? HOME : homeOut())[b.who];
       tweenX(b.who, target - f.baseX, b.tweenDur || 0.6, b.hopH || 0);
