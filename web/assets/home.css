@@ -1029,3 +1029,115 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
 @media (max-width: 380px) {
   .hero-callout { padding: 5px 7px 6px; }
 }
+
+/* ---------------- training lab list（首页 basic moves 上方的列表模块） ----------------
+   刻意不做成卡片：上方是 hero 舞台、下方是招式卡片网格，中间用一条条横排
+   列表来分层，滚动时节奏才不会三段都是格子。 */
+.lab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--stroke);
+}
+
+.lab-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 14px 17px 4px;
+  border-bottom: 1px solid var(--stroke);
+  text-decoration: none;
+  transition: background .2s ease, padding-left .22s cubic-bezier(.2, .8, .3, 1);
+}
+
+/* 左侧红色进度条：hover 时从中间长出来 */
+.lab-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--red);
+  transform: translateY(-50%);
+  transition: height .22s ease;
+}
+
+.lab-row:hover,
+.lab-row:focus-visible {
+  background: linear-gradient(90deg, rgba(255, 90, 106, 0.08), rgba(255, 90, 106, 0.02) 55%, transparent 78%);
+  padding-left: 16px;
+  outline: none;
+}
+
+.lab-row:hover::before,
+.lab-row:focus-visible::before { height: 62%; }
+
+.lab-idx {
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em;
+  color: #5b6473;
+  transition: color .2s ease;
+}
+
+.lab-row:hover .lab-idx,
+.lab-row:focus-visible .lab-idx { color: var(--red); }
+
+.lab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lab-body strong {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lab-body span {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.lab-tag {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7c8598;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--stroke);
+}
+
+.lab-go {
+  color: var(--red);
+  font-size: 14px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.lab-row:hover .lab-go,
+.lab-row:focus-visible .lab-go { opacity: 1; transform: none; }
+
+@media (max-width: 620px) {
+  .lab-row {
+    grid-template-columns: 32px minmax(0, 1fr) 16px;
+    gap: 10px;
+    padding: 15px 6px 15px 0;
+  }
+  .lab-tag { display: none; }
+  .lab-body strong { font-size: 15px; }
+}
+
+/* 触摸设备没有 hover：箭头常显，不要指望悬停才出现 */
+@media (hover: none) {
+  .lab-go { opacity: 0.6; transform: none; }
+}
