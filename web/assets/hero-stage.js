@@ -447,7 +447,9 @@ function onLoaded(gltf) {
 
   const size = box.getSize(new THREE.Vector3());
   const mid = box.getCenter(new THREE.Vector3());
-  const dist = (size.y / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / 0.82;
+  /* 0.70：人物占舞台高度的 70%，四周留白多一些，全身线条（含举高的拳套）
+     和标注折线都能看全；0.82 时手机上人几乎顶满卡片 */
+  const dist = (size.y / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / 0.70;
   controls.target.set(mid.x, mid.y * 0.94, mid.z);
   camera.position.set(
     controls.target.x + dist * 0.34,
