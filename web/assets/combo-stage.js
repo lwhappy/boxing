@@ -13,42 +13,38 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /**
- * Create a sub-clip by keeping only [startSec, endSec] of the source clip.
+ * Create a sub-clip by trimming the first `startSec` seconds off the source clip.
  * This is a lightweight replacement for THREE.AnimationUtils.subclip() which is
  * not bundled in the minified three.module.min.js.
  *
- * It clones the source clip's tracks and shifts all keyframe times so the clip
- * starts at `startSec` (original timeline) → 0 (new timeline), and drops the
- * keys past `endSec` (one extra key is kept on both sides so the interpolation
- * into and out of the window stays correct).
+ * It works by cloning the source clip's tracks and shifting all keyframe times
+ * so the clip starts at `startSec` (original timeline) → 0 (new timeline).
  */
-function trimClipStart(sourceClip, startSec, endSec) {
-  const endLimit = typeof endSec === 'number' ? Math.min(endSec, sourceClip.duration) : sourceClip.duration;
+function trimClipStart(sourceClip, startSec) {
   const newTracks = [];
   for (const track of sourceClip.tracks) {
     const times = track.times;
     const values = track.values;
     const itemSize = track.ValueItemSize || values.length / times.length;
 
-    // Find the range of keys that fall within [startSec, endLimit]
+    // Find the range of keys that fall within [startSec, sourceClip.duration]
     let firstIdx = -1;
     let lastIdx = -1;
     for (let i = 0; i < times.length; i++) {
       if (times[i] >= startSec) {
         if (firstIdx === -1) firstIdx = i;
+        lastIdx = i;
       }
-      if (times[i] <= endLimit) lastIdx = i;
     }
 
-    if (firstIdx === -1 || lastIdx < firstIdx) {
-      // No keys inside the window — skip this track
+    if (firstIdx === -1) {
+      // No keys after startSec — skip this track (it has no data in the trimmed range)
       continue;
     }
 
-    // Keep one key outside the window on both sides so the interpolation into
-    // the first frame and out of the last frame matches the source animation
+    // If the first key in range is not exactly at startSec, we need to keep
+    // the key just before it for interpolation (but shift its time to 0)
     if (firstIdx > 0) firstIdx--;
-    if (lastIdx < times.length - 1) lastIdx++;
 
     const count = lastIdx - firstIdx + 1;
     const newTimes = new Float32Array(count);
@@ -69,7 +65,7 @@ function trimClipStart(sourceClip, startSec, endSec) {
 
   const newClip = new THREE.AnimationClip(
     sourceClip.name + '_trimmed',
-    endLimit - startSec,
+    sourceClip.duration - startSec,
     newTracks
   );
   return newClip;
@@ -82,7 +78,7 @@ const CFG = window.COMBO || {};
 // engine works from the site root and from the nested combos/ folder.
 // One shared GLB holds every combo clip (man-home's rig + ten animations);
 // each page names its clip with window.COMBO = { clip: 'combo_xxx' }.
-const GLB_URL = new URL('../media/glb/man-combos.glb?v=3', import.meta.url).href;
+const GLB_URL = new URL('../media/glb/man-combos.glb?v=1', import.meta.url).href;
 
 const canvas = document.getElementById('stage-canvas');
 const barEl = document.getElementById('stage-bar');
@@ -154,10 +150,6 @@ new GLTFLoader().load(
 
 let mixer = null;
 let comboAction = null;
-let steps = [];              // [{ action, at, fade, dur }] — chains several clips
-let seqT = 0;                // playhead of the whole sequence (unscaled seconds)
-let seqNext = 0;             // index of the next step waiting to fire
-let comboDuration = 0;
 let userMoved = false;
 let homeFraming = null;
 let desiredFraming = null;
@@ -265,19 +257,17 @@ function applyFraming(f) {
 }
 
 function playCombo() {
-  if (!mixer || !steps.length) return;
-  for (const s of steps) s.action.stop();
-  // No fade-in on the first action: this rig's bind/rest pose is horizontal (the
-  // character lies down), so fading a lone action in from weight 0 blends the
-  // skeleton with the bind pose and the boxer visibly collapses from the floor
-  // back to standing during the first ~140ms. Start at full weight instead —
-  // same pattern as boxing.js / home-stage.js.
-  const first = steps[0];
-  first.action.reset();
-  first.action.setEffectiveWeight(1);
-  first.action.play();
-  seqT = 0;
-  seqNext = 1;
+  if (!mixer || !comboAction) return;
+  comboAction.reset();
+  comboAction.setLoop(THREE.LoopOnce, 1);
+  comboAction.clampWhenFinished = true;
+  // No fade-in here: this rig's bind/rest pose is horizontal (the character lies
+  // down), so fading a lone action in from weight 0 blends the skeleton with the
+  // bind pose and the boxer visibly collapses from the floor back to standing
+  // during the first ~140ms. Start at full weight instead — same pattern as
+  // boxing.js / home-stage.js.
+  comboAction.setEffectiveWeight(1);
+  comboAction.play();
   isPlaying = true;
 }
 
@@ -316,50 +306,23 @@ function onLoaded(gltf) {
 
   mixer = new THREE.AnimationMixer(model);
   mixer.addEventListener('finished', (e) => {
-    // a chained sequence fires 'finished' for every step that clamps — only the
-    // last one means the whole combo is over
-    if (steps.length && e.action !== steps[steps.length - 1].action) return;
     isPlaying = false;
     // Keep the last frame clamped, let user replay
     setActiveButton('replay');
   });
 
   const clips = gltf.animations || [];
-  const makeStep = (clip, at, fade) => {
-    const action = mixer.clipAction(clip);
-    action.setLoop(THREE.LoopOnce, 1);
-    action.clampWhenFinished = true;
-    return { action, at, fade, dur: clip.duration };
-  };
-
-  if (Array.isArray(CFG.chain) && CFG.chain.length) {
-    // COMBO.chain = [{ clip, at, start?, end?, fade? }, ...] — several takes
-    // played one after another on the same rig, cross-fading at the seams.
-    for (const spec of CFG.chain) {
-      const src = THREE.AnimationClip.findByName(clips, spec.clip);
-      if (!src) {
-        console.warn('[combo-stage] clip not found:', spec.clip);
-        continue;
-      }
-      const start = spec.start || 0;
-      const end = typeof spec.end === 'number' ? spec.end : src.duration;
-      const clip = (start > 0 || end < src.duration - 1e-3)
-        ? trimClipStart(src, start, end)
-        : src;
-      steps.push(makeStep(clip, spec.at || 0, spec.fade ?? 0.12));
-    }
-  } else if (clips.length > 0) {
-    let comboClip = (CFG.clip && THREE.AnimationClip.findByName(clips, CFG.clip)) || clips[0];
+  let comboClip = null;
+  if (clips.length > 0) {
+    comboClip = (CFG.clip && THREE.AnimationClip.findByName(clips, CFG.clip)) || clips[0];
     // Trim the initial idle/loading phase so the first punch starts sooner.
     // The combo clips have ~1s of pre-punch setup; we cut roughly half of it.
     const trimStart = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.5;
     if (trimStart > 0 && comboClip.duration > trimStart + 0.5) {
       comboClip = trimClipStart(comboClip, trimStart);
     }
-    steps.push(makeStep(comboClip, 0, 0));
+    comboAction = mixer.clipAction(comboClip);
   }
-  comboAction = steps.length ? steps[0].action : null;
-  comboDuration = steps.reduce((m, s) => Math.max(m, s.at + s.dur), 0);
 
   // CRITICAL: Keep animation playing during setup so the character never
   // shows the bind pose (lying down). We pause at frame 0.5s for framing.
@@ -382,28 +345,19 @@ function onLoaded(gltf) {
     model.updateMatrixWorld(true);
   }
 
-  // Compute framing with the union of several samples across every step
-  if (steps.length) {
+  // Compute framing with the union of several samples across the combo
+  if (comboAction && comboClip) {
+    const clipDur = comboClip.duration;
     const union = [];
-    for (const step of steps) {
-      const n = 8;
-      mixer.stopAllAction();
-      step.action.reset();
-      step.action.setEffectiveWeight(1);
-      step.action.play();
-      for (let k = 0; k < n; k++) {
-        step.action.time = ((k + 0.5) / n) * step.dur;
-        mixer.update(0); // apply without advancing
-        model.updateMatrixWorld(true);
-        union.push(...samplePose(model, 1200));
-      }
+    const n = 12;
+    for (let k = 0; k < n; k++) {
+      mixer.setTime(((k + 0.5) / n) * clipDur);
+      mixer.update(0); // apply without advancing
+      model.updateMatrixWorld(true);
+      union.push(...samplePose(model, 1200));
     }
-    // Return to the start of the take for the initial view
-    mixer.stopAllAction();
-    steps[0].action.reset();
-    steps[0].action.setEffectiveWeight(1);
-    steps[0].action.play();
-    steps[0].action.time = 0.1;
+    // Return to start of the trimmed clip for the initial view
+    mixer.setTime(0.1);
     mixer.update(0);
     model.updateMatrixWorld(true);
     homeFraming = computeFraming(union.length > 0 ? union : pts);
@@ -445,7 +399,7 @@ function onLoaded(gltf) {
     setTimeout(() => playCombo(), 300);
   }
 
-  window.__comboStage = { mixer, comboAction, steps, model, camera, controls, playCombo, get duration() { return comboDuration; } };
+  window.__comboStage = { mixer, comboAction, model, camera, controls, playCombo };
 }
 
 function setActiveButton(clip) {
@@ -473,28 +427,7 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
-  if (mixer) {
-    mixer.update(dt);
-    if (isPlaying) {
-      // advance the chain in unscaled seconds so the ×0.5 toggle keeps the
-      // hand-off points aligned with the clips
-      seqT += dt * mixer.timeScale;
-      while (seqNext < steps.length && seqT >= steps[seqNext].at) {
-        const next = steps[seqNext];
-        const prev = steps[seqNext - 1];
-        next.action.reset();
-        next.action.setEffectiveWeight(1);
-        next.action.play();
-        if (next.fade > 0) {
-          next.action.fadeIn(next.fade);
-          prev.action.fadeOut(next.fade);
-        } else {
-          prev.action.stop();
-        }
-        seqNext++;
-      }
-    }
-  }
+  if (mixer) mixer.update(dt);
   headFill.position.copy(camera.position);
   headFill.target.position.copy(controls.target);
   headFill.position.sub(controls.target).setLength(6).add(controls.target);
