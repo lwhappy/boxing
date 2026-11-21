@@ -270,6 +270,10 @@ const HITS = {
   flying:     { frac: 0.167, atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.026, fx: 'block', snd: 'kick' },
   jab:        { frac: 0.27,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0,  fx: 'punch', snd: 'punch' },
   cross:      { frac: 0.353, atkBone: 'RightHand',    defBone: 'Head',     dx: 0.1, fx: 'punch', snd: 'punch' },
+  /* the 1-2 is doubled inside the same take — punches 3 and 4 are the same
+   * jab/cross motions again, so they reuse the same bones */
+  jab2:       { frac: 0.4728, atkBone: 'LeftHand',    defBone: 'Head',     dx: 0,  fx: 'punch', snd: 'punch' },
+  cross2:     { frac: 0.5558, atkBone: 'RightHand',   defBone: 'Head',     dx: 0.1, fx: 'punch', snd: 'punch' },
   uppercut:   { frac: 0.39,  atkBone: 'LeftHand',     defBone: 'Head',     dx: 0.06,   fx: 'ko',    snd: 'ko', ko: true },
 };
 
@@ -321,25 +325,28 @@ const TL = [
   { t: 6.60, who: 'm', clip: 'guard' },
   { t: 6.75, who: 'w', clip: 'guard', fade: 0.25 },             // she has landed: hold, no rebound
 
-  /* --- boxer closes the gap fast and finishes --- */
+  /* --- boxer closes the gap fast and finishes with the doubled 1-2 --- */
   { t: 7.25, who: 'm', clip: 'step-forward', x: -0.27, tweenDur: 0.28, rate: 2.2, clamp: true },
-  { t: 7.60, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross'] },
-  /* the cross has just snapped back to guard: cut straight into the uppercut's
-   * wind-up (the clip's first 0.18 s of idle hands is skipped) so the 1-2-3
-   * reads as one continuous flurry instead of three separate clips */
-  { t: 8.25, who: 'm', clip: 'uppercut', start: 0.18, fade: 0.1, clamp: true, hit: 'uppercut' },
-  { t: 9.20, who: 'm', clip: 'guard' },
+  /* four punches in one take (jab-cross jab-cross): the timeline used to hand
+   * over to the uppercut 0.65 s in, which cut the take off after the first two
+   * shots — the hand-off now waits for the second cross to retract */
+  { t: 7.60, who: 'm', clip: 'jab-cross', clamp: true, hit: ['jab', 'cross', 'jab2', 'cross2'] },
+  /* the fourth punch snaps back to guard right here: cut straight into the
+   * uppercut's wind-up (the clip's first 0.18 s of idle hands is skipped) so
+   * the 1-2-1-2-3 reads as one continuous flurry instead of five clips */
+  { t: 8.60, who: 'm', clip: 'uppercut', start: 0.18, fade: 0.1, clamp: true, hit: 'uppercut' },
+  { t: 9.55, who: 'm', clip: 'guard' },
   /* she hits the mat 0.37 s into the knocked-out clip (KO slam on landing) */
-  { t: 9.15, ko: true },
+  { t: 9.50, ko: true },
 
   /* --- 1 s lying still, then both hop back to the screen edge --- */
-  { t: 10.15, who: 'w', clip: 'knock-out', rev: 6.5, start: 3.68, fade: 0.2 }, // replayed backwards = she stands up
-  { t: 10.25, koOff: true },
-  { t: 10.50, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 10.85, who: 'w', clip: 'guard', fade: 0.15 },
-  { t: 11.15, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 10.50, who: 'w', clip: 'knock-out', rev: 6.5, start: 3.68, fade: 0.2 }, // replayed backwards = she stands up
+  { t: 10.60, koOff: true },
+  { t: 10.85, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 11.20, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 11.50, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 12.25;
+const END_T = 12.60;
 /* uppercut contact -> her head is at its furthest back at 0.35 s into the
  * hit-uppercut clip (0.26 s real): hand over to the knock-out clip right there,
  * entering it mid-topple so the fall starts on the same frame */
