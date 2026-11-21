@@ -56,8 +56,9 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     box-shadow:0 2px 10px rgba(20,30,45,.18)}
   .name-tag.boxing{background:#1d4ed8;color:#fff}
   .name-tag.kickboxing{background:#c2410c;color:#fff}
-  .ko-slam{position:absolute;inset:0;display:none;place-items:center;pointer-events:none;z-index:5}
-  .ko-slam.on{display:grid}
+  .ko-slam{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
+    opacity:0;transition:opacity .4s ease}
+  .ko-slam.on{opacity:1}
   .ko-slam span{font-size:clamp(90px,24vw,220px);font-weight:900;letter-spacing:.06em;color:#e23b3b;
     text-shadow:0 6px 0 rgba(120,20,20,.25),0 12px 40px rgba(226,59,59,.35);
     animation:ko-pop .45s cubic-bezier(.2,1.6,.4,1) both}
@@ -197,6 +198,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=2"></script>
+<script type="module" src="./app.js?v=3"></script>
 </body>
 </html>

@@ -104,6 +104,7 @@ class Fighter {
     this.ready = false;
     this.baseX = 0;           // choreography x (tweens drive this)
     this.nudgeX = 0;          // transient contact correction, added on top
+    this.hopY = 0;            // hop arc height while a hop move is active
   }
   async load(url, name) {
     const gltf = await new GLTFLoader().loadAsync(url);
@@ -196,20 +197,33 @@ function samplePose(model, budget = 9000) {
 const man = new Fighter(+1);      // BOXING, left, faces right
 const woman = new Fighter(-1);    // KICKBOXING, right, faces left
 
-/* home positions (x along the ring line). The kickboxer stands close enough
+/* fight positions (x along the ring line). The kickboxer stands close enough
  * that her kicks and his punches actually reach — offsets tuned from bone
  * trajectory probes (build/cdp_bvk_contact.mjs). */
-const HOME = { man: -0.85, woman: 0.45 };
-man.group.position.set(HOME.man, 0, 0);
-woman.group.position.set(HOME.woman, 0, 0);
+const HOME = { m: -0.85, w: 0.45 };
+/* stage-edge positions: fighters wait here in guard, hop in to fight, hop
+ * back after the KO. Portrait view is narrow, so pull the edges in. */
+let portraitNow = false;
+const homeOut = () => portraitNow ? { m: -1.45, w: 1.3 } : { m: -2.3, w: 2.0 };
+man.group.position.set(homeOut().m, 0, 0);
+woman.group.position.set(homeOut().w, 0, 0);
 scene.add(man.group, woman.group);
 
 /* ---------- timeline ----------
- * { t, who, clip, move?, tweenDur?, clamp?, hit? } — t in real seconds.
- * Clips play at TS x speed, so real clip duration = CLIP_DUR / TS.
+ * { t, who, clip, moveTo?, tweenDur?, hop?, clamp?, fade?, hit? } — t in
+ * real seconds. Clips play at TS x speed, so real clip duration = CLIP_DUR/TS.
  * `hit` names a contact in HITS below; contact time = t + frac*clipDur.
  */
+
+/* Show flow: both fighters wait at the stage edge in guard, hop into the
+ * center to fight, KO'd kickboxer stays down for 1s after the fall, then both
+ * hop back to the edge and idle in guard. Replay hops them in again.
+ * moveTo: 'fight' | 'out' — hop/tween toward those home positions. */
 const TS = 1.35;
+const INTRO_T = 1.2;          // fight entries start after the hop-in lands
+const KO_HOLD = 1.0;          // extra hold after the fall ends, then hop back
+const HOP_IN = { dur: 0.8, h: 0.5 };
+const HOP_OUT = { dur: 0.8, h: 0.45 };
 
 const CLIP_DUR = {
   m:   { guard: 5.0, block: 1.6, 'step-backward': 0.83, 'step-forward': 1.0, 'jab-cross': 2.17, uppercut: 1.33 },
@@ -232,26 +246,35 @@ const TL = [
   { t: 0.0,  who: 'm', clip: 'guard' },
   { t: 0.0,  who: 'w', clip: 'guard' },
 
-  /* --- kickboxer opens at long range --- */
-  { t: 1.1,  who: 'w', clip: 'roundhouse-kick', move: -0.32, hit: 'roundhouse' },
-  { t: 1.25, who: 'm', clip: 'block' },                        // gloves meet the kick
-  { t: 2.6,  who: 'm', clip: 'step-backward', move: -0.55 },   // shove the range back out
+  /* --- both hop from the stage edge into the center --- */
+  { t: 0.2,  who: 'm', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
+  { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
 
-  { t: 3.9,  who: 'w', clip: 'flying-kick', move: -1.2, tweenDur: 0.7, hit: 'flying' }, // leaps in
-  { t: 4.0,  who: 'm', clip: 'block' },                        // meets it on the gloves
-  { t: 5.15, who: 'w', clip: 'guard' },
-  { t: 5.45, who: 'w', move: 1.2, tweenDur: 0.6 },             // backs off to punch range
+  /* --- kickboxer opens at long range --- */
+  { t: 2.3,  who: 'w', clip: 'roundhouse-kick', move: -0.32, hit: 'roundhouse' },
+  { t: 2.45, who: 'm', clip: 'block' },                        // gloves meet the kick
+  { t: 3.8,  who: 'm', clip: 'step-backward', move: -0.55 },   // shove the range back out
+
+  { t: 5.1,  who: 'w', clip: 'flying-kick', move: -1.2, tweenDur: 0.7, hit: 'flying' }, // leaps in
+  { t: 5.2,  who: 'm', clip: 'block' },                        // meets it on the gloves
+  { t: 6.35, who: 'w', clip: 'guard' },
+  { t: 6.65, who: 'w', move: 1.2, tweenDur: 0.6 },             // backs off to punch range
 
   /* --- boxer closes and finishes --- */
-  { t: 5.6,  who: 'm', clip: 'step-forward', move: 0.98 },
-  { t: 6.3,  who: 'm', clip: 'jab-cross', hit: ['jab', 'cross'] },
-  { t: 8.3,  who: 'm', clip: 'uppercut', hit: 'uppercut' },    // reaction fired on contact
-  { t: 9.5,  who: 'm', clip: 'guard' },
-  { t: 11.0, ko: true },
+  { t: 6.8,  who: 'm', clip: 'step-forward', move: 0.98 },
+  { t: 7.5,  who: 'm', clip: 'jab-cross', hit: ['jab', 'cross'] },
+  { t: 9.5,  who: 'm', clip: 'uppercut', hit: 'uppercut' },    // reaction fired on contact
+  { t: 10.7, who: 'm', clip: 'guard' },
+  { t: 12.2, ko: true },                                       // big KO slam
+
+  /* --- KO hold, then both hop back to the stage edge --- */
+  { t: 15.4, koOff: true },
+  { t: 15.4, who: 'w', clip: 'guard', fade: 0.45 },            // she gets up
+  { t: 15.6, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 16.0, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 13.4;
+const END_T = 17.0;
 const KO_FALL_DELAY = 0.87;   // uppercut contact -> knock-out clip
-const KO_TEXT_DELAY = 2.3;    // uppercut contact -> KO overlay
 
 /* derived contact list */
 const contacts = [];
@@ -425,9 +448,9 @@ let done = false;
 
 const whoOf = { m: man, w: woman };
 
-function tweenX(who, delta, dur) {
+function tweenX(who, delta, dur, hopH = 0) {
   const f = whoOf[who];
-  moves.push({ who, from: f.baseX, to: f.baseX + delta, t0: boutT(), t1: boutT() + dur });
+  moves.push({ who, from: f.baseX, to: f.baseX + delta, t0: boutT(), t1: boutT() + dur, h: hopH });
 }
 
 function boutT() { return vt !== null ? vt : (performance.now() - clock0) / 1000; }
@@ -435,9 +458,10 @@ function boutT() { return vt !== null ? vt : (performance.now() - clock0) / 1000
 function resetNudges() { man.nudgeX = 0; woman.nudgeX = 0; }
 
 function startBout() {
-  man.baseX = HOME.man; woman.baseX = HOME.woman;
-  man.group.position.set(HOME.man, 0, 0);
-  woman.group.position.set(HOME.woman, 0, 0);
+  const out = homeOut();
+  man.baseX = out.m; woman.baseX = out.w;
+  man.group.position.set(out.m, 0, 0);
+  woman.group.position.set(out.w, 0, 0);
   man.stopAll(); woman.stopAll();
   man.play('guard', { fade: 0 }); woman.play('guard', { fade: 0 });
   clock0 = performance.now();
@@ -489,21 +513,29 @@ function updateBout() {
     fired[i] = true;
     const b = TL[i];
     if (b.ko) { koEl.classList.add('on'); continue; }
+    if (b.koOff) { koEl.classList.remove('on'); continue; }
     const f = whoOf[b.who];
-    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, fade: b.clamp ? 0.12 : 0.2 });
-    if (b.move) tweenX(b.who, b.move, b.tweenDur || (b.clip ? (CLIP_DUR[b.who][b.clip] / TS) : 0.6));
+    if (b.clip) f.play(b.clip, { clamp: !!b.clamp, fade: b.fade ?? (b.clamp ? 0.12 : 0.2) });
+    if (b.moveTo) {
+      const target = (b.moveTo === 'fight' ? HOME : homeOut())[b.who];
+      tweenX(b.who, target - f.baseX, b.tweenDur || 0.6, b.hopH || 0);
+    } else if (b.move) {
+      tweenX(b.who, b.move, b.tweenDur || (b.clip ? (CLIP_DUR[b.who][b.clip] / TS) : 0.6));
+    }
   }
 
   for (let i = pending.length - 1; i >= 0; i--) {
     if (t >= pending[i].t) { const fn = pending[i].fn; pending.splice(i, 1); fn(); }
   }
 
-  /* position: tweens drive baseX, contact nudges add on top */
+  /* position: tweens drive baseX (hops add a y arc), contact nudges add on top */
+  man.hopY = 0; woman.hopY = 0;
   for (let i = moves.length - 1; i >= 0; i--) {
     const mv = moves[i];
     const f = whoOf[mv.who];
     const p = Math.min(1, Math.max(0, (t - mv.t0) / Math.max(0.001, mv.t1 - mv.t0)));
     f.baseX = mv.from + (mv.to - mv.from) * (p * p * (3 - 2 * p));  // smoothstep
+    if (mv.h) f.hopY = mv.h * Math.sin(Math.PI * p);
     if (p >= 1) moves.splice(i, 1);
   }
   resetNudges();
@@ -513,6 +545,8 @@ function updateBout() {
   }
   man.group.position.x = man.baseX + man.nudgeX;
   woman.group.position.x = woman.baseX + woman.nudgeX;
+  man.group.position.y = man.hopY;
+  woman.group.position.y = woman.hopY;
 
   for (const c of contacts) {
     if (!c.fired && t >= c.t) fireContact(c, t);
@@ -527,6 +561,7 @@ function frameCamera() {
   const h = canvas.clientHeight || 1;
   camera.aspect = w / Math.max(1, h);
   const portrait = camera.aspect < 0.9;
+  portraitNow = portrait;      // stage-edge home positions adapt to the view
   camera.fov = portrait ? 55 : 40;
   const z = portrait ? 6.6 : 4.8;
   camera.position.set(-0.05, 1.55, z);
@@ -610,9 +645,10 @@ function stepTo(t) {
   resetNudges(); clearFx(); shakeT = 0;
   for (const c of contacts) c.fired = false;
   koEl.classList.remove('on');
-  man.baseX = HOME.man; woman.baseX = HOME.woman;
-  man.group.position.set(HOME.man, 0, 0);
-  woman.group.position.set(HOME.woman, 0, 0);
+  const out = homeOut();
+  man.baseX = out.m; woman.baseX = out.w;
+  man.group.position.set(out.m, 0, 0);
+  woman.group.position.set(out.w, 0, 0);
   man.stopAll(); woman.stopAll();
   man.play('guard', { fade: 0 }); woman.play('guard', { fade: 0 });
   const dt = 1 / 60;
