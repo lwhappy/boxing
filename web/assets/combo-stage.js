@@ -82,7 +82,7 @@ const CFG = window.COMBO || {};
 // engine works from the site root and from the nested combos/ folder.
 // One shared GLB holds every combo clip (man-home's rig + ten animations);
 // each page names its clip with window.COMBO = { clip: 'combo_xxx' }.
-const GLB_URL = new URL('../media/glb/man-combos.glb?v=2', import.meta.url).href;
+const GLB_URL = new URL('../media/glb/man-combos.glb?v=3', import.meta.url).href;
 
 const canvas = document.getElementById('stage-canvas');
 const barEl = document.getElementById('stage-bar');
