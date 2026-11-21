@@ -61,21 +61,15 @@ const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
 fillLight.position.set(0, 1.4, 4);
 scene.add(fillLight);
 
-/* soft floor disc */
+/* transparent arena floor — invisible except for the soft shadows the
+ * fighters cast on the page behind (the page background shows through) */
 const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(3.4, 48),
-  new THREE.MeshStandardMaterial({ color: 0xe8ecf2, roughness: 1, metalness: 0 })
+  new THREE.CircleGeometry(9, 64),
+  new THREE.ShadowMaterial({ opacity: 0.22 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
-const ring = new THREE.Mesh(
-  new THREE.RingGeometry(3.15, 3.4, 64),
-  new THREE.MeshBasicMaterial({ color: 0xc9d2de })
-);
-ring.rotation.x = -Math.PI / 2;
-ring.position.y = 0.002;
-scene.add(ring);
 
 /* ---------- fighters ---------- */
 function forceOpaque(mat) {
@@ -197,14 +191,15 @@ function samplePose(model, budget = 9000) {
 const man = new Fighter(+1);      // BOXING, left, faces right
 const woman = new Fighter(-1);    // KICKBOXING, right, faces left
 
-/* fight positions (x along the ring line). The kickboxer stands close enough
+/* fight positions (x along the fight line). The kickboxer stands close enough
  * that her kicks and his punches actually reach — offsets tuned from bone
  * trajectory probes (build/cdp_bvk_contact.mjs). */
 const HOME = { m: -0.85, w: 0.45 };
-/* stage-edge positions: fighters wait here in guard, hop in to fight, hop
- * back after the KO. Portrait view is narrow, so pull the edges in. */
-let portraitNow = false;
-const homeOut = () => portraitNow ? { m: -1.45, w: 1.3 } : { m: -2.3, w: 2.0 };
+/* screen-edge waiting positions: fighters wait here in guard, hop into the
+ * center to fight, hop back after the KO. edgeX adapts to the viewport
+ * (recomputed by frameCamera so nobody waits off-screen). */
+let edgeX = 1.3;
+const homeOut = () => ({ m: -edgeX, w: edgeX * 0.92 });
 man.group.position.set(homeOut().m, 0, 0);
 woman.group.position.set(homeOut().w, 0, 0);
 scene.add(man.group, woman.group);
@@ -504,7 +499,7 @@ function fireContact(c, t) {
   }
 }
 
-function updateBout() {
+function updateBout(dt = 0) {
   if (clock0 === null || done) return;
   const t = boutT();
 
@@ -548,6 +543,14 @@ function updateBout() {
   man.group.position.y = man.hopY;
   woman.group.position.y = woman.hopY;
 
+  /* camera follow: ease toward the midpoint between the fighters (clamped)
+   * so the bout stays centered on screen; in QA stepping it snaps instantly */
+  const midX = (man.group.position.x + woman.group.position.x) / 2;
+  const wantX = Math.min(0.1, Math.max(-0.55, midX));
+  followX += (wantX - followX) * (vt !== null ? 1 : Math.min(1, dt * 4));
+  controls.target.x = followX;
+  camera.position.x = followX;
+
   for (const c of contacts) {
     if (!c.fired && t >= c.t) fireContact(c, t);
   }
@@ -555,16 +558,29 @@ function updateBout() {
   if (t >= END_T) done = true;
 }
 
-/* ---------- camera framing ---------- */
+/* ---------- camera framing ----------
+ * Fullscreen transparent canvas. The camera sits close so the fighters fill
+ * a large share of the screen, and gently tracks the midpoint between them
+ * (clamped) so the action stays centered — on narrow phone screens that
+ * follow keeps the whole bout in frame. */
+let followX = 0;
 function frameCamera() {
   const w = canvas.clientWidth || 1;
   const h = canvas.clientHeight || 1;
   camera.aspect = w / Math.max(1, h);
   const portrait = camera.aspect < 0.9;
-  portraitNow = portrait;      // stage-edge home positions adapt to the view
   camera.fov = portrait ? 55 : 40;
-  const z = portrait ? 6.6 : 4.8;
-  camera.position.set(-0.05, 1.55, z);
+  const tanH = Math.tan(camera.fov * Math.PI / 360);
+  /* zoom so the full choreography span fits horizontally, but never further
+   * out than these caps — that is what makes the fighters read "big" */
+  const need = portrait ? 1.6 : 1.75;
+  const z = Math.min(portrait ? 8.5 : 5.0,
+                     Math.max(portrait ? 4.5 : 3.0, need / (tanH * camera.aspect)));
+  const hw = z * tanH * camera.aspect;      // visible half-width at z=0
+  edgeX = Math.min(hw - 0.45, 2.0);         // screen-edge waiting spots
+  const cy = portrait ? 1.12 : 1.02;
+  camera.position.set(followX, cy, z);
+  controls.target.set(followX, cy, 0);
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(() => {
@@ -594,7 +610,7 @@ const clock = new THREE.Clock();
 function tick() {
   try {
     const dt = Math.min(0.05, clock.getDelta());
-    updateBout();
+    updateBout(dt);
     man.mixer && man.mixer.update(dt);
     woman.mixer && woman.mixer.update(dt);
     updateFx(vt !== null ? 0 : dt);
@@ -654,7 +670,7 @@ function stepTo(t) {
   const dt = 1 / 60;
   for (let tt = 0; tt <= t; tt += dt) {
     vt = tt;
-    updateBout();
+    updateBout(dt);
     man.mixer.update(dt);
     woman.mixer.update(dt);
   }
