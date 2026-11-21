@@ -282,19 +282,23 @@ const TL = [
   { t: 0.2,  who: 'm', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
   { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
 
-  /* --- kick 1: gloves go up in front of the kick, he only gives ground
-   *     AFTER the shin lands on them (no leaning away early) --- */
+  /* --- kick 1: he does NOT shell up while she is still winding up. The block
+   *     fires 0.19 s before the shin lands, and `start` jumps into the clip at
+   *     the shells-up frame, so the gloves snap up right as the kick arrives —
+   *     the clip phase at the contact frame is unchanged (raw 0.77), which
+   *     keeps the baked contact geometry valid --- */
   { t: 1.55, who: 'w', clip: 'roundhouse-kick', x: 0.35, tweenDur: 0.55, clamp: true, hit: 'roundhouse1' },
-  { t: 1.80, who: 'm', clip: 'block', clamp: true },            // gloves up, standing tall
+  { t: 2.18, who: 'm', clip: 'block', start: 0.51, fade: 0.14, clamp: true },  // gloves up ON the kick
   { t: 2.47, who: 'm', clip: 'step-backward', move: -0.45, fade: 0.1, clamp: true },  // pushed back by the impact
 
   /* --- kick 2: she re-chambers the instant the first kick is down and kicks
    *     again (1.55 s after kick 1, clipped off the slow tail of the take) --- */
   { t: 3.10, who: 'w', clip: 'roundhouse-kick', x: -0.27, tweenDur: 0.42, clamp: true, hit: 'roundhouse2' },
   { t: 3.10, who: 'm', clip: 'guard' },                          // gloves recover from kick 1
-  /* block has to be 0.32 s in at the contact frame (same phase as kick 1) —
-   * earlier than that the gloves are still coming up and her shin passes them */
-  { t: 3.60, who: 'm', clip: 'block', clamp: true },
+  /* same late trigger as kick 1: block starts 0.16 s before the shin lands,
+   * `start` 0.215 puts the clip on the exact same phase at contact (0.432) so
+   * the baked bone gap is untouched */
+  { t: 3.76, who: 'm', clip: 'block', start: 0.215, fade: 0.12, clamp: true },
   { t: 4.02, who: 'm', clip: 'step-backward', move: -0.42, fade: 0.1, clamp: true },
   { t: 4.65, who: 'm', clip: 'guard' },
   { t: 4.95, who: 'w', clip: 'guard' },
