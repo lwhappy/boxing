@@ -583,10 +583,10 @@ function frameCamera() {
   camera.fov = portrait ? 55 : 40;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
   /* zoom so the full choreography span fits horizontally, but never further
-   * out than these caps — that is what makes the fighters read "big" */
-  const need = portrait ? 1.6 : 1.75;
-  const z = Math.min(portrait ? 8.5 : 5.0,
-                     Math.max(portrait ? 4.5 : 3.0, need / (tanH * camera.aspect)));
+   * out than these caps — the caps are what set how "big" the fighters read */
+  const need = portrait ? 1.8 : 2.0;
+  const z = Math.min(portrait ? 9.0 : 5.5,
+                     Math.max(portrait ? 5.2 : 3.5, need / (tanH * camera.aspect)));
   const hw = z * tanH * camera.aspect;      // visible half-width at z=0
   edgeX = Math.min(hw - 0.45, 2.0);         // screen-edge waiting spots
   const cy = portrait ? 1.12 : 1.02;
