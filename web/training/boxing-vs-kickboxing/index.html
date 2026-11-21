@@ -57,7 +57,10 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     max-width:none;aspect-ratio:auto;border:none;border-radius:0;
     background:transparent;box-shadow:none;z-index:10}
   .bvk-stage::before{display:none}
-  .site-head,.breadcrumbs{position:relative;z-index:40}
+  /* docked state: once the bout ends the canvas returns to the article flow
+   * above the text, so it no longer covers the page */
+  .bvk-stage.bvk-docked{position:relative;inset:auto;width:100%;height:auto;
+    max-width:640px;aspect-ratio:16/9.5;z-index:auto;margin:0 auto}
   .name-tag{position:absolute;transform:translate(-50%,-100%);padding:4px 10px;border-radius:999px;
     font-size:12px;font-weight:700;letter-spacing:.08em;white-space:nowrap;pointer-events:none;
     box-shadow:0 2px 10px rgba(20,30,45,.18)}
@@ -72,6 +75,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   @keyframes ko-pop{from{transform:scale(2.6);opacity:0}to{transform:scale(1);opacity:1}}
   .fight-bar{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;
     transform:translateX(-50%);margin:0;z-index:30}
+  .bvk-stage.bvk-docked + .fight-bar{position:static;transform:none;z-index:auto;margin-top:16px}
 </style>
 </head>
 <body>
@@ -207,6 +211,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=4"></script>
+<script type="module" src="./app.js?v=5"></script>
 </body>
 </html>

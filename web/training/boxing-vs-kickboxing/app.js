@@ -16,6 +16,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.getElementById('bvk-canvas');
+const stageEl = canvas.parentElement;
 const loadingEl = document.getElementById('bvk-loading');
 const loadingText = document.getElementById('bvk-loading-text');
 const errorEl = document.getElementById('bvk-error');
@@ -154,7 +155,11 @@ class Fighter {
     if (fade <= 0) { next.setEffectiveWeight(1); next.play(); }
     else next.fadeIn(fade).play();
     for (const a of Object.values(this.actions)) {
-      if (a !== next && a.isRunning()) a.fadeOut(Math.max(fade, 0.001));
+      if (a === next) continue;
+      if (a.isRunning()) a.fadeOut(Math.max(fade, 0.001));
+      else a.stop();   // finished clamped actions never fade out (their weight
+                       // interpolation is frozen) — cut them so the new clip
+                       // actually takes over (e.g. standing up after knock-out)
     }
   }
   stopAll() { this.mixer.stopAllAction(); }
@@ -453,6 +458,7 @@ function boutT() { return vt !== null ? vt : (performance.now() - clock0) / 1000
 function resetNudges() { man.nudgeX = 0; woman.nudgeX = 0; }
 
 function startBout() {
+  vt = null;                // clear QA virtual time so boutT() runs live again
   const out = homeOut();
   man.baseX = out.m; woman.baseX = out.w;
   man.group.position.set(out.m, 0, 0);
@@ -555,7 +561,12 @@ function updateBout(dt = 0) {
     if (!c.fired && t >= c.t) fireContact(c, t);
   }
 
-  if (t >= END_T) done = true;
+  if (t >= END_T) {
+    done = true;
+    /* dock the canvas back into the article flow so it stops covering the
+     * text — fighters idle at the edges inside the docked stage */
+    stageEl.classList.add('bvk-docked');
+  }
 }
 
 /* ---------- camera framing ----------
@@ -651,7 +662,13 @@ function tick() {
   }
 })();
 
-replayBtn.addEventListener('click', () => { AudioFX.unlock(); startBout(); });
+replayBtn.addEventListener('click', () => {
+  AudioFX.unlock();
+  stageEl.classList.remove('bvk-docked');   // go fullscreen again for the show
+  void canvas.clientWidth;                  // flush layout so frameCamera sees
+  frameCamera();                            // the new fullscreen size right away
+  startBout();
+});
 
 /* debug hooks for QA automation */
 function stepTo(t) {
