@@ -119,6 +119,9 @@ class Fighter {
     this.head = this.bones['Head'];
     this.mixer = new THREE.AnimationMixer(root);
     for (const clip of gltf.animations) {
+      /* Blender leaves the untouched default take in the file ("Armature|
+       * mixamo.com|Layer0"). It is a static bind pose — never play it. */
+      if (/Layer0$/.test(clip.name)) continue;
       const act = this.mixer.clipAction(clip);
       act.enabled = true;
       this.actions[clip.name] = act;
@@ -149,9 +152,19 @@ class Fighter {
   play(name, { fade = 0.2, clamp = false, rev = 0 } = {}) {
     const next = this.actions[name];
     if (!next) return;
+    /* Is this clip already the one posing the rig? (e.g. knock-out replayed
+     * backwards to stand up). fadeIn() would zero its weight for a frame and
+     * with nothing else holding the pose the rig snaps to its bind pose — the
+     * T-pose. Hard-cut instead: reset() starts on the frame that is already on
+     * screen, so the cut is invisible. */
+    const dominant = next.getEffectiveWeight() > 0.4;
+    /* guard is the idle/idle-out loop — it has to keep repeating, otherwise the
+     * rig runs off the end of the clip and drops to the bind pose (T-pose).
+     * Every other clip is a one-shot that holds its last frame. */
+    const looping = name === 'guard' && rev === 0;
     next.reset();
-    next.clampWhenFinished = clamp || rev > 0;
-    next.setLoop(THREE.LoopOnce);
+    next.clampWhenFinished = !looping && (clamp || rev > 0);
+    next.setLoop(looping ? THREE.LoopRepeat : THREE.LoopOnce, looping ? Infinity : 1);
     if (rev > 0) {
       /* play the clip backwards (e.g. knock-out reversed = standing up);
        * it clamps on its first frame when time reaches 0 */
@@ -160,14 +173,18 @@ class Fighter {
     } else {
       next.setEffectiveTimeScale(TS);
     }
-    if (fade <= 0) { next.setEffectiveWeight(1); next.play(); }
+    if (fade <= 0 || dominant) { next.setEffectiveWeight(1); next.play(); }
     else next.fadeIn(fade).play();
     for (const a of Object.values(this.actions)) {
       if (a === next) continue;
-      if (a.isRunning()) a.fadeOut(Math.max(fade, 0.001));
-      else a.stop();   // finished clamped actions never fade out (their weight
-                       // interpolation is frozen) — cut them so the new clip
-                       // actually takes over (e.g. standing up after knock-out)
+      /* A finished LoopOnce clip is clamped AND paused, so isRunning() is
+       * false while its weight is still 1 and it keeps posing the rig. It has
+       * to be faded out (weights of paused actions still interpolate) —
+       * stop()ping it here would drop its weight to 0 before the incoming clip
+       * has any weight, which flashes the bind pose (T-pose). */
+      const w = a.getEffectiveWeight();
+      if (w > 0.001) a.fadeOut(fade > 0 ? fade : 0.001);
+      else if (a.enabled) a.stop();
     }
   }
   stopAll() { this.mixer.stopAllAction(); }
@@ -683,7 +700,7 @@ replayBtn.addEventListener('click', () => {
 });
 
 /* debug hooks for QA automation */
-function stepTo(t) {
+function resetShow() {
   vt = 0;
   clock0 = performance.now();
   fired = []; moves = []; pending = []; done = false;
@@ -696,6 +713,9 @@ function stepTo(t) {
   woman.group.position.set(out.w, 0, 0);
   man.stopAll(); woman.stopAll();
   man.play('guard', { fade: 0 }); woman.play('guard', { fade: 0 });
+}
+function stepTo(t) {
+  resetShow();
   const dt = 1 / 60;
   for (let tt = 0; tt <= t; tt += dt) {
     vt = tt;
@@ -716,4 +736,36 @@ function stepTo(t) {
   placeTag(tagBoxing, man);
   placeTag(tagKick, woman);
 }
-window.__bvk = { man, woman, camera, scene, THREE, contacts, get clock0() { return clock0; }, stepTo };
+/* QA: replay the bout on virtual time and record the lowest total action weight
+ * per fighter. A dip toward 0 means the rig is unposed for a frame — the
+ * bind/T-pose flash. Should stay near 1.0 for the whole show. */
+function weightScan() {
+  resetShow();
+  const dt = 1 / 120;
+  const sum = (f) => Object.values(f.actions).reduce((s, a) => s + a.getEffectiveWeight(), 0);
+  const span = (f) => {
+    const a = f.bones.LeftHand, b = f.bones.RightHand;
+    if (!a || !b) return 0;
+    const p = new THREE.Vector3(), q = new THREE.Vector3();
+    a.getWorldPosition(p); b.getWorldPosition(q);
+    return p.distanceTo(q);
+  };
+  let minM = 9, minW = 9, atM = 0, atW = 0, maxMs = 0, maxWs = 0, atMs = 0, atWs = 0;
+  for (let t = 0; t <= END_T + 6.0; t += dt) {
+    vt = t;
+    updateBout(dt);
+    man.mixer.update(dt);
+    woman.mixer.update(dt);
+    const sm = sum(man), sw = sum(woman);
+    if (sm < minM) { minM = sm; atM = t; }
+    if (sw < minW) { minW = sw; atW = t; }
+    const ms = span(man), ws = span(woman);
+    if (ms > maxMs) { maxMs = ms; atMs = t; }
+    if (ws > maxWs) { maxWs = ws; atWs = t; }
+  }
+  return {
+    man: { minW: +minM.toFixed(3), at: +atM.toFixed(2), maxSpan: +maxMs.toFixed(2), spanAt: +atMs.toFixed(2) },
+    woman: { minW: +minW.toFixed(3), at: +atW.toFixed(2), maxSpan: +maxWs.toFixed(2), spanAt: +atWs.toFixed(2) },
+  };
+}
+window.__bvk = { man, woman, camera, scene, THREE, contacts, weightScan, get clock0() { return clock0; }, stepTo };
