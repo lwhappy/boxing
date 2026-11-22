@@ -41,6 +41,8 @@ const SHIFT_DUR = 0.75;    // woman: centre -> right
 const SETTLE = 0.55;       // both idle before the hop jab
 const AFTERMATH = 2.0;     // dizzy hold before docking (user spec: 2 s)
 const ARM_STRAIGHTEN = 0.7; // corrective blend for the page clip's bent lead arm
+let armLift = 0.42;        // upward aim (rad) at the reach frame — calibrated in probe()
+const MAN_HEIGHT = 1.82;   // his real skinned height (was ~2.1 m off the head bone)
 const WOMAN_X = 0.95;      // her spot on the right
 const MAN_X = -1.15;       // his spot on the left
 
@@ -83,7 +85,8 @@ const callEls = SLOTS.map((slot) => {
  * (user spec: at least half the old length) */
 function applyCardInset() {
   const w = stageEl.clientWidth || window.innerWidth || 1280;
-  const inset = Math.max(10, Math.min(w * 0.16, 260));
+  /* phones: cards hug the edges so the leader lines stay long */
+  const inset = w < 700 ? 10 : Math.max(10, Math.min(w * 0.16, 260));
   callEls.forEach((el, i) => {
     el.style[SLOTS[i].side === 'l' ? 'left' : 'right'] = inset.toFixed(0) + 'px';
   });
@@ -289,6 +292,7 @@ Promise.all([loadGLB(WOMAN_URL), loadGLB(MAN_URL), loadGLB(WOMAN_GAME_URL)]).the
 }).catch(fail);
 
 function fail(err) {
+  stageEl.classList.remove('jab-live');
   loadingEl.classList.add('hidden');
   errorEl.hidden = false;
   errorEl.textContent = 'Failed to load the 3D models.\n' + (err && err.message ? err.message : err);
@@ -307,7 +311,12 @@ const _sv = new THREE.Vector3();
  * arm procedurally: rotate the forearm onto the upper-arm axis every frame
  * the pose is evaluated, blended by ARM_STRAIGHTEN. */
 const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3();
-const _sq = new THREE.Quaternion(), _sq2 = new THREE.Quaternion(), _sq0 = new THREE.Quaternion();
+const _sq = new THREE.Quaternion(), _sq2 = new THREE.Quaternion(), _sq3 = new THREE.Quaternion();
+/* world-space delta -> parent-local delta: L' = (P⁻¹·D·P)·L */
+function worldDeltaToLocal(bone, worldDelta, out) {
+  bone.parent.getWorldQuaternion(_sq2);
+  return out.copy(_sq2).invert().multiply(worldDelta).multiply(_sq2);
+}
 function straightenLeadArm() {
   const sh = woman.bones.LeftArm, el = woman.bones.LeftForeArm, hd = woman.bones.LeftHand;
   if (!sh || !el || !hd) return;
@@ -317,12 +326,24 @@ function straightenLeadArm() {
   hd.getWorldPosition(_sc);
   const upper = _sa.copy(_sb).sub(_sa).normalize();   // shoulder -> elbow
   const fore = _sb.copy(_sc).sub(_sb).normalize();    // elbow -> hand
-  _sq.setFromUnitVectors(fore, upper);
-  el.parent.getWorldQuaternion(_sq2);
-  _sq.premultiply(_sq2.clone().invert());   // correction in elbow-local space
-  _sq0.identity().slerp(_sq, ARM_STRAIGHTEN);
-  el.quaternion.premultiply(_sq0);
+  _sq.setFromUnitVectors(fore, upper);                // world correction
+  _sq3.identity().slerp(_sq, ARM_STRAIGHTEN);
+  worldDeltaToLocal(el, _sq3, _sq);
+  el.quaternion.premultiply(_sq);
   el.updateMatrixWorld(true);
+}
+
+/* the fight jab is level with her own shoulder — for a taller opponent the
+ * fist would land on his chest, so lift the lead arm toward his head,
+ * ramping the amount in through the step-in */
+const _zAxis = new THREE.Vector3(0, 0, -1);
+function liftLeadArm(angle) {
+  const sh = woman.bones.LeftArm;
+  if (!sh || !angle) return;
+  _sq.setFromAxisAngle(_zAxis, angle);
+  worldDeltaToLocal(sh, _sq, _sq3);
+  sh.quaternion.premultiply(_sq3);
+  sh.updateMatrixWorld(true);
 }
 
 function samplePose(root, budget = 9000) {
@@ -355,13 +376,14 @@ function samplePose(root, budget = 9000) {
 function buildWoman(gltf) {
   const root = gltf.scene;
   fixMaterials(root);
+  woman.root = root;
   woman.group.add(root);
   woman.group.rotation.y = -Math.PI / 2;
   /* the bind pose is Z-up and lying flat — stand the rig up first, then
    * measure the real skinned height off a guard frame */
   root.rotation.x = -Math.PI / 2;
   root.updateMatrixWorld(true);
-  for (const n of ANCHOR_KEYS) woman.bones[n] = boneByName(root, n);
+  for (const n of [...ANCHOR_KEYS, 'LeftArm', 'LeftForeArm']) woman.bones[n] = boneByName(root, n);
   woman.mixer = new THREE.AnimationMixer(root);
   for (const clip of gltf.animations) {
     if (/Layer0$/.test(clip.name)) continue;
@@ -382,11 +404,13 @@ function buildWoman(gltf) {
   woman.mixer.stopAllAction();
 }
 
-/* fight-game man: already Y-up. Normalize height from the skeleton,
- * ground the soles, face RIGHT (+X). */
+/* fight-game man: already Y-up. Normalize to the real skinned height (the
+ * head BONE sits at the jaw, using it made him ~2.1 m), ground the soles,
+ * face RIGHT (+X). */
 function buildMan(gltf) {
   const root = gltf.scene;
   fixMaterials(root);
+  man.root = root;
   man.group.add(root);
   man.group.rotation.y = Math.PI / 2;
   man.bones.Head = boneByName(root, 'Head');
@@ -399,19 +423,12 @@ function buildMan(gltf) {
   const idle = man.actions.idle || Object.values(man.actions)[0];
   idle.reset().play();
   man.mixer.setTime(1.0);
-  const head = man.bones.Head;
-  const yTop = head ? head.getWorldPosition(_sv).y : 1.6;
-  man.mixer.setTime(0);
+  let pts = samplePose(root);
+  const h0 = Math.max(...pts.map(p => p.y)) - Math.min(...pts.map(p => p.y));
+  root.scale.setScalar(MAN_HEIGHT / Math.max(0.001, h0));
   root.updateMatrixWorld(true);
-  const feet = [];
-  for (const k of ['LeftFoot', 'RightFoot']) {
-    const b = boneByName(root, k);
-    if (b) feet.push(b.getWorldPosition(_sv).y);
-  }
-  const h = Math.max(0.001, yTop - Math.min(...feet, 0));
-  root.scale.multiplyScalar(1.75 / h);
-  root.updateMatrixWorld(true);
-  root.position.y -= lowestSkinnedPoint(root) - 0.003;
+  pts = samplePose(root);
+  root.position.y -= Math.min(...pts.map(p => p.y)) - 0.003;
   root.updateMatrixWorld(true);
   man.mixer.stopAllAction();
 }
@@ -446,22 +463,54 @@ function probe() {
   woman.mixer.stopAllAction();
 
   /* fight jab: donor clip (steps in with the lead foot) — find the reach
-   * frame for the contact solve */
+   * frame, then solve the upward aim analytically so the fist arrives at his
+   * head instead of his chest (the clip itself is a shoulder-height jab) */
   const fAct = woman.actions['jab-fight'];
   if (fAct) {
     fightDur = fAct.getClip().duration;
     fAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    best = { t: 0, x: Infinity };
+    let best = { t: 0, x: Infinity, g: null, s: null };
     for (let i = 0; i <= 96; i++) {
       const t = (fightDur * i) / 96;
       woman.mixer.setTime(t);
       woman.group.updateMatrixWorld(true);
       hand.getWorldPosition(_sv);
-      if (_sv.x < best.x) best = { t, x: _sv.x };
+      if (_sv.x < best.x) {
+        best = {
+          t, x: _sv.x,
+          g: _sv.clone(),
+          s: woman.bones.LeftArm.getWorldPosition(new THREE.Vector3()),
+        };
+      }
     }
     fightImpact = best.t;
-    gloveXF = best.x;
     woman.mixer.stopAllAction();
+
+    /* his head height at the moment of contact */
+    const idle = man.actions.idle;
+    if (idle) { idle.reset().play(); man.mixer.setTime(1.0); man.group.updateMatrixWorld(true); }
+    const headY = man.bones.Head ? man.bones.Head.getWorldPosition(_sv).y : 1.55;
+    if (idle) man.mixer.stopAllAction();
+
+    /* rotate the whole arm about the shoulder (world Z) until the fist sits
+     * at his head: v' = R(a)·v, v'.y = |v|·sin(φ - a) */
+    if (best.g && best.s) {
+      const v = best.g.clone().sub(best.s);
+      const L = Math.max(0.2, Math.hypot(v.x, v.y));
+      const dy = Math.max(-L * 0.95, Math.min(L * 0.95, (headY + 0.03) - best.s.y));
+      const phi = Math.atan2(v.y, v.x);
+      /* keep the arm pointing his way (x still negative) */
+      const phiAim = v.x < 0 ? Math.PI - Math.asin(dy / L) : Math.asin(dy / L);
+      let a = phi - phiAim;
+      while (a > Math.PI) a -= Math.PI * 2;
+      while (a < -Math.PI) a += Math.PI * 2;
+      armLift = Math.max(0, Math.min(a, 1.2));
+      const vx2 = v.x * Math.cos(armLift) + v.y * Math.sin(armLift);
+      gloveXF = best.s.x + vx2;
+      console.log('[jab] lift', armLift.toFixed(3), 'reachX', gloveXF.toFixed(2), 'headY', headY.toFixed(2));
+    } else {
+      gloveXF = best.x;
+    }
   }
 
   const hh = man.actions['hit-head'];
@@ -676,6 +725,7 @@ function advance(dt) {
     const p = Math.min(1, attackT / Math.max(0.2, fightImpact));
     const e = p * p * (3 - 2 * p);
     woman.group.position.x = THREE.MathUtils.lerp(WOMAN_X, contactX, e);
+    liftLeadArm(armLift * Math.min(1, attackT / Math.max(0.2, fightImpact)));
     const wa = woman.actions['jab-fight'] || woman.actions.jab;
     const impact = woman.actions['jab-fight'] ? fightImpact : jabImpact;
     if (!fired && wa && wa.time >= impact - 1e-3) {
@@ -723,11 +773,12 @@ const _want = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
 function computeCamera() {
   const aspect = camera.aspect || 1;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
+  const portrait = aspect < 0.8;   // phones: everyone a step further away
   if (phase === 'intro' || phase === 'reveal') {
     /* solo: she fills the frame like the homepage hero demo */
     const zH = 1.32 / tanH;                      // ~2.2m visible height at fov 38
     const zW = 0.85 / (tanH * aspect);
-    const z = Math.max(3.6, zH, zW);
+    const z = Math.max(3.6, zH, zW) * (portrait ? 1.2 : 1);
     _want.tgt.set(-0.15, 0.92, 0);
     _want.pos.set(_want.tgt.x + z * 0.30, _want.tgt.y + z * 0.12, z);
   } else {
@@ -737,7 +788,7 @@ function computeCamera() {
     const span = Math.abs(wx - mx) + 1.5;
     const zH = 1.12 / tanH;
     const zW = (span / 2) / (tanH * aspect);
-    const z = Math.max(2.9, zH, zW);
+    const z = Math.max(2.9, zH, zW) * (portrait ? 1.1 : 1);
     _want.tgt.set(mid, 1.02, 0);
     _want.pos.set(mid + z * 0.16, 1.18, z);
   }
@@ -855,7 +906,7 @@ function build(wg, mg, fg) {
     get phase() { return phase; },
     get t() { return showT; },
     jabImpact, fightImpact, contactX, gloveXF,
-    woman, man, camera, THREE,
+    woman, man, camera, THREE, samplePose,
     stepTo(target) {
       stopLoop();              // exact-time QA: no wall-clock interleaving
       const dt = 1 / 30;

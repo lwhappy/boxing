@@ -140,7 +140,7 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
     <div class="hero-grid move-hero">
 
       <!-- Left: 3D stage (fullscreen jab show on load, then docks here) -->
-      <div class="stage hero-stage jab-stage" id="jab-stage" aria-label="3D demo of the jab">
+      <div class="stage hero-stage jab-stage jab-live" id="jab-stage" aria-label="3D demo of the jab">
         <canvas id="stage-canvas"></canvas>
         <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
         <div class="stage-loading" id="stage-loading">
@@ -212,6 +212,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=2"></script>
+<script type="module" src="../assets/jab-stage.js?v=3"></script>
 </body>
 </html>
