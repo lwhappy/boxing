@@ -31,9 +31,11 @@ const replayBtn = document.getElementById('jab-replay');
 
 /* page woman: the "white rig" sculpt — mesh + rig + retargeted clips
  * (guard / jab / jab-fight / idle), built by build/build_jab_woman.py from
- * rig-character-white.fbx; donor clips were resampled in Blender because the
- * rigs' per-bone rest rotations differ */
-const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=2', import.meta.url).href;
+ * rig-character-white.fbx; guard/idle come from the user's Mixamo FBX donors
+ * (build/donor_guard.fbx, build/donor_idle4.fbx), the jabs from the in-repo
+ * rigs — all resampled in Blender because the rigs' per-bone rest rotations
+ * differ */
+const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=3', import.meta.url).href;
 /* clip donor: the fight-game boxer-woman — her jab steps in with the lead
  * foot. Same Mixamo rig (identical bone names + rest transforms), so the
  * clip plays straight on the page model. */
@@ -358,6 +360,32 @@ function straightenLeadArm() {
   el.updateMatrixWorld(true);
 }
 
+/* The fight-game jab is authored head-high: her glove climbs ~37 cm from the
+ * guard to reach the man's face. The user wants no lift — cap the glove's
+ * height and let the punch land wherever that leaves it (upper chest). Each
+ * pass rotates one joint (shoulder, then elbow for the residual) so the hand
+ * drops onto the cap. */
+const LIFT_CAP = 1.35;
+const _sd = new THREE.Vector3();
+function suppressLeadLift() {
+  for (const name of ['LeftArm', 'LeftForeArm']) {
+    const j = woman.bones[name], hd = woman.bones.LeftHand;
+    if (!j || !hd) return;
+    woman.group.updateMatrixWorld(true);
+    hd.getWorldPosition(_sa);
+    if (_sa.y <= LIFT_CAP) return;
+    j.getWorldPosition(_sb);
+    const r = _sc.copy(_sa).sub(_sb);          // joint -> hand
+    const r2 = _sd.copy(r);
+    r2.y -= _sa.y - LIFT_CAP;                  // joint -> capped hand
+    if (r.lengthSq() < 1e-6 || r2.lengthSq() < 1e-6) return;
+    _sq.setFromUnitVectors(r.clone().normalize(), r2.normalize());
+    worldDeltaToLocal(j, _sq, _sq3);
+    j.quaternion.premultiply(_sq3);
+    j.updateMatrixWorld(true);
+  }
+}
+
 function samplePose(root, budget = 9000) {
   root.updateMatrixWorld(true);
   const meshes = [];
@@ -470,7 +498,7 @@ let fightDur = 1.0;
 let fightImpact = 0.6;    // fight-clip time of the reach frame
 let gloveXF = -0.5;       // fight-jab glove world x at impact (woman at x=0)
 let headX0 = 0;           // man head world x (man at x=0)
-let hitHeadDur = 1.0;
+let hitBodyDur = 1.0;
 let contactX = 0;         // woman x at contact
 
 function probe() {
@@ -503,6 +531,7 @@ function probe() {
     for (let i = 0; i <= 96; i++) {
       const t = (fightDur * i) / 96;
       woman.mixer.setTime(t);
+      suppressLeadLift();          // probe the patched trajectory
       woman.group.updateMatrixWorld(true);
       hand.getWorldPosition(_sv);
       if (_sv.x < best.x) best = { t, x: _sv.x };
@@ -512,8 +541,8 @@ function probe() {
     woman.mixer.stopAllAction();
   }
 
-  const hh = man.actions['hit-head'];
-  if (hh) hitHeadDur = hh.getClip().duration;
+  const hb = man.actions['hit-body'];
+  if (hb) hitBodyDur = hb.getClip().duration;
   const idle = man.actions.idle;
   idle.reset().play();
   man.mixer.setTime(1.0);
@@ -629,7 +658,9 @@ function freezeWoman() {
 }
 
 function contact() {
-  play(man, 'hit-head', { clamp: true, fade: 0.06 });
+  /* the capped punch lands on the chest — react with the body hit, not a
+   * head snap */
+  play(man, 'hit-body', { clamp: true, fade: 0.06 });
   /* spark right where the glove actually is (no head-aim compensation) */
   const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveXF, 1.3, 0);
   spawnImpact(glove);
@@ -691,6 +722,7 @@ function advance(dt) {
   const dancing = phase !== 'reveal';   // her mixer freezes during the callouts
   if (dancing && woman.mixer) woman.mixer.update(dt);
   if (phase === 'intro') straightenLeadArm();   // keep the lead arm straight
+  if (phase === 'attack' || phase === 'aftermath') suppressLeadLift();
   if (man.group.visible && man.mixer) man.mixer.update(dt);
 
   if (phase === 'intro') {
@@ -770,10 +802,10 @@ function advance(dt) {
     if (dockT > 2.5) stars.visible = false;
   }
 
-  /* the hurt man settles back to his idle once hit-head has played out */
-  const hh = man.actions['hit-head'];
+  /* the hurt man settles back to his idle once hit-body has played out */
+  const hh = man.actions['hit-body'];
   if (hh && !manBackIdle && (phase === 'aftermath' || phase === 'docked')
-      && hh.time >= hitHeadDur - 0.03) {
+      && hh.time >= hitBodyDur - 0.03) {
     manBackIdle = true;
     play(man, 'idle', { fade: 0.35, loop: true });
   }
@@ -1040,6 +1072,7 @@ function build(wg, mg, fg) {
     get phase() { return phase; },
     get t() { return showT; },
     jabImpact, fightImpact, contactX, gloveXF,
+    suppressLeadLift,
     woman, man, camera, THREE, samplePose,
     stepTo(target) {
       stopLoop();              // exact-time QA: no wall-clock interleaving

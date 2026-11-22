@@ -3,9 +3,10 @@ Build the "white rig" woman GLB for moves/jab.html — mesh + rig + retargeted c
 
 Source rig:  /Users/justrun/project/boxing-game/moves/rig-character-white.fbx
              (Tripo/Mixamo 33-bone rig, 0.01 armature scale, bone translations in cm)
-Clip donors: web/training/benefits-of-boxing/models/woman.glb  (guard, jab)
+Clip donors: web/training/benefits-of-boxing/models/woman.glb  (jab)
              web/media/glb/boxer-woman.glb                     (jab -> "jab-fight")
              build/donor_idle4.fbx                             (Mixamo idle -> "idle")
+             build/donor_guard.fbx                             (Mixamo guard -> "guard")
 
 The donor rigs' per-bone REST ROTATIONS differ from the sculpt's, and glTF
 animation tracks REPLACE a bone's local quaternion, so donor clips cannot be
@@ -27,6 +28,7 @@ ROOT = "/Users/justrun/project/boxing-3"
 DONOR_MOVES = os.path.join(ROOT, "web/training/benefits-of-boxing/models/woman.glb")
 DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
 DONOR_IDLE = os.path.join(ROOT, "build/donor_idle4.fbx")
+DONOR_GUARD = os.path.join(ROOT, "build/donor_guard.fbx")
 OUT = os.path.join(ROOT, "web/media/glb/jab-woman.glb")
 MAXTEX = 2048
 FPS = 30.0
@@ -80,35 +82,6 @@ if WITH_CLIPS:
     rig_game = next(o for o in bpy.data.objects
                     if o.type == "ARMATURE" and o not in known)
     known.add(rig_game)
-    # the Mixamo idle donor (FBX, 33 bones, no mesh). Mixamo ships 24fps keys;
-    # drop the scene to 24fps before importing so that, when the idle iteration
-    # of the bake loop runs, retimed_to_fps rescales the keys 24 -> 30 instead
-    # of letting them play 19% fast at 30fps (idle is the LAST CLIPS entry, so
-    # the earlier donors are unaffected)
-    rig_idle = None
-    if os.path.exists(DONOR_IDLE):
-        bpy.context.scene.render.fps = 24
-        bpy.ops.import_scene.fbx(filepath=DONOR_IDLE)
-        rig_idle = next(o for o in bpy.data.objects
-                        if o.type == "ARMATURE" and o not in known)
-        known.add(rig_idle)
-    # drop the donors' meshes up front so they never pollute the export
-    for o in list(bpy.data.objects):
-        if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
-            bpy.data.objects.remove(o, do_unlink=True)
-
-    for r in (rig_moves, rig_game):
-        print(f"  donor {r.name}: matrix_world rot ok? "
-              f"{[round(v, 3) for v in r.matrix_world.to_euler()]}")
-    print(f"  sculpt armature euler: {[round(v, 3) for v in rig_n.matrix_world.to_euler()]}")
-
-    CLIPS = [
-        (rig_moves, "guard", "guard"),
-        (rig_moves, "jab", "jab"),
-        (rig_game, "jab", "jab-fight"),
-    ]
-
-    ad_n = rig_n.animation_data_create()
 
     def rig_actions(rig):
         """actions owned by this rig, via its NLA tracks (glTF importer layout)"""
@@ -125,6 +98,38 @@ if WITH_CLIPS:
             out.setdefault(name, ad.action)
         return out
 
+    # the Mixamo FBX donors (33 bones, no mesh) ship 24fps keys. Import each
+    # with the scene at 24fps, then retime its keys 24 -> 30 IMMEDIATELY —
+    # retimed_to_fps reads the scene fps at call time, so doing it here (rather
+    # than inside the bake loop) keeps every bake iteration at a known 30fps
+    def import_fbx_donor(path):
+        bpy.context.scene.render.fps = 24
+        bpy.ops.import_scene.fbx(filepath=path)
+        rig = next(o for o in bpy.data.objects
+                   if o.type == "ARMATURE" and o not in known)
+        known.add(rig)
+        for a in rig_actions(rig).values():
+            retimed_to_fps(a)          # 24 -> 30, restores scene fps to 30
+        return rig
+
+    rig_idle = None
+    if os.path.exists(DONOR_IDLE):
+        rig_idle = import_fbx_donor(DONOR_IDLE)
+    rig_guard = None
+    if os.path.exists(DONOR_GUARD):
+        rig_guard = import_fbx_donor(DONOR_GUARD)
+    # drop the donors' meshes up front so they never pollute the export
+    for o in list(bpy.data.objects):
+        if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
+            bpy.data.objects.remove(o, do_unlink=True)
+
+    for r in (rig_moves, rig_game):
+        print(f"  donor {r.name}: matrix_world rot ok? "
+              f"{[round(v, 3) for v in r.matrix_world.to_euler()]}")
+    print(f"  sculpt armature euler: {[round(v, 3) for v in rig_n.matrix_world.to_euler()]}")
+
+    ad_n = rig_n.animation_data_create()
+
     acts_moves = rig_actions(rig_moves)
     acts_game = rig_actions(rig_game)
     print(f"  donor moves clips: {sorted(acts_moves)}")
@@ -140,10 +145,13 @@ if WITH_CLIPS:
         return None
 
     CLIPS = [
-        (rig_moves, acts_moves, "guard", "guard"),
         (rig_moves, acts_moves, "jab", "jab"),
         (rig_game, acts_game, "jab", "jab-fight"),
     ]
+    if rig_guard is not None:
+        acts_guard = rig_actions(rig_guard)
+        print(f"  donor guard clips: {sorted(acts_guard)}")
+        CLIPS.insert(0, (rig_guard, acts_guard, "Layer0", "guard"))
     if rig_idle is not None:
         acts_idle = rig_actions(rig_idle)
         print(f"  donor idle clips: {sorted(acts_idle)}")
