@@ -53,6 +53,41 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
+<style>
+  /* cinematic jab demo: the stage goes fullscreen (transparent, fixed) while
+   * the show plays, then docks back into the article flow as a small
+   * borderless canvas — same form as the boxing-vs-kickboxing page */
+  .jab-stage.jab-live {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+    max-width: none; aspect-ratio: auto; min-height: 0;
+    border: none; border-radius: 0;
+    /* dim the page behind so the callout cards read cleanly over it */
+    background: rgba(9, 12, 16, .58);
+    box-shadow: none; z-index: 40; margin: 0;
+  }
+  .jab-stage.jab-live::before { display: none; }
+  .jab-stage.jab-docked { max-width: 480px; aspect-ratio: 16 / 7; min-height: 0;
+    border: none; background: transparent; box-shadow: none; }
+  .jab-stage.jab-docked::before { display: none; }
+  /* fixed-camera show: mouse actions off, wheel scrolls the page */
+  .jab-stage canvas { pointer-events: none; }
+  .jab-replay { display: none; }
+  .jab-stage.jab-docked .jab-replay {
+    display: inline-flex; align-items: center; gap: 6px;
+    position: absolute; right: 10px; bottom: 10px; z-index: 6;
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #fff;
+    padding: 6px 13px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: rgba(16, 19, 25, .55);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-stage.jab-docked .jab-replay:hover { background: rgba(16, 19, 25, .75); border-color: rgba(255, 122, 61, .7); }
+  @media (max-width: 620px) {
+    .jab-stage.jab-docked { max-width: 420px; aspect-ratio: 16 / 8; }
+  }
+</style>
 <script>
 window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
 </script>
@@ -99,10 +134,10 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   <section class="hero">
     <div class="hero-grid move-hero">
 
-      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
-      <div class="stage hero-stage" aria-label="3D demo of the jab">
+      <!-- Left: 3D stage (fullscreen jab show on load, then docks here) -->
+      <div class="stage hero-stage jab-stage" id="jab-stage" aria-label="3D demo of the jab">
         <canvas id="stage-canvas"></canvas>
-        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the jab" hidden></div>
+        <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
         <div class="stage-loading" id="stage-loading">
           <div class="ring"></div>
           <span id="stage-loading-text">Loading 3D model…</span>
@@ -163,14 +198,7 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   <span><a href="../index.html">Home</a> · <a href="../moves/">Moves</a> · <a href="../combos/">Combos</a> · <a href="../training/">Training</a> · <a href="../guides/">Guides</a> · <a href="../contact/">Contact</a> · <a href="../about/">About</a> · <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></span>
 </footer>
 
-<!-- Shared stage: this page asks for one move only, auto-played on load -->
-<script>
-window.STAGE = {
-  buttons: ['jab'],
-  labels: { 'jab': 'Replay' },
-  autoPlay: 'jab'
-};
-</script>
+<!-- Cinematic jab stage: hero-style callout demo, then a sparring cameo -->
 <script type="importmap">
 {
   "imports": {
@@ -179,6 +207,6 @@ window.STAGE = {
   }
 }
 </script>
-<script type="module" src="../assets/home-stage.js?v=13"></script>
+<script type="module" src="../assets/jab-stage.js?v=1"></script>
 </body>
 </html>
