@@ -185,10 +185,10 @@ class Fighter {
 }
 
 /* ---------- cast ---------- */
-const woman = new Fighter(-1);   // faces left, at the right side of the stage
-const man = new Fighter(+1);     // her final sparring partner
+const woman = new Fighter(-1);  // faces left, at the far right of the stage
+const man = new Fighter(+1);    // her final sparring partner
 
-const WOMAN_X = 1.15;     // she stands on the right side of the fullscreen stage
+const WOMAN_X = 1.15;     // she stands at the far right of the fullscreen stage
 const MAN_X = -0.72;      // partner squares up well clear of her
 const MAN_WAIT_X = -4.2;  // offscreen left until his entrance
 
@@ -218,7 +218,7 @@ const STRIKES = [
 const TS = 1.4;            // global play speed — every clip runs this much faster
 const MAN_IN_T = 9.35;     // partner floats in right after the knee combo ends
 const MAN_IN_DUR = 0.7;
-const KO_PUSH = -0.30;     // he is driven back as he drops
+const KO_PUSH = -0.30;     // he is driven back as he drops (away from her)
 const END_T = 13.4;
 
 /* timeline entries derived from STRIKES */
@@ -258,7 +258,9 @@ function tweenX(who, to, dur, t0) {
 }
 
 /* ---------- word plates ---------- */
-const PLATE_LIFT = { ball: 0.5, post: 1.25 };   // pill sits above the 3D prop
+/* pill offset relative to the anchor: balls hang the word above the ball,
+ * the bag hangs the word to the bag's right (it was hidden above before) */
+const PILL_OFF = { ball: { x: 0, y: 0.35 }, post: { x: 0.5, y: 0.15 } };
 const DRIFT = 2.4;        // world units of approach
 const DRIFT_DUR = 1.4;    // seconds of approach
 
@@ -273,23 +275,20 @@ const targets = STRIKES.filter(s => s.word).map(s => {
 });
 const targetOf = (key) => targets.find(t => t.strike.key === key);
 
-/* ---------- 3D props: hanging speed balls + standing dummy ----------
+/* ---------- 3D props: hanging speed balls + hanging heavy bag ----------
  * The word pills are HTML; the physical objects she hits are real meshes. */
 const propMat = new THREE.MeshStandardMaterial({ color: 0xa2262e, roughness: 0.5 });
-const dummyMat = new THREE.MeshStandardMaterial({ color: 0x3a2026, roughness: 0.65 });
-const baseMat = new THREE.MeshStandardMaterial({ color: 0x1c1c20, roughness: 0.5 });
+const bagMat = new THREE.MeshStandardMaterial({ color: 0x2a1a20, roughness: 0.7 });
 const stringMat = new THREE.MeshBasicMaterial({ color: 0x8a8a8a });
-const BALL_R = 0.24;
+const BALL_R = 0.15;
 const STRING_TOP = 3.4;
 
 function makeSpeedBall() {
   const g = new THREE.Group();
   const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 18), propMat.clone());
-  ball.scale.y = 1.15;                       // slightly pear-shaped speed bag
+  ball.scale.set(0.9, 1.35, 0.9);            // classic teardrop speed bag
   ball.castShadow = true;
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 1, 6), stringMat);
-  rod.scale.y = 2.5;
-  rod.position.y = BALL_R * 1.15 + 1.25;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1, 6), stringMat);
   g.add(ball, rod);
   g.userData = { ball, rod };
   return g;
@@ -300,22 +299,22 @@ for (const tg of targets) {
   scene.add(tg.ball3d);
 }
 
-function makeDummy() {
+/* heavy punching bag hanging on a chain from above */
+function makeBag() {
   const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.12, 24), baseMat);
-  base.position.y = 0.06;
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.30, 1.0, 6, 18), dummyMat);
-  body.position.y = 0.85;
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.36, 22, 16), dummyMat);
-  chest.position.y = 1.45; chest.scale.set(1.2, 0.85, 0.95);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 22, 16), dummyMat);
-  head.position.y = 1.86;
-  for (const m of [base, body, chest, head]) { m.castShadow = true; g.add(m); }
+  const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.20, 0.95, 6, 18), bagMat);
+  bag.position.y = 1.02;                     // spans ~0.35..1.70, knee height at center
+  bag.castShadow = true;
+  const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 6), stringMat);
+  g.add(bag, chain);
+  g.userData = { bag, chain };
   return g;
 }
-const dummy = makeDummy();
-dummy.position.set(0.5, 0, -0.12);           // fallback, re-placed after probing
-scene.add(dummy);
+const bag = makeBag();
+bag.position.set(0.5, 0, -0.12);             // fallback, re-placed after probing
+scene.add(bag);
+const BAG_X_OFF = 0.20;                      // bag sits just beyond the knee tip
+const BAG_TOP = 1.02 + 0.95 / 2 + 0.20;      // capsule top y
 
 /* ---------- "BAD MAN" tag hanging over the partner's head ---------- */
 const badTag = (() => {
@@ -350,14 +349,15 @@ function placePlate(tg, t) {
   const p = Math.min(1, (t - spawnT) / DRIFT_DUR);
   const e = p * p * (3 - 2 * p);                       // smoothstep
   const bob = (1 - p) * 0.05 * Math.sin(t * 4.2 + s.at * 2.1);
+  const off = PILL_OFF[s.kind];
   /* the physical ball drifts in with its word pill, then hangs at the anchor */
   if (tg.ball3d) {
     tg.ball3d.visible = true;
     tg.ball3d.position.set(s.anchor.x - DRIFT * (1 - e), s.anchor.y + bob * 0.6, s.anchor.z);
   }
   _tv.set(
-    s.anchor.x - DRIFT * (1 - e),
-    s.anchor.y + PLATE_LIFT[s.kind] + bob,
+    s.anchor.x - DRIFT * (1 - e) + off.x,
+    s.anchor.y + off.y + bob,
     s.anchor.z
   );
   projectTo(_tv, tg.el);
@@ -544,12 +544,15 @@ async function probeAnchors() {
     if (s.kind === 'ball' && s.anchor) {
       const g = targetOf(s.key).ball3d;
       g.position.set(s.anchor.x, s.anchor.y, s.anchor.z);
-      const len = Math.max(0.15, STRING_TOP - (s.anchor.y + BALL_R * 1.15));
+      const len = Math.max(0.15, STRING_TOP - (s.anchor.y + BALL_R * 1.35));
       g.userData.rod.scale.y = len;
-      g.userData.rod.position.y = BALL_R * 1.15 + len / 2;
+      g.userData.rod.position.y = BALL_R * 1.35 + len / 2;
     }
     if (s.key === 'fail' && s.anchor) {
-      dummy.position.set(s.anchor.x - 0.34, 0, s.anchor.z);
+      bag.position.set(s.anchor.x - BAG_X_OFF, 0, s.anchor.z);
+      const len = Math.max(0.15, STRING_TOP - BAG_TOP);
+      bag.userData.chain.scale.y = len;
+      bag.userData.chain.position.y = BAG_TOP + len / 2;
     }
   }
   woman.play('guard', { fade: 0 });
@@ -651,7 +654,7 @@ function updateShow(dt = 0) {
       spawnImpact(pos, 'ko');
       AudioFX.hit('ko');
       shake('ko');
-      dummy.visible = false;
+      bag.visible = false;
       const tg = targetOf(s.key);
       if (tg) { tg.shattered = true; tg.el.classList.add('shatter'); }
     }
@@ -739,7 +742,7 @@ function resetShow() {
   badTag.el.classList.remove('shatter');
   badTag.el.style.opacity = '0';
   for (const tg of targets) if (tg.ball3d) tg.ball3d.visible = true;
-  dummy.visible = true;
+  bag.visible = true;
   for (const l of labels) l.el.remove();
   labels = [];
   clearFx();
