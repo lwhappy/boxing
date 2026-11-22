@@ -459,20 +459,30 @@ function freezeWoman() {
   woman.group.updateMatrixWorld(true);
 }
 
-/* Close: dock the canvas into the article flow. She keeps the frozen,
- * annotated pose — the callouts re-layout onto the small stage and the user
- * can orbit around her. */
+/* Close: dock the canvas into the article flow. She settles into her idle,
+ * angled 45° out toward the viewer, callout annotations gone (user spec) —
+ * Replay returns to the full annotated show. */
 function dock() {
   phase = 'docked';
   stageEl.classList.remove('jab-live', 'jab-paused');
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
-  layoutCallouts();
+  hideCallouts();
+  /* the docked look mirrors what the fight-game man used to show: facing
+   * screen-right, angled ~45° out of the screen toward the viewer (yaw
+   * swept 90..180° — 112.5° reads best: face and gloves visible, three-
+   * quarter to the camera) */
+  woman.group.rotation.y = Math.PI * 0.625;
+  woman.mixer.stopAllAction();
+  play(woman, 'idle', { fade: 0.3, loop: true });
   resize();
-  /* hand the camera over to the user, close enough to fill the small canvas */
-  controls.target.copy(camTgt);
-  camera.position.copy(controls.target)
-    .add(camera.position.clone().sub(controls.target).setLength(2.9));
+  /* hand the camera over to the user on a front 3/4 view. NOTE: the view
+   * direction must be captured BEFORE copying the target into
+   * camera.position — copy-then-subtract aliases to a zero vector and
+   * OrbitControls then re-clamps the degenerate camera to a random spot. */
+  controls.target.set(0, 0.95, 0);
+  _sv.copy(camera.position).sub(controls.target).setLength(2.9);
+  camera.position.copy(controls.target).add(_sv);
   controls.enabled = true;
   controls.update();
 }
@@ -498,6 +508,7 @@ function resetShow() {
   }
   controls.enabled = false;
   woman.group.position.set(0, 0, 0);
+  woman.group.rotation.y = -Math.PI / 2;   // back to the show-facing yaw
   woman.mixer.stopAllAction();
   play(woman, 'jab', { fade: 0, clamp: true });
   resize();
@@ -530,8 +541,11 @@ function advance(dt) {
       phase = 'paused';
       stageEl.classList.add('jab-paused');
     }
+  } else if (phase === 'docked') {
+    /* idle keeps looping on the small stage */
+    if (woman.mixer) woman.mixer.update(dt);
   }
-  /* 'paused' and 'docked': frozen annotated pose, nothing to advance */
+  /* 'paused': frozen annotated pose, nothing to advance */
 }
 
 /* ---------- camera ---------- */
@@ -599,7 +613,9 @@ const clock = new THREE.Clock();
 let running = false;
 let vt = null;            // QA virtual time — set while stepping
 
+let frames = 0;           // QA: proves the loop is alive
 function render() {
+  frames++;
   updateCallouts();
   renderer.render(scene, camera);
 }
@@ -653,6 +669,9 @@ function build(wg) {
     get t() { return showT; },
     jabImpact,
     woman, camera, THREE, samplePose,
+    get frames() { return frames; },
+    get running() { return running; },
+    renderer,
     stepTo(target) {
       stopLoop();              // exact-time QA: no wall-clock interleaving
       const dt = 1 / 30;
