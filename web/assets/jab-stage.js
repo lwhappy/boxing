@@ -645,7 +645,8 @@ function dock() {
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
   wordEl.classList.remove('show');
-  play(woman, 'guard', { fade: 0.3, loop: true });
+  /* both fighters settle into the same fight idle once docked */
+  play(woman, woman.actions['idle-fight'] ? 'idle-fight' : 'guard', { fade: 0.3, loop: true });
   resize();
   /* hand the camera over to the user */
   controls.target.copy(camTgt);
@@ -1015,6 +1016,16 @@ function build(wg, mg, fg) {
     act.enabled = true;
     woman.actions['jab-fight'] = act;
     console.log('[jab] jab-fight retargeted from the fight-game rig');
+  }
+  /* the sculpt has no idle clip of her own — retarget the fight-game idle so
+   * both fighters can settle into the same pose once the stage docks */
+  const iClip = fg && (fg.animations || []).find((c) => c.name === 'idle');
+  if (iClip) {
+    const retargeted = bakeRetarget(fg, iClip);
+    const act = woman.mixer.clipAction(retargeted);
+    act.enabled = true;
+    woman.actions['idle-fight'] = act;
+    console.log('[jab] idle retargeted from the fight-game rig');
   }
   probe();
   loadingEl.classList.add('hidden');
