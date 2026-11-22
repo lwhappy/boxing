@@ -99,7 +99,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     max-width: 480px; margin: 10px auto 0; z-index: auto;
     border: none; border-radius: 0; background: transparent; box-shadow: none;
   }
-  .bb-stage.bb-docked canvas { pointer-events: none; }   /* mouse actions off */
+  .bb-stage canvas { pointer-events: none; }   /* mouse actions off everywhere */
   .bb-stage.bb-docked .bb-orbit-hint { display: none; }
   .bb-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -161,10 +161,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
   @keyframes bb-spin { to { transform: rotate(360deg); } }
   .bb-error { position: absolute; inset: 0; display: grid; place-items: center; color: var(--red); font-size: 14px; }
-  .bb-orbit-hint {
-    position: absolute; left: 14px; bottom: 12px; color: var(--muted);
-    font-size: 12px; letter-spacing: .05em; pointer-events: none;
-  }
+  .bb-orbit-hint { display: none; }   /* mouse actions are disabled everywhere */
   /* browsers block audio until the first user gesture — tell the visitor */
   .bb-sound-hint {
     position: absolute; left: 14px; bottom: 44px; z-index: 4;
@@ -376,6 +373,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=6"></script>
+<script type="module" src="./app.js?v=7"></script>
 </body>
 </html>

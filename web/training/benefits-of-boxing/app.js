@@ -38,7 +38,8 @@ camera.position.set(0, 1.05, 4.0);
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
-controls.dampingFactor = 0.08;
+controls.enableZoom = false;      // wheel must scroll the page, never zoom
+controls.enableRotate = false;
 controls.enablePan = false;
 controls.minDistance = 2.0;
 controls.maxDistance = 12;
@@ -280,7 +281,7 @@ const targetOf = (key) => targets.find(t => t.strike.key === key);
 const propMat = new THREE.MeshStandardMaterial({ color: 0xa2262e, roughness: 0.5 });
 const bagMat = new THREE.MeshStandardMaterial({ color: 0x2a1a20, roughness: 0.7 });
 const stringMat = new THREE.MeshBasicMaterial({ color: 0x8a8a8a });
-const BALL_R = 0.15;
+const BALL_R = 0.11;
 const STRING_TOP = 3.4;
 
 function makeSpeedBall() {
@@ -300,10 +301,13 @@ for (const tg of targets) {
 }
 
 /* heavy punching bag hanging on a chain from above */
+const BAG_R = 0.15, BAG_LEN = 0.70;          // small hanging bag (total ~1.0 m)
+const BAG_X_OFF = 0.20;                      // bag sits just beyond the knee tip
+const BAG_TOP = 1.02 + BAG_LEN / 2 + BAG_R;  // capsule top y
 function makeBag() {
   const g = new THREE.Group();
-  const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.20, 0.95, 6, 18), bagMat);
-  bag.position.y = 1.02;                     // spans ~0.35..1.70, knee height at center
+  const bag = new THREE.Mesh(new THREE.CapsuleGeometry(BAG_R, BAG_LEN, 6, 18), bagMat);
+  bag.position.y = 1.02;                     // knee height at center
   bag.castShadow = true;
   const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 6), stringMat);
   g.add(bag, chain);
@@ -314,8 +318,6 @@ const bag = makeBag();
 bag.position.set(0.5, 0, -0.12);             // fallback, re-placed after probing
 bag.visible = false;                          // drifts in together with the FAIL pill
 scene.add(bag);
-const BAG_X_OFF = 0.20;                      // bag sits just beyond the knee tip
-const BAG_TOP = 1.02 + 0.95 / 2 + 0.20;      // capsule top y
 
 /* ---------- "BAD MAN" tag hanging over the partner's head ---------- */
 const badTag = (() => {
@@ -702,10 +704,10 @@ function frameCamera() {
   const docked = stageEl.classList.contains('bb-docked');
   /* fullscreen: wide enough for the drifting plates to spawn on screen and
    * the whole right-to-left choreography to read; docked: tight on the woman */
-  const need = docked ? 1.3 : (portrait ? 1.9 : 2.35);
+  const need = docked ? 1.3 : (portrait ? 2.3 : 2.8);
   const z = docked
     ? Math.min(4.2, Math.max(2.75, need / (tanH * camera.aspect)))
-    : Math.min(portrait ? 8.0 : 5.0,
+    : Math.min(portrait ? 8.0 : 6.5,
                Math.max(portrait ? 4.4 : 3.4, need / (tanH * camera.aspect)));
   const cy = docked ? 0.95 : 1.02;
   viewHalfW = Math.tan(camera.fov * Math.PI / 360) * camera.aspect * z;
