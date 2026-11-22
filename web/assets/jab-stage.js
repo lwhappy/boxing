@@ -41,7 +41,6 @@ const SHIFT_DUR = 0.75;    // woman: centre -> right
 const SETTLE = 0.55;       // both idle before the hop jab
 const AFTERMATH = 2.0;     // dizzy hold before docking (user spec: 2 s)
 const ARM_STRAIGHTEN = 0.7; // corrective blend for the page clip's bent lead arm
-let armLift = 0.42;        // upward aim (rad) at the reach frame — calibrated in probe()
 const MAN_HEIGHT = 1.82;   // his real skinned height (was ~2.1 m off the head bone)
 const WOMAN_X = 0.95;      // her spot on the right
 const MAN_X = -1.15;       // his spot on the left
@@ -333,19 +332,6 @@ function straightenLeadArm() {
   el.updateMatrixWorld(true);
 }
 
-/* the fight jab is level with her own shoulder — for a taller opponent the
- * fist would land on his chest, so lift the lead arm toward his head,
- * ramping the amount in through the step-in */
-const _zAxis = new THREE.Vector3(0, 0, -1);
-function liftLeadArm(angle) {
-  const sh = woman.bones.LeftArm;
-  if (!sh || !angle) return;
-  _sq.setFromAxisAngle(_zAxis, angle);
-  worldDeltaToLocal(sh, _sq, _sq3);
-  sh.quaternion.premultiply(_sq3);
-  sh.updateMatrixWorld(true);
-}
-
 function samplePose(root, budget = 9000) {
   root.updateMatrixWorld(true);
   const meshes = [];
@@ -463,54 +449,23 @@ function probe() {
   woman.mixer.stopAllAction();
 
   /* fight jab: donor clip (steps in with the lead foot) — find the reach
-   * frame, then solve the upward aim analytically so the fist arrives at his
-   * head instead of his chest (the clip itself is a shoulder-height jab) */
+   * frame and land the fist exactly there (no arm re-aiming: the clip is
+   * left as authored, so the punch lands where it naturally lands) */
   const fAct = woman.actions['jab-fight'];
   if (fAct) {
     fightDur = fAct.getClip().duration;
     fAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    let best = { t: 0, x: Infinity, g: null, s: null };
+    let best = { t: 0, x: Infinity };
     for (let i = 0; i <= 96; i++) {
       const t = (fightDur * i) / 96;
       woman.mixer.setTime(t);
       woman.group.updateMatrixWorld(true);
       hand.getWorldPosition(_sv);
-      if (_sv.x < best.x) {
-        best = {
-          t, x: _sv.x,
-          g: _sv.clone(),
-          s: woman.bones.LeftArm.getWorldPosition(new THREE.Vector3()),
-        };
-      }
+      if (_sv.x < best.x) best = { t, x: _sv.x };
     }
     fightImpact = best.t;
+    gloveXF = best.x;
     woman.mixer.stopAllAction();
-
-    /* his head height at the moment of contact */
-    const idle = man.actions.idle;
-    if (idle) { idle.reset().play(); man.mixer.setTime(1.0); man.group.updateMatrixWorld(true); }
-    const headY = man.bones.Head ? man.bones.Head.getWorldPosition(_sv).y : 1.55;
-    if (idle) man.mixer.stopAllAction();
-
-    /* rotate the whole arm about the shoulder (world Z) until the fist sits
-     * at his head: v' = R(a)·v, v'.y = |v|·sin(φ - a) */
-    if (best.g && best.s) {
-      const v = best.g.clone().sub(best.s);
-      const L = Math.max(0.2, Math.hypot(v.x, v.y));
-      const dy = Math.max(-L * 0.95, Math.min(L * 0.95, (headY + 0.03) - best.s.y));
-      const phi = Math.atan2(v.y, v.x);
-      /* keep the arm pointing his way (x still negative) */
-      const phiAim = v.x < 0 ? Math.PI - Math.asin(dy / L) : Math.asin(dy / L);
-      let a = phi - phiAim;
-      while (a > Math.PI) a -= Math.PI * 2;
-      while (a < -Math.PI) a += Math.PI * 2;
-      armLift = Math.max(0, Math.min(a, 1.2));
-      const vx2 = v.x * Math.cos(armLift) + v.y * Math.sin(armLift);
-      gloveXF = best.s.x + vx2;
-      console.log('[jab] lift', armLift.toFixed(3), 'reachX', gloveXF.toFixed(2), 'headY', headY.toFixed(2));
-    } else {
-      gloveXF = best.x;
-    }
   }
 
   const hh = man.actions['hit-head'];
@@ -522,8 +477,9 @@ function probe() {
   headX0 = man.bones.Head ? man.bones.Head.getWorldPosition(_sv).x : 0;
   man.mixer.stopAllAction();
 
-  /* land her glove on his crown: gloveX = contactX + gloveXF = MAN_X + headX0 */
-  contactX = MAN_X + headX0 - 0.03 - gloveXF;
+  /* the fist now lands where the clip naturally puts it — upper chest.
+   * stop her just at the front of his torso (~5cm inside his centre line) */
+  contactX = MAN_X + 0.05 - gloveXF;
 }
 
 /* ---------- impact FX + dizzy stars ---------- */
@@ -630,9 +586,9 @@ function freezeWoman() {
 
 function contact() {
   play(man, 'hit-head', { clamp: true, fade: 0.06 });
-  const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveXF, 1.5, 0);
-  const head = man.bones.Head ? man.bones.Head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(MAN_X, 1.6, 0);
-  spawnImpact(glove.add(head).multiplyScalar(0.5));
+  /* spark right where the glove actually is (no head-aim compensation) */
+  const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveXF, 1.3, 0);
+  spawnImpact(glove);
   stars.visible = true;
   starsT = 0;
   shakeT = 0.5;
@@ -725,7 +681,6 @@ function advance(dt) {
     const p = Math.min(1, attackT / Math.max(0.2, fightImpact));
     const e = p * p * (3 - 2 * p);
     woman.group.position.x = THREE.MathUtils.lerp(WOMAN_X, contactX, e);
-    liftLeadArm(armLift * Math.min(1, attackT / Math.max(0.2, fightImpact)));
     const wa = woman.actions['jab-fight'] || woman.actions.jab;
     const impact = woman.actions['jab-fight'] ? fightImpact : jabImpact;
     if (!fired && wa && wa.time >= impact - 1e-3) {
