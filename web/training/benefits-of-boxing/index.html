@@ -72,7 +72,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
 <style>
   /* ---- hero stage: transparent canvas, no scenery, words drift in ---- */
-  .bb-hero { max-width: var(--maxw); margin: 0 auto; padding: 26px 11px 0; }
+  /* hero uses the same 860px column as the article so the text edges align */
+  .bb-hero { max-width: 860px; margin: 0 auto; padding: 26px 11px 0; }
   .bb-hero-kicker {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
