@@ -260,7 +260,7 @@ function tweenX(who, to, dur, t0) {
 /* ---------- word plates ---------- */
 /* pill offset relative to the anchor: balls hang the word above the ball,
  * the bag hangs the word to the bag's right (it was hidden above before) */
-const PILL_OFF = { ball: { x: 0, y: 0.35 }, post: { x: 0.5, y: 0.15 } };
+const PILL_OFF = { ball: { x: 0, y: 0.35 }, post: { x: 0.28, y: 0.15 } };
 const DRIFT = 2.4;        // world units of approach
 const DRIFT_DUR = 1.4;    // seconds of approach
 
