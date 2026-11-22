@@ -29,16 +29,20 @@ const replayBtn = document.getElementById('jab-replay');
 /* bvk's kickboxer and the benefits-page woman are the same rig (identical
  * woman.fbx) — the benefits GLB already carries guard + jab. */
 const WOMAN_URL = new URL('../training/benefits-of-boxing/models/woman.glb?v=1', import.meta.url).href;
+/* clip donor: the fight-game boxer-woman — her jab steps in with the lead
+ * foot. Same Mixamo rig (identical bone names + rest transforms), so the
+ * clip plays straight on the page model. */
+const WOMAN_GAME_URL = new URL('../media/glb/boxer-woman.glb?v=2', import.meta.url).href;
 const MAN_URL = new URL('../media/glb/boxer-man.glb?v=2', import.meta.url).href;
 
 const STAGGER = 0.72;      // callout card interval (s)
 const HOLD = 1.0;          // hold after all callouts are shown (user spec: 1 s)
 const SHIFT_DUR = 0.75;    // woman: centre -> right
 const SETTLE = 0.55;       // both idle before the hop jab
-const AFTERMATH = 1.0;     // dizzy hold before docking (user spec: 1 s)
+const AFTERMATH = 2.0;     // dizzy hold before docking (user spec: 2 s)
+const ARM_STRAIGHTEN = 0.7; // corrective blend for the page clip's bent lead arm
 const WOMAN_X = 0.95;      // her spot on the right
 const MAN_X = -1.15;       // his spot on the left
-const HOP_H = 0.14;        // hop arc height
 
 /* the five homepage-hero jab callouts, verbatim */
 const CALLS = [
@@ -70,16 +74,25 @@ const wordEl = ui.querySelector('.hero-word');
 const callEls = SLOTS.map((slot) => {
   const el = document.createElement('div');
   el.className = 'hero-callout';
-  el.style[slot.side === 'l' ? 'left' : 'right'] = '10px';
-  el.style.top = slot.top + '%';
   el.innerHTML = '<span class="tag"></span><span class="txt"></span>';
   callsBox.appendChild(el);
   return el;
 });
 
+/* cards sit well in from the screen edge so the leader lines stay short
+ * (user spec: at least half the old length) */
+function applyCardInset() {
+  const w = stageEl.clientWidth || window.innerWidth || 1280;
+  const inset = Math.max(10, Math.min(w * 0.16, 260));
+  callEls.forEach((el, i) => {
+    el.style[SLOTS[i].side === 'l' ? 'left' : 'right'] = inset.toFixed(0) + 'px';
+  });
+}
+
 /* cards never overlap: same column-packing as the homepage hero, minus the
  * dots row and control bar this page does not have */
 function layoutCallouts() {
+  applyCardInset();
   const h = callsBox.clientHeight || stageEl.clientHeight;
   if (!h) return;
   const minTop = Math.max(4, h * 0.022);
@@ -270,8 +283,8 @@ function loadGLB(url) {
   return new Promise((res, rej) => new GLTFLoader().load(url, res, prog, rej));
 }
 
-Promise.all([loadGLB(WOMAN_URL), loadGLB(MAN_URL)]).then(([wg, mg]) => {
-  try { build(wg, mg); }
+Promise.all([loadGLB(WOMAN_URL), loadGLB(MAN_URL), loadGLB(WOMAN_GAME_URL)]).then(([wg, mg, fg]) => {
+  try { build(wg, mg, fg); }
   catch (err) { fail(err); }
 }).catch(fail);
 
@@ -288,6 +301,30 @@ const man = { group: new THREE.Group(), mixer: null, actions: {}, bones: {} };
 scene.add(woman.group, man.group);
 
 const _sv = new THREE.Vector3();
+
+/* The page clip's lead arm keeps a bend at the elbow through the jab (baked
+ * into the source animation). We can't edit the GLB, so we straighten the
+ * arm procedurally: rotate the forearm onto the upper-arm axis every frame
+ * the pose is evaluated, blended by ARM_STRAIGHTEN. */
+const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3();
+const _sq = new THREE.Quaternion(), _sq2 = new THREE.Quaternion(), _sq0 = new THREE.Quaternion();
+function straightenLeadArm() {
+  const sh = woman.bones.LeftArm, el = woman.bones.LeftForeArm, hd = woman.bones.LeftHand;
+  if (!sh || !el || !hd) return;
+  woman.group.updateMatrixWorld(true);
+  sh.getWorldPosition(_sa);
+  el.getWorldPosition(_sb);
+  hd.getWorldPosition(_sc);
+  const upper = _sa.copy(_sb).sub(_sa).normalize();   // shoulder -> elbow
+  const fore = _sb.copy(_sc).sub(_sb).normalize();    // elbow -> hand
+  _sq.setFromUnitVectors(fore, upper);
+  el.parent.getWorldQuaternion(_sq2);
+  _sq.premultiply(_sq2.clone().invert());   // correction in elbow-local space
+  _sq0.identity().slerp(_sq, ARM_STRAIGHTEN);
+  el.quaternion.premultiply(_sq0);
+  el.updateMatrixWorld(true);
+}
+
 function samplePose(root, budget = 9000) {
   root.updateMatrixWorld(true);
   const meshes = [];
@@ -381,14 +418,18 @@ function buildMan(gltf) {
 
 /* ---------- choreography probes ---------- */
 let jabDur = 1.0;
-let jabImpact = 0.6;      // clip time of the reach frame
-let gloveX0 = -0.5;       // glove world x at impact (woman at x=0)
+let jabImpact = 0.6;      // intro-clip time of the reach frame
+let fightDur = 1.0;
+let fightImpact = 0.6;    // fight-clip time of the reach frame
+let gloveXF = -0.5;       // fight-jab glove world x at impact (woman at x=0)
 let headX0 = 0;           // man head world x (man at x=0)
 let hitHeadDur = 1.0;
 let contactX = 0;         // woman x at contact
 
 function probe() {
   const hand = woman.bones.LeftHand;
+
+  /* intro jab: the page clip, played with the procedurally straightened arm */
   const wAct = woman.actions.jab;
   jabDur = wAct.getClip().duration;
   wAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
@@ -396,13 +437,32 @@ function probe() {
   for (let i = 0; i <= 64; i++) {
     const t = (jabDur * i) / 64;
     woman.mixer.setTime(t);
+    straightenLeadArm();
     woman.group.updateMatrixWorld(true);
     hand.getWorldPosition(_sv);
     if (_sv.x < best.x) best = { t, x: _sv.x };
   }
   jabImpact = best.t;
-  gloveX0 = best.x;
   woman.mixer.stopAllAction();
+
+  /* fight jab: donor clip (steps in with the lead foot) — find the reach
+   * frame for the contact solve */
+  const fAct = woman.actions['jab-fight'];
+  if (fAct) {
+    fightDur = fAct.getClip().duration;
+    fAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+    best = { t: 0, x: Infinity };
+    for (let i = 0; i <= 96; i++) {
+      const t = (fightDur * i) / 96;
+      woman.mixer.setTime(t);
+      woman.group.updateMatrixWorld(true);
+      hand.getWorldPosition(_sv);
+      if (_sv.x < best.x) best = { t, x: _sv.x };
+    }
+    fightImpact = best.t;
+    gloveXF = best.x;
+    woman.mixer.stopAllAction();
+  }
 
   const hh = man.actions['hit-head'];
   if (hh) hitHeadDur = hh.getClip().duration;
@@ -413,8 +473,8 @@ function probe() {
   headX0 = man.bones.Head ? man.bones.Head.getWorldPosition(_sv).x : 0;
   man.mixer.stopAllAction();
 
-  /* land her glove on his crown: gloveX = contactX + gloveX0 = MAN_X + headX0 */
-  contactX = MAN_X + headX0 - 0.03 - gloveX0;
+  /* land her glove on his crown: gloveX = contactX + gloveXF = MAN_X + headX0 */
+  contactX = MAN_X + headX0 - 0.03 - gloveXF;
 }
 
 /* ---------- impact FX + dizzy stars ---------- */
@@ -515,12 +575,13 @@ function freezeWoman() {
   const wa = woman.actions.jab;
   wa.time = Math.min(jabImpact, jabDur);
   woman.mixer.update(0);
+  straightenLeadArm();
   woman.group.updateMatrixWorld(true);
 }
 
 function contact() {
   play(man, 'hit-head', { clamp: true, fade: 0.06 });
-  const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveX0, 1.5, 0);
+  const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveXF, 1.5, 0);
   const head = man.bones.Head ? man.bones.Head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(MAN_X, 1.6, 0);
   spawnImpact(glove.add(head).multiplyScalar(0.5));
   stars.visible = true;
@@ -567,6 +628,7 @@ function advance(dt) {
   showT += dt;
   const dancing = phase !== 'reveal';   // her mixer freezes during the callouts
   if (dancing && woman.mixer) woman.mixer.update(dt);
+  if (phase === 'intro') straightenLeadArm();   // keep the lead arm straight
   if (man.group.visible && man.mixer) man.mixer.update(dt);
 
   if (phase === 'intro') {
@@ -605,16 +667,18 @@ function advance(dt) {
       phase = 'attack';
       attackT = 0;
       fired = false;
-      play(woman, 'jab', { fade: 0.1, clamp: true });
+      play(woman, woman.actions['jab-fight'] ? 'jab-fight' : 'jab', { fade: 0.1, clamp: true });
     }
   } else if (phase === 'attack') {
+    /* the fight jab steps in with its own footwork — she only glides the
+     * remaining distance on the ground, no extra hop arc */
     attackT += dt;
-    const p = Math.min(1, attackT / Math.max(0.2, jabImpact));
-    const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    const p = Math.min(1, attackT / Math.max(0.2, fightImpact));
+    const e = p * p * (3 - 2 * p);
     woman.group.position.x = THREE.MathUtils.lerp(WOMAN_X, contactX, e);
-    woman.group.position.y = 4 * p * (1 - p) * HOP_H;
-    const wa = woman.actions.jab;
-    if (!fired && wa && wa.time >= jabImpact - 1e-3) {
+    const wa = woman.actions['jab-fight'] || woman.actions.jab;
+    const impact = woman.actions['jab-fight'] ? fightImpact : jabImpact;
+    if (!fired && wa && wa.time >= impact - 1e-3) {
       fired = true;
       contact();
       phase = 'aftermath';
@@ -769,9 +833,18 @@ document.addEventListener('visibilitychange', () => {
   else if (!document.hidden && visible && phase !== 'load') startLoop();
 });
 
-function build(wg, mg) {
+function build(wg, mg, fg) {
   buildWoman(wg);
   buildMan(mg);
+  /* donor clip: the fight-game jab (lead-foot step) retargeted onto her rig */
+  if (fg && woman.mixer) {
+    const fjab = (fg.animations || []).find(c => c.name === 'jab');
+    if (fjab) {
+      const act = woman.mixer.clipAction(fjab);
+      act.enabled = true;
+      woman.actions['jab-fight'] = act;
+    }
+  }
   probe();
   loadingEl.classList.add('hidden');
   layoutCallouts();
@@ -781,6 +854,7 @@ function build(wg, mg) {
   window.__jab = {
     get phase() { return phase; },
     get t() { return showT; },
+    jabImpact, fightImpact, contactX, gloveXF,
     woman, man, camera, THREE,
     stepTo(target) {
       stopLoop();              // exact-time QA: no wall-clock interleaving
@@ -792,6 +866,7 @@ function build(wg, mg) {
       updateCamera(1 / 30);
       render();
     },
+    restart: () => { resetShow(); startLoop(); },
     resume: () => startLoop(),
   };
 }

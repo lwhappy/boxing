@@ -87,6 +87,11 @@
   @media (max-width: 620px) {
     .jab-stage.jab-docked { max-width: 420px; aspect-ratio: 16 / 8; }
   }
+  /* vertical hero: the 3D stage sits on top of the page, copy below.
+   * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
+  .hero-grid.move-hero { grid-template-columns: 1fr; gap: 30px; }
+  .move-hero .stage:not(.jab-live) { position: relative; top: auto; }
+  .jab-stage.jab-docked { width: min(480px, 100%); margin-left: auto; margin-right: auto; }
 </style>
 <script>
 window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
@@ -207,6 +212,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=1"></script>
+<script type="module" src="../assets/jab-stage.js?v=2"></script>
 </body>
 </html>
