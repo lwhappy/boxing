@@ -188,9 +188,9 @@ class Fighter {
 const woman = new Fighter(-1);   // faces left, at the right side of the stage
 const man = new Fighter(+1);     // her final sparring partner
 
-const WOMAN_X = 0.62;
-const MAN_X = -0.05;
-const MAN_WAIT_X = -3.4;
+const WOMAN_X = 1.15;     // she stands on the right side of the fullscreen stage
+const MAN_X = -0.72;      // partner squares up well clear of her
+const MAN_WAIT_X = -4.2;  // offscreen left until his entrance
 
 woman.group.position.set(WOMAN_X, 0, 0);
 man.group.position.set(MAN_WAIT_X, 0, 0);
@@ -199,7 +199,9 @@ scene.add(woman.group, man.group);
 /* ---------- choreography ----------
  * Each strike: `at` = contact time (s), clip fires early enough that the baked
  * contact frame lands exactly at `at`. Targets drift in so they reach the
- * anchor (the strike bone's probed world position) at the same instant. */
+ * anchor (the strike bone's probed world position) at the same instant.
+ * The FAIL post survives the whole combo-knee take — it only shatters on the
+ * `breaks` event after the clip has played out in full. */
 const CLIP_DUR = {
   'jab': 1.067, 'cross': 0.90, 'kick': 1.633, 'combo-knee': 5.70, 'flying-kick': 1.533,
   guard: 5.033, 'knocked-out': 4.93,
@@ -208,14 +210,14 @@ const STRIKES = [
   { key: 'disease',  word: 'DISEASE',  kind: 'ball', clip: 'jab',   bone: 'LeftHand',    frac: 0.563, label: 'JAB',   at: 2.0 },
   { key: 'weak',     word: 'WEAK',     kind: 'ball', clip: 'cross', bone: 'RightHand',   frac: 0.411, label: 'CROSS', at: 3.7 },
   { key: 'hopeless', word: 'HOPELESS', kind: 'ball', clip: 'kick',  bone: 'LeftToeBase', frac: 0.410, label: 'KICK',  at: 5.5 },
-  { key: 'fail',     word: 'FAIL',     kind: 'post', clip: 'combo-knee', bone: 'RightLeg', frac: 1.60 / 5.70, label: 'KNEE', at: 7.5 },
-  { key: 'partner',  clip: 'flying-kick', bone: 'LeftToeBase', frac: 0.470, label: 'FLYING KICK', at: 10.9 },
+  { key: 'fail',     word: 'FAIL',     kind: 'post', clip: 'combo-knee', bone: 'RightLeg', frac: 1.60 / 5.70, label: 'KNEE', at: 7.8, breakAtEnd: true },
+  { key: 'partner',  clip: 'flying-kick', bone: 'LeftToeBase', frac: 0.470, label: 'FLYING KICK', at: 14.1 },
 ];
 const TS = 1.0;
-const MAN_IN_T = 8.6;      // partner floats in
+const MAN_IN_T = 12.35;    // partner floats in only after the knee combo finishes
 const MAN_IN_DUR = 0.9;
 const KO_PUSH = -0.30;     // he is driven back as he drops
-const END_T = 13.4;
+const END_T = 16.6;
 
 /* timeline entries derived from STRIKES */
 const TL = [
@@ -224,17 +226,18 @@ const TL = [
     t: s.at - s.frac * CLIP_DUR[s.clip],
     who: 'w', clip: s.clip, clamp: true, fade: 0.14, strike: s.key,
   })),
-  /* after the knee combo's retraction, back to guard */
-  { t: 8.05, who: 'w', clip: 'guard', fade: 0.2 },
+  /* the combo-knee take plays out in full (6.2 → 11.9), then back to guard */
+  { t: 11.95, who: 'w', clip: 'guard', fade: 0.2 },
   { t: 0, who: 'm', clip: 'guard' },
   { t: MAN_IN_T - 0.05, who: 'm', show: true },   // he waits offstage until his entrance
   { t: MAN_IN_T, who: 'm', moveX: MAN_X, dur: MAN_IN_DUR },
-  /* flying kick — start time derived from its contact frame */
+  /* flying kick — she launches from her spot on the right and covers the
+   * whole gap to the partner, landing the toe exactly on his head */
   {
     t: STRIKES[4].at - STRIKES[4].frac * CLIP_DUR['flying-kick'],
     who: 'w', clip: 'flying-kick', clamp: true, fade: 0.14, strike: 'partner', fly: true,
   },
-  { t: 11.75, who: 'w', clip: 'guard', fade: 0.2 },
+  { t: 15.1, who: 'w', clip: 'guard', fade: 0.2 },
 ];
 /* ---------- engine ---------- */
 let clock0 = null;
@@ -267,6 +270,25 @@ const targets = STRIKES.filter(s => s.word).map(s => {
   return { el, strike: s, anchor: null, shattered: false };
 });
 const targetOf = (key) => targets.find(t => t.strike.key === key);
+
+/* ---------- "BAD MAN" tag hanging over the partner's head ---------- */
+const badTag = (() => {
+  const el = document.createElement('div');
+  el.className = 'bt-target ball';
+  el.textContent = 'BAD MAN';
+  el.setAttribute('aria-hidden', 'true');
+  el.style.opacity = '0';
+  stageEl.appendChild(el);
+  return { el, shattered: false };
+})();
+function placeBadTag() {
+  const head = man.bones && man.bones.Head;
+  if (badTag.shattered || !man.group.visible || !head) { badTag.el.style.opacity = '0'; return; }
+  head.getWorldPosition(_tv);
+  _tv.y += 0.58;
+  projectTo(_tv, badTag.el);
+  badTag.el.style.opacity = '1';
+}
 
 function placePlate(tg, t) {
   const s = tg.strike;
@@ -468,6 +490,10 @@ async function probeAnchors() {
 
 /* ---------- contacts ---------- */
 const contacts = STRIKES.map(s => ({ s, t: s.at, fired: false }));
+/* the FAIL post only breaks after the whole combo-knee take has played out */
+const breaks = STRIKES.filter(s => s.breakAtEnd).map(s => ({
+  t: s.at + (1 - s.frac) * CLIP_DUR[s.clip], s, done: false,
+}));
 
 function fireContact(c) {
   c.fired = true;
@@ -476,11 +502,14 @@ function fireContact(c) {
   const b = w.bones[s.bone];
   const pos = b ? b.getWorldPosition(new THREE.Vector3()) : (s.anchor || new THREE.Vector3());
   const kind = s.key === 'partner' ? 'ko' : (s.clip === 'kick' || s.clip === 'combo-knee' || s.clip === 'flying-kick' ? 'kick' : 'punch');
-  spawnImpact(pos, kind);
-  AudioFX.hit(kind);
-  shake(kind);
+  /* the post survives the whole combo — only the move label pops mid-take */
+  if (s.key !== 'fail') {
+    spawnImpact(pos, kind);
+    AudioFX.hit(kind);
+    shake(kind);
+  }
   showLabel(s.label, pos);
-  if (s.word) {
+  if (s.word && s.key !== 'fail') {
     const tg = targetOf(s.key);
     tg.shattered = true;
     tg.el.classList.add('shatter');
@@ -489,6 +518,8 @@ function fireContact(c) {
     /* he is out — the KO clip enters mid-buckle so he drops right away */
     man.play('knocked-out', { start: 1.7, clamp: true, fade: 0.08 });
     tweenX('m', man.baseX + KO_PUSH, 0.6, boutT());
+    badTag.shattered = true;
+    badTag.el.classList.add('shatter');
   }
 }
 
@@ -526,11 +557,15 @@ function updateShow(dt = 0) {
   man.group.position.x = man.baseX;
   woman.group.position.x = woman.baseX;
 
-  /* camera follow: ease toward the midpoint of the visible action */
+  /* camera follow: ease toward the midpoint of the visible action; once the
+   * show is docked the camera centers on the woman alone */
+  const docked = stageEl.classList.contains('bb-docked');
   const active = contacts.find(c => !c.fired);
-  const focusX = active && active.s.word && active.s.anchor
-    ? Math.min(0.45, Math.max(-0.55, (woman.baseX + active.s.anchor.x) / 2))
-    : Math.min(0.45, Math.max(-0.55, (woman.baseX + (man.baseX > MAN_WAIT_X ? man.baseX : woman.baseX)) / 2));
+  const focusX = (docked || done)
+    ? woman.baseX
+    : (active && active.s.word && active.s.anchor
+        ? Math.min(0.45, Math.max(-0.45, (woman.baseX + active.s.anchor.x) / 2))
+        : Math.min(0.45, Math.max(-0.45, (woman.baseX + (man.baseX > MAN_WAIT_X ? man.baseX : woman.baseX)) / 2)));
   followX += (focusX - followX) * (vt !== null ? 1 : Math.min(1, dt * 3));
   controls.target.x = followX;
   camera.position.x = followX;
@@ -538,8 +573,28 @@ function updateShow(dt = 0) {
   for (const c of contacts) {
     if (!c.fired && t >= c.t) fireContact(c);
   }
+  for (const br of breaks) {
+    if (!br.done && t >= br.t) {
+      br.done = true;
+      const s = br.s;
+      const pos = s.anchor ? s.anchor.clone() : new THREE.Vector3();
+      spawnImpact(pos, 'kick');
+      AudioFX.hit('kick');
+      shake('kick');
+      const tg = targetOf(s.key);
+      if (tg) { tg.shattered = true; tg.el.classList.add('shatter'); }
+    }
+  }
 
-  if (t >= END_T) done = true;
+  if (t >= END_T && !done) {
+    done = true;
+    /* dock the canvas back into the article flow — only she remains, the
+     * fallen partner is hidden; the camera centers on wherever she stands */
+    man.group.visible = false;
+    followX = woman.baseX;
+    stageEl.classList.add('bb-docked');
+    frameCamera();
+  }
 }
 
 /* ---------- camera framing ---------- */
@@ -551,10 +606,15 @@ function frameCamera() {
   const portrait = camera.aspect < 0.9;
   camera.fov = portrait ? 55 : 40;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
-  const need = portrait ? 1.9 : 2.1;
-  const z = Math.min(portrait ? 8.0 : 5.0,
-                     Math.max(portrait ? 4.4 : 3.4, need / (tanH * camera.aspect)));
-  const cy = 1.02;
+  const docked = stageEl.classList.contains('bb-docked');
+  /* fullscreen: wide enough for the drifting plates to spawn on screen and
+   * the whole right-to-left choreography to read; docked: tight on the woman */
+  const need = docked ? 1.3 : (portrait ? 1.9 : 2.35);
+  const z = docked
+    ? Math.min(4.2, Math.max(2.75, need / (tanH * camera.aspect)))
+    : Math.min(portrait ? 8.0 : 5.0,
+               Math.max(portrait ? 4.4 : 3.4, need / (tanH * camera.aspect)));
+  const cy = docked ? 0.95 : 1.02;
   camera.position.set(followX, cy, z);
   controls.target.set(followX, cy, 0);
   camera.updateProjectionMatrix();
@@ -583,6 +643,7 @@ function tick() {
     renderer.render(scene, camera);
     if (off) camera.position.sub(off);
     for (const tg of targets) placePlate(tg, t);
+    placeBadTag();
     updateLabels(t);
     requestAnimationFrame(tick);
   } catch (e) {
@@ -597,15 +658,20 @@ function resetShow() {
   clock0 = performance.now();
   fired = []; moves = []; done = false;
   for (const c of contacts) c.fired = false;
+  for (const br of breaks) br.done = false;
   for (const tg of targets) {
     tg.shattered = false;
     tg.el.classList.remove('shatter');
     tg.el.style.opacity = '0';
   }
+  badTag.shattered = false;
+  badTag.el.classList.remove('shatter');
+  badTag.el.style.opacity = '0';
   for (const l of labels) l.el.remove();
   labels = [];
   clearFx();
   shakeT = 0;
+  followX = 0;
   woman.baseX = WOMAN_X; man.baseX = MAN_WAIT_X;
   woman.group.position.set(WOMAN_X, 0, 0);
   man.group.position.set(MAN_WAIT_X, 0, 0);
@@ -636,10 +702,13 @@ function resetShow() {
 
 replayBtn.addEventListener('click', async () => {
   AudioFX.unlock();
+  stageEl.classList.remove('bb-docked');   // go fullscreen again for the show
+  void canvas.clientWidth;                 // flush layout so frameCamera sees
   resetShow();
   await probeAnchors();
   clock0 = performance.now();
   vt = null;
+  frameCamera();
 });
 
 /* ---------- QA hooks (deterministic virtual-time stepping) ---------- */
@@ -662,6 +731,7 @@ function stepTo(t) {
   }
   renderer.render(scene, camera);
   for (const tg of targets) placePlate(tg, t);
+  placeBadTag();
   updateLabels(t);
 }
 function weightScan() {

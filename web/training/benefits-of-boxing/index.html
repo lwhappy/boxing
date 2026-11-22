@@ -85,12 +85,19 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   .bb-hero h1 em { font-style: normal; color: var(--red); }
   .bb-hero-sub { margin: 0 0 6px; color: var(--muted-2); font-size: 15.5px; max-width: 62ch; }
 
+  /* fullscreen transparent arena while the show plays — like boxing-vs-kickboxing;
+   * once the bout ends the canvas docks back into the article flow */
   .bb-stage {
-    position: relative; margin-top: 6px;
-    height: clamp(380px, 56vh, 620px);
+    position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh;
+    max-width: none; margin: 0; overflow: hidden;
+    border: none; border-radius: 0; background: transparent; box-shadow: none;
+    z-index: 10;
+  }
+  .bb-stage.bb-docked {
+    position: relative; inset: auto; width: 100%; height: clamp(320px, 46vh, 470px);
+    max-width: 640px; margin: 10px auto 0; z-index: auto;
     border: 1px solid var(--stroke); border-radius: 18px;
     background: linear-gradient(180deg, rgba(255,90,106,.05), rgba(90,169,255,.04) 55%, transparent);
-    overflow: hidden;
   }
   .bb-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -98,9 +105,9 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   .bt-target {
     position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
     pointer-events: none; white-space: nowrap;
-    font-size: clamp(15px, 2vw, 21px); font-weight: 900; letter-spacing: .10em;
+    font-size: clamp(18px, 2.4vw, 27px); font-weight: 900; letter-spacing: .10em;
     color: #ffe3e6; text-shadow: 0 0 14px rgba(255, 90, 106, .55);
-    padding: 9px 20px; border-radius: 999px;
+    padding: 13px 28px; border-radius: 999px;
     background: rgba(255, 90, 106, .13);
     border: 1px solid rgba(255, 90, 106, .60);
     box-shadow: 0 0 26px rgba(255, 90, 106, .28), inset 0 0 14px rgba(255, 90, 106, .16);
@@ -108,19 +115,19 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
   .bt-target.ball::before {
     content: ''; position: absolute; left: 50%; bottom: calc(100% - 2px);
-    width: 2px; height: 54px; transform: translateX(-50%);
+    width: 2px; height: 78px; transform: translateX(-50%);
     background: linear-gradient(rgba(255,255,255,.38), rgba(255,255,255,.05));
   }
   .bt-target.ball::after {
-    content: ''; position: absolute; left: 50%; bottom: calc(100% - 4px);
-    width: 10px; height: 10px; border-radius: 50%; transform: translateX(-50%);
+    content: ''; position: absolute; left: 50%; bottom: calc(100% - 5px);
+    width: 18px; height: 18px; border-radius: 50%; transform: translateX(-50%);
     background: radial-gradient(circle at 35% 30%, #ff8a92, #a2262e 70%);
-    box-shadow: 0 0 10px rgba(255,90,106,.6);
+    box-shadow: 0 0 12px rgba(255,90,106,.65);
   }
   .bt-target.post::after {
     content: ''; position: absolute; left: 50%; top: calc(100% - 2px);
-    width: 34px; height: 84px; transform: translateX(-50%);
-    border-radius: 8px 8px 12px 12px;
+    width: 54px; height: 190px; transform: translateX(-50%);
+    border-radius: 10px 10px 14px 14px;
     background: linear-gradient(90deg, #3a2026, #57303a 30%, #6b3a46 50%, #57303a 70%, #3a2026);
     border: 1px solid rgba(255, 90, 106, .35);
     box-shadow: 0 10px 24px rgba(0,0,0,.5);
@@ -208,7 +215,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
   @media (max-width: 560px) {
     .bb-grid { grid-template-columns: 1fr; }
-    .bb-stage { height: clamp(340px, 52vh, 460px); }
+    .bb-stage.bb-docked { height: clamp(300px, 46vh, 420px); }
     .bb-orbit-hint { display: none; }
   }
 </style>
@@ -381,6 +388,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=1"></script>
+<script type="module" src="./app.js?v=2"></script>
 </body>
 </html>
