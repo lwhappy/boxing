@@ -1,0 +1,137 @@
+/* SilentJab — boxing workout benefits page */
+
+/* two-column layout: sticky stage left, scrolling benefit chapters right */
+.benefit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(22px, 3.4vw, 44px);
+  align-items: start;
+  margin: clamp(20px, 3vw, 36px) 0 0;
+}
+
+.benefit-stage-col {
+  position: sticky;
+  top: 78px;
+}
+
+.benefit-stage {
+  margin: 0;
+  aspect-ratio: 1 / 0.92;
+  min-height: 0;
+}
+
+/* the stage is one persistent scene — hide the grid mask's repetition and keep
+ * the callout layer inside the rounded corners */
+.benefit-stage { overflow: hidden; }
+
+.benefit-hint {
+  margin: 10px 4px 0;
+  font-size: 12.5px;
+  color: var(--muted, #7c8698);
+  text-align: center;
+}
+
+/* ---------- chapter cards ---------- */
+.benefit-cards { display: flex; flex-direction: column; min-width: 0; }
+
+.chapter {
+  position: relative;
+  padding: 18px 22px 20px;
+  margin: 0 0 34vh;
+  border-radius: 18px;
+  border: 1px solid var(--stroke, rgba(255,255,255,0.1));
+  background: rgba(255, 255, 255, 0.025);
+  opacity: 0.42;
+  transition: opacity 0.35s ease, border-color 0.35s ease, background 0.35s ease;
+}
+
+.chapter:first-child { margin-top: 0; }
+.chapter:last-of-type { margin-bottom: 8vh; }
+
+.chapter.active {
+  opacity: 1;
+  border-color: rgba(255, 154, 77, 0.45);
+  background: rgba(255, 154, 77, 0.05);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+}
+
+.chapter .ch-num {
+  font: 800 12px/1 inherit;
+  letter-spacing: 0.18em;
+  color: rgba(255, 154, 77, 0.85);
+  margin-bottom: 10px;
+}
+
+.chapter h2 {
+  font-size: clamp(19px, 2.2vw, 24px);
+  margin: 0 0 10px;
+}
+
+.chapter p { margin: 0 0 8px; color: var(--text, inherit); }
+
+.chapter .ch-watch {
+  font-size: 13.5px;
+  color: var(--muted, #8b95a6);
+  border-top: 1px dashed var(--stroke, rgba(255,255,255,0.12));
+  padding-top: 10px;
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.chapter .ch-watch b { color: inherit; }
+
+/* ---------- bone-anchored callouts ---------- */
+.bcallout {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -135%);
+  pointer-events: none;
+  white-space: nowrap;
+  font: 600 11.5px/1 inherit;
+  letter-spacing: 0.02em;
+  color: #1d2733;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 154, 77, 0.65);
+  border-radius: 999px;
+  padding: 5px 10px 5px 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 14px rgba(10, 18, 30, 0.22);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.bcallout i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff9a4d;
+  box-shadow: 0 0 8px rgba(255, 154, 77, 0.8);
+  flex: none;
+}
+
+/* ---------- closing prose + FAQ ---------- */
+.benefit-more {
+  margin: 0 0 34vh;
+  padding: 18px 22px 6px;
+  border-radius: 18px;
+  border: 1px solid var(--stroke, rgba(255,255,255,0.1));
+}
+
+.benefit-more h2 { font-size: clamp(18px, 2vw, 22px); margin: 6px 0 10px; }
+.benefit-more h3 { font-size: 15.5px; margin: 16px 0 6px; }
+.benefit-more p { margin: 0 0 10px; }
+
+/* ---------- mobile: stage docks to the top, cards scroll under ---------- */
+@media (max-width: 860px) {
+  .benefit-layout { grid-template-columns: 1fr; gap: 18px; }
+  .benefit-stage-col { top: 64px; z-index: 5; }
+  .benefit-stage { aspect-ratio: 16 / 11; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3); }
+  .chapter { margin-bottom: 30vh; padding: 16px 16px 18px; }
+  .bcallout { font-size: 10.5px; padding: 4px 8px 4px 6px; }
+}
+
+@media (hover: none) {
+  .benefit-hint::after { content: ' — drag the stage to look around'; }
+}
