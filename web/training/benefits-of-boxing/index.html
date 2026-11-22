@@ -139,6 +139,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 
   .bb-stage-ui { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; z-index: 4; }
+  /* replay only appears once the show docks back into the article */
+  .bb-stage:not(.bb-docked) .bb-stage-ui { display: none; }
   .bb-stage-ui button {
     appearance: none; cursor: pointer; border: 1px solid var(--stroke-strong);
     background: rgba(16, 19, 25, .78); color: var(--text);
@@ -162,6 +164,14 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     position: absolute; left: 14px; bottom: 12px; color: var(--muted);
     font-size: 12px; letter-spacing: .05em; pointer-events: none;
   }
+  /* browsers block audio until the first user gesture — tell the visitor */
+  .bb-sound-hint {
+    position: absolute; left: 14px; bottom: 44px; z-index: 4;
+    color: var(--muted); font-size: 12.5px; letter-spacing: .04em;
+    padding: 7px 14px; border-radius: 999px; pointer-events: none;
+    background: rgba(16, 19, 25, .78); border: 1px solid var(--stroke);
+  }
+  .bb-stage.bb-docked .bb-sound-hint { display: none; }
 
   /* ---- article copy ---- */
   .bb-article { max-width: 860px; margin: 0 auto; padding: 30px 11px 56px; }
@@ -371,6 +381,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=5"></script>
+<script type="module" src="./app.js?v=6"></script>
 </body>
 </html>

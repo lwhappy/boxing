@@ -530,6 +530,15 @@ const AudioFX = (() => {
 })();
 document.addEventListener('pointerdown', () => AudioFX.unlock());
 
+/* browsers suspend audio until the first user gesture, so the auto-playing
+ * first show is silent — surface a hint that clears on the first tap */
+const soundHint = document.createElement('div');
+soundHint.className = 'bb-sound-hint';
+soundHint.textContent = '🔊 Tap anywhere for sound';
+soundHint.setAttribute('aria-hidden', 'true');
+stageEl.appendChild(soundHint);
+document.addEventListener('pointerdown', () => soundHint.remove(), { once: true });
+
 /* ---------- anchors: probe each strike's contact-frame bone position ----------
  * With the woman standing at her final position, scrub each attack clip to the
  * contact frame and read the strike bone's world position — that is where the
