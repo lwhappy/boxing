@@ -707,7 +707,7 @@ function frameCamera() {
   const need = docked ? 1.3 : (portrait ? 2.3 : 2.8);
   const z = docked
     ? Math.min(4.2, Math.max(2.75, need / (tanH * camera.aspect)))
-    : Math.min(portrait ? 8.0 : 6.5,
+    : Math.min(portrait ? 6.9 : 6.5,
                Math.max(portrait ? 4.4 : 3.4, need / (tanH * camera.aspect)));
   const cy = docked ? 0.95 : 1.02;
   viewHalfW = Math.tan(camera.fov * Math.PI / 360) * camera.aspect * z;
