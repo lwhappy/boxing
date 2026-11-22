@@ -20,7 +20,6 @@ const stageEl = canvas.parentElement;
 const loadingEl = document.getElementById('bvk-loading');
 const loadingText = document.getElementById('bvk-loading-text');
 const errorEl = document.getElementById('bvk-error');
-const barEl = document.getElementById('bvk-bar');
 const replayBtn = document.getElementById('bvk-replay');
 const koEl = document.getElementById('ko');
 const tagBoxing = document.getElementById('tag-boxing');
@@ -660,6 +659,7 @@ function updateBout(dt = 0) {
     /* dock the canvas back into the article flow so it stops covering the
      * text — fighters idle at the edges inside the docked stage */
     stageEl.classList.add('bvk-docked');
+    replayBtn.hidden = false;   // replay appears at the docked stage's corner
   }
 }
 
@@ -745,7 +745,6 @@ function tick() {
       for (const a of Object.values(f.actions)) a.setEffectiveTimeScale(TS);
     }
     loadingEl.hidden = true;
-    barEl.hidden = false;
     startBout();
     tick();
   } catch (e) {
@@ -758,6 +757,7 @@ function tick() {
 
 replayBtn.addEventListener('click', () => {
   AudioFX.unlock();
+  replayBtn.hidden = true;                  // back to fullscreen — button hides
   stageEl.classList.remove('bvk-docked');   // go fullscreen again for the show
   void canvas.clientWidth;                  // flush layout so frameCamera sees
   frameCamera();                            // the new fullscreen size right away
