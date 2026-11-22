@@ -281,7 +281,7 @@ const targetOf = (key) => targets.find(t => t.strike.key === key);
 const propMat = new THREE.MeshStandardMaterial({ color: 0xa2262e, roughness: 0.5 });
 const bagMat = new THREE.MeshStandardMaterial({ color: 0x2a1a20, roughness: 0.7 });
 const stringMat = new THREE.MeshBasicMaterial({ color: 0x8a8a8a });
-const BALL_R = 0.11;
+const BALL_R = 0.14;
 const STRING_TOP = 3.4;
 
 function makeSpeedBall() {
@@ -301,7 +301,7 @@ for (const tg of targets) {
 }
 
 /* heavy punching bag hanging on a chain from above */
-const BAG_R = 0.15, BAG_LEN = 0.70;          // small hanging bag (total ~1.0 m)
+const BAG_R = 0.18, BAG_LEN = 0.85;          // small hanging bag (total ~1.0 m)
 const BAG_X_OFF = 0.20;                      // bag sits just beyond the knee tip
 const BAG_TOP = 1.02 + BAG_LEN / 2 + BAG_R;  // capsule top y
 function makeBag() {
