@@ -66,9 +66,14 @@
     box-shadow: none; z-index: 40; margin: 0;
   }
   .jab-stage.jab-live::before { display: none; }
-  .jab-stage.jab-docked { max-width: 480px; aspect-ratio: 16 / 7; min-height: 0;
+  .jab-stage.jab-docked { max-width: 480px; aspect-ratio: 16 / 9; min-height: 0;
     border: none; background: transparent; box-shadow: none; }
   .jab-stage.jab-docked::before { display: none; }
+  /* docked stage keeps the annotated pose: pack the callout cards tighter so
+   * all five fit the small canvas */
+  .jab-stage.jab-docked .hero-callout { width: 126px; padding: 5px 7px 6px; border-radius: 8px; }
+  .jab-stage.jab-docked .hero-callout .tag { font-size: 7px; letter-spacing: .1em; margin-bottom: 2px; }
+  .jab-stage.jab-docked .hero-callout .txt { font-size: 9px; line-height: 1.26; }
   /* fixed-camera show: mouse actions off, wheel scrolls the page. Once the
    * stage docks, the canvas takes pointer events again for drag-to-orbit;
    * touch-action pan-y keeps vertical swipes scrolling the article. */
@@ -89,8 +94,26 @@
     transition: background .15s ease, border-color .15s ease;
   }
   .jab-stage.jab-docked .jab-replay:hover { background: rgba(16, 19, 25, .75); border-color: rgba(255, 122, 61, .7); }
+  /* big stage, end of the show: Replay / Close centred at the bottom while
+   * she holds the annotated pose */
+  .jab-actions {
+    display: none; position: absolute; left: 50%; bottom: 36px;
+    transform: translateX(-50%); gap: 14px; z-index: 6;
+  }
+  .jab-stage.jab-paused .jab-actions { display: flex; }
+  .jab-action {
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 14px; font-weight: 700; letter-spacing: .05em; color: #fff;
+    padding: 10px 26px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .32);
+    background: rgba(16, 19, 25, .6);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-action:hover { background: rgba(16, 19, 25, .82); border-color: rgba(255, 122, 61, .7); }
+  .jab-action-close { border-color: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .85); }
   @media (max-width: 620px) {
-    .jab-stage.jab-docked { max-width: 420px; aspect-ratio: 16 / 8; }
+    .jab-stage.jab-docked { max-width: 420px; aspect-ratio: 16 / 10; }
   }
   /* vertical hero: the 3D stage sits on top of the page, copy below.
    * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
@@ -157,6 +180,10 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
       <div class="stage hero-stage jab-stage jab-live" id="jab-stage" aria-label="3D demo of the jab">
         <canvas id="stage-canvas"></canvas>
         <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
+        <div class="jab-actions" id="jab-actions">
+          <button type="button" class="jab-action" id="jab-replay-big">↻ Replay</button>
+          <button type="button" class="jab-action jab-action-close" id="jab-close">✕ Close</button>
+        </div>
         <div class="stage-loading" id="stage-loading">
           <div class="ring"></div>
           <span id="stage-loading-text">Loading 3D model…</span>
@@ -226,6 +253,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=18"></script>
+<script type="module" src="../assets/jab-stage.js?v=19"></script>
 </body>
 </html>

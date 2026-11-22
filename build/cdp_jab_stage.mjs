@@ -1,5 +1,7 @@
-/* QA the moves/jab.html cinematic stage: step through the show with the
- * stepTo hook, screenshot each beat, report state. Usage: node build/cdp_jab_stage.mjs [tag] */
+/* QA the moves/jab.html solo jab show: step through the show with the stepTo
+ * hook, screenshot each beat, report state. Also exercises the Close button
+ * (dock to the small annotated stage) and the docked Replay (back to big).
+ * Usage: node build/cdp_jab_stage.mjs [tag] */
 import fs from 'node:fs';
 
 const PORT = process.env.CDP_PORT || '9222';
@@ -52,19 +54,22 @@ ws.onopen = async () => {
     if (r.exceptionDetails) return 'EXC ' + JSON.stringify(r.exceptionDetails).slice(0, 400);
     return r.result.value;
   };
+  const click = async (id) => {
+    const r = await evalJS(`document.getElementById('${id}').getBoundingClientRect().toJSON()`);
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x + r.width / 2, y: r.y + r.height / 2, button: 'left', clickCount: 1 }, sid);
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x + r.width / 2, y: r.y + r.height / 2, button: 'left', clickCount: 1 }, sid);
+  };
 
   fs.mkdirSync('build/captures', { recursive: true });
 
   console.log('hook:', await evalJS(`!!window.__jab`));
   const meas = await evalJS(`JSON.stringify({
     phase: window.__jab && window.__jab.phase,
-    fightClip: window.__jab ? !!window.__jab.woman.actions['jab-fight'] : null,
-    jabImpact: window.__jab ? +window.__jab.jabImpact?.toFixed?.(3) : null,
-    fightImpact: window.__jab ? +window.__jab.fightImpact?.toFixed?.(3) : null,
+    jabImpact: window.__jab ? +(window.__jab.jabImpact?.toFixed?.(3) ?? null) : null,
   })`);
   console.log('measured:', meas);
   const M = JSON.parse(meas);
-  if (!M || !M.fightClip) { console.log('FAIL: fight clip not registered'); process.exit(1); }
+  if (!M || M.jabImpact === null) { console.log('FAIL: jab probe missing'); process.exit(1); }
 
   /* restart the show from t=0 and freeze it for deterministic stepping */
   await evalJS(`window.__jab.restart()`);
@@ -81,35 +86,44 @@ ws.onopen = async () => {
   const step = async (t) => evalJS(`window.__jab.stepTo(${t.toFixed(3)})`);
 
   const jabImpact = M.jabImpact || 0.6;
-  const fightImpact = M.fightImpact || 1.2;
-  /* show timeline: intro(jabImpact) -> reveal(5*0.72+1.0 hold) -> shift .75 -> settle .55 -> attack(fightImpact) -> aftermath 2s */
-  const tImpact = jabImpact;                  // intro jab reaches
-  const tRevealMid = tImpact + 1.4;
-  const tRevealEnd = tImpact + 5 * 0.72 + 0.95; // just before hold ends (0.05 slack for resume drift)
-  const tSettle = tRevealEnd + 0.75 + 0.30;
-  const tAttackStart = tRevealEnd + 0.75 + 0.55;
+  /* show timeline: intro(jabImpact) -> reveal(5*0.72 stagger + 1.0 hold) -> paused */
+  const tRevealMid = jabImpact + 1.4;
+  const tRevealEnd = jabImpact + 5 * 0.72 + 0.95;   // just before hold ends
+  const tPaused = jabImpact + 5 * 0.72 + 1.1;       // buttons should be up
 
   await step(tRevealMid);
   await shot('reveal_mid', 300);
   await step(tRevealEnd);
   await shot('reveal_end', 200);
 
-  await step(tSettle);
-  await shot('settle', 120);
+  await step(tPaused);
+  await shot('paused_buttons', 200);
+  console.log('paused state:', await evalJS(`JSON.stringify({
+    phase: window.__jab.phase,
+    actionsShown: getComputedStyle(document.getElementById('jab-actions')).display,
+    closeShown: !document.getElementById('jab-close').closest('.jab-actions').hidden,
+  })`));
 
-  await step(tAttackStart + fightImpact * 0.45);
-  await shot('attack_early', 120);
-  await step(tAttackStart + fightImpact - 0.1);
-  await shot('attack_late', 60);
+  /* Close -> docked small stage, annotated pose kept */
+  await click('jab-close');
+  await sleep(300);
+  await shot('docked', 250);
+  console.log('docked state:', await evalJS(`JSON.stringify({
+    phase: window.__jab.phase,
+    stageCls: document.getElementById('jab-stage').className,
+    calloutsShown: document.querySelectorAll('.hero-callout.show').length,
+    wordShown: document.querySelector('.hero-word').classList.contains('show'),
+    scrollW: document.documentElement.scrollWidth,
+  })`));
 
-  await step(tAttackStart + fightImpact + 0.06);
-  await shot('impact', 60);
-  await step(tAttackStart + fightImpact + 1.0);
-  await shot('aftermath_mid', 60);
-
-  await step(tAttackStart + fightImpact + 2.05);
-  await shot('docked', 300);
-  console.log('final:', await evalJS(`JSON.stringify({ phase: window.__jab.phase, scrollW: document.documentElement.scrollWidth })`));
+  /* docked Replay -> back to the big show */
+  await click('jab-replay');
+  await sleep(400);
+  await shot('replay_big', 150);
+  console.log('after docked replay:', await evalJS(`JSON.stringify({
+    phase: window.__jab.phase,
+    stageCls: document.getElementById('jab-stage').className,
+  })`));
 
   if (logs.length) console.log('errors:', [...new Set(logs)].join(' | ').slice(0, 800));
   process.exit(0);

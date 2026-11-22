@@ -1,22 +1,18 @@
 /* SilentJab — moves/jab.html cinematic stage
  *
- * Replaces the old single-move switcher stage on the jab page with a
- * boxing-vs-kickboxing style show:
- *   1. fullscreen (fixed, transparent) — the woman (the bvk kickboxer model)
- *      stands centre, throws the homepage-hero jab and FREEZES at the reach
- *      frame while the five hero callouts (same copy as the homepage) draw
- *      in with leader lines; after a 1 s hold everything fades;
- *   2. she shifts to the right into guard, the fight-game man slides in from
- *      the left on his game idle;
- *   3. she hops forward and jabs his head — he plays hit-to-head, dizzy
- *      stars orbit his crown;
- *   4. 1 s later the show ends: the stage docks back into the article flow
- *      as a small borderless canvas where both fighters idle. Replay restarts.
+ * Solo jab show on the page model (the "white rig" sculpt):
+ *   1. fullscreen (fixed, transparent) — she stands centre, throws the
+ *      homepage-hero jab and FREEZES at the reach frame while the five hero
+ *      callouts (same copy as the homepage) draw in with leader lines;
+ *   2. when every callout is up she stays frozen centre-stage and Replay /
+ *      Close buttons appear at the bottom of the stage. Replay restarts the
+ *      show; Close docks the canvas into the article flow as a small
+ *      borderless stage that keeps the same annotated pose (drag to orbit);
+ *   3. the small stage's Replay goes back to the fullscreen show.
  *
  * Mouse actions during the show are off (fixed-camera cinematic); the wheel
- * scrolls the page. Once the show docks into the article flow the small stage
- * can be orbited by drag (rotate only — wheel still scrolls). Deterministic
- * timeline with a stepTo(t) QA hook.
+ * scrolls the page. Once docked the small stage can be orbited by drag
+ * (rotate only — wheel still scrolls). Deterministic timeline with stepTo(t).
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -28,29 +24,20 @@ const loadingEl = document.getElementById('stage-loading');
 const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 const replayBtn = document.getElementById('jab-replay');
+const bigReplayBtn = document.getElementById('jab-replay-big');
+const closeBtn = document.getElementById('jab-close');
 
 /* page woman: the "white rig" sculpt — mesh + rig + retargeted clips
  * (guard / jab / jab-fight / idle), built by build/build_jab_woman.py from
  * rig-character-white.fbx; guard/idle come from the user's Mixamo FBX donors
- * (build/donor_guard.fbx, build/donor_idle4.fbx), the jabs from the in-repo
+ * (build/donor_guard.fbx, build/donor_idle4.fbx), the jab from the in-repo
  * rigs — all resampled in Blender because the rigs' per-bone rest rotations
- * differ */
+ * differ. Only the solo jab clip is used here. */
 const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=3', import.meta.url).href;
-/* clip donor: the fight-game boxer-woman — her jab steps in with the lead
- * foot. Same Mixamo rig (identical bone names + rest transforms), so the
- * clip plays straight on the page model. */
-const WOMAN_GAME_URL = new URL('../media/glb/boxer-woman.glb?v=2', import.meta.url).href;
-const MAN_URL = new URL('../media/glb/boxer-man.glb?v=2', import.meta.url).href;
 
 const STAGGER = 0.72;      // callout card interval (s)
 const HOLD = 1.0;          // hold after all callouts are shown (user spec: 1 s)
-const SHIFT_DUR = 0.75;    // woman: centre -> right
-const SETTLE = 0.55;       // both idle before the hop jab
-const AFTERMATH = 2.0;     // dizzy hold before docking (user spec: 2 s)
 const ARM_STRAIGHTEN = 0.7; // corrective blend for the page clip's bent lead arm
-const MAN_HEIGHT = 1.82;   // his real skinned height (was ~2.1 m off the head bone)
-const WOMAN_X = 0.95;      // her spot on the right
-const MAN_X = -1.15;       // his spot on the left
 
 /* the five homepage-hero jab callouts, verbatim */
 const CALLS = [
@@ -302,7 +289,7 @@ function play(f, name, { fade = 0.2, clamp = false, loop = false } = {}) {
 }
 
 /* ---------- loading ---------- */
-const FILE_COUNT = 3;
+const FILE_COUNT = 1;
 let loadDone = 0;
 function prog(e) {
   if (!e.total) return;
@@ -313,8 +300,8 @@ function loadGLB(url) {
   return new Promise((res, rej) => new GLTFLoader().load(url, res, prog, rej));
 }
 
-Promise.all([loadGLB(WOMAN_URL), loadGLB(MAN_URL), loadGLB(WOMAN_GAME_URL)]).then(([wg, mg, fg]) => {
-  try { build(wg, mg, fg); }
+loadGLB(WOMAN_URL).then((wg) => {
+  try { build(wg); }
   catch (err) { fail(err); }
 }).catch(fail);
 
@@ -322,14 +309,13 @@ function fail(err) {
   stageEl.classList.remove('jab-live');
   loadingEl.classList.add('hidden');
   errorEl.hidden = false;
-  errorEl.textContent = 'Failed to load the 3D models.\n' + (err && err.message ? err.message : err);
+  errorEl.textContent = 'Failed to load the 3D model.\n' + (err && err.message ? err.message : err);
   console.error('[jab-stage]', err);
 }
 
-/* ---------- fighters ---------- */
+/* ---------- fighter ---------- */
 const woman = { group: new THREE.Group(), mixer: null, actions: {}, bones: {} };
-const man = { group: new THREE.Group(), mixer: null, actions: {}, bones: {} };
-scene.add(woman.group, man.group);
+scene.add(woman.group);
 
 const _sv = new THREE.Vector3();
 
@@ -358,32 +344,6 @@ function straightenLeadArm() {
   worldDeltaToLocal(el, _sq3, _sq);
   el.quaternion.premultiply(_sq);
   el.updateMatrixWorld(true);
-}
-
-/* The fight-game jab is authored head-high: her glove climbs ~37 cm from the
- * guard to reach the man's face. The user wants no lift — cap the glove's
- * height and let the punch land wherever that leaves it (upper chest). Each
- * pass rotates one joint (shoulder, then elbow for the residual) so the hand
- * drops onto the cap. */
-const LIFT_CAP = 1.35;
-const _sd = new THREE.Vector3();
-function suppressLeadLift() {
-  for (const name of ['LeftArm', 'LeftForeArm']) {
-    const j = woman.bones[name], hd = woman.bones.LeftHand;
-    if (!j || !hd) return;
-    woman.group.updateMatrixWorld(true);
-    hd.getWorldPosition(_sa);
-    if (_sa.y <= LIFT_CAP) return;
-    j.getWorldPosition(_sb);
-    const r = _sc.copy(_sa).sub(_sb);          // joint -> hand
-    const r2 = _sd.copy(r);
-    r2.y -= _sa.y - LIFT_CAP;                  // joint -> capped hand
-    if (r.lengthSq() < 1e-6 || r2.lengthSq() < 1e-6) return;
-    _sq.setFromUnitVectors(r.clone().normalize(), r2.normalize());
-    worldDeltaToLocal(j, _sq, _sq3);
-    j.quaternion.premultiply(_sq3);
-    j.updateMatrixWorld(true);
-  }
 }
 
 function samplePose(root, budget = 9000) {
@@ -462,49 +422,14 @@ function buildWoman(gltf) {
   woman.mixer.stopAllAction();
 }
 
-/* fight-game man: already Y-up. Normalize to the real skinned height (the
- * head BONE sits at the jaw, using it made him ~2.1 m), ground the soles,
- * face RIGHT (+X). */
-function buildMan(gltf) {
-  const root = gltf.scene;
-  fixMaterials(root);
-  man.root = root;
-  man.group.add(root);
-  man.group.rotation.y = Math.PI / 2;
-  man.bones.Head = boneByName(root, 'Head');
-  man.mixer = new THREE.AnimationMixer(root);
-  for (const clip of gltf.animations) {
-    const act = man.mixer.clipAction(clip);
-    act.enabled = true;
-    man.actions[clip.name] = act;
-  }
-  const idle = man.actions.idle || Object.values(man.actions)[0];
-  idle.reset().play();
-  man.mixer.setTime(1.0);
-  let pts = samplePose(root);
-  const h0 = Math.max(...pts.map(p => p.y)) - Math.min(...pts.map(p => p.y));
-  root.scale.setScalar(MAN_HEIGHT / Math.max(0.001, h0));
-  root.updateMatrixWorld(true);
-  pts = samplePose(root);
-  root.position.y -= Math.min(...pts.map(p => p.y)) - 0.003;
-  root.updateMatrixWorld(true);
-  man.mixer.stopAllAction();
-}
-
 /* ---------- choreography probes ---------- */
 let jabDur = 1.0;
 let jabImpact = 0.6;      // intro-clip time of the reach frame
-let fightDur = 1.0;
-let fightImpact = 0.6;    // fight-clip time of the reach frame
-let gloveXF = -0.5;       // fight-jab glove world x at impact (woman at x=0)
-let headX0 = 0;           // man head world x (man at x=0)
-let hitBodyDur = 1.0;
-let contactX = 0;         // woman x at contact
 
 function probe() {
   const hand = woman.bones.LeftHand;
 
-  /* intro jab: the page clip, played with the procedurally straightened arm */
+  /* the solo jab: find the reach frame to freeze on */
   const wAct = woman.actions.jab;
   jabDur = wAct.getClip().duration;
   wAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
@@ -519,135 +444,12 @@ function probe() {
   }
   jabImpact = best.t;
   woman.mixer.stopAllAction();
-
-  /* fight jab: donor clip (steps in with the lead foot) — find the reach
-   * frame and land the fist exactly there (no arm re-aiming: the clip is
-   * left as authored, so the punch lands where it naturally lands) */
-  const fAct = woman.actions['jab-fight'];
-  if (fAct) {
-    fightDur = fAct.getClip().duration;
-    fAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    let best = { t: 0, x: Infinity };
-    for (let i = 0; i <= 96; i++) {
-      const t = (fightDur * i) / 96;
-      woman.mixer.setTime(t);
-      suppressLeadLift();          // probe the patched trajectory
-      woman.group.updateMatrixWorld(true);
-      hand.getWorldPosition(_sv);
-      if (_sv.x < best.x) best = { t, x: _sv.x };
-    }
-    fightImpact = best.t;
-    gloveXF = best.x;
-    woman.mixer.stopAllAction();
-  }
-
-  const hb = man.actions['hit-body'];
-  if (hb) hitBodyDur = hb.getClip().duration;
-  const idle = man.actions.idle;
-  idle.reset().play();
-  man.mixer.setTime(1.0);
-  man.group.updateMatrixWorld(true);
-  headX0 = man.bones.Head ? man.bones.Head.getWorldPosition(_sv).x : 0;
-  man.mixer.stopAllAction();
-
-  /* the fist now lands where the clip naturally puts it — upper chest.
-   * stop her just at the front of his torso (~5cm inside his centre line) */
-  contactX = MAN_X + 0.05 - gloveXF;
-}
-
-/* ---------- impact FX + dizzy stars ---------- */
-let flashTex = null;
-function getFlashTexture() {
-  if (flashTex) return flashTex;
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d');
-  const rad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
-  rad.addColorStop(0, 'rgba(255,255,255,1)');
-  rad.addColorStop(0.35, 'rgba(255,214,140,0.9)');
-  rad.addColorStop(1, 'rgba(255,140,60,0)');
-  g.fillStyle = rad;
-  g.fillRect(0, 0, 128, 128);
-  flashTex = new THREE.CanvasTexture(c);
-  return flashTex;
-}
-const sparkGeo = new THREE.SphereGeometry(0.022, 6, 5);
-const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffa24a });
-const fx = [];
-function spawnImpact(pos) {
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: getFlashTexture(), transparent: true, depthWrite: false }));
-  spr.position.copy(pos);
-  spr.scale.setScalar(0.14);
-  scene.add(spr);
-  fx.push({ type: 'flash', obj: spr, t: 0, dur: 0.28 });
-  for (let i = 0; i < 12; i++) {
-    const m = new THREE.Mesh(sparkGeo, sparkMat);
-    m.position.copy(pos);
-    fx.push({
-      type: 'spark', obj: m, t: 0, dur: 0.42 + Math.random() * 0.18,
-      v: new THREE.Vector3((Math.random() - 0.5) * 2.6, Math.random() * 2.4 + 0.5, (Math.random() - 0.5) * 1.6),
-    });
-    scene.add(m);
-  }
-}
-function updateFx(dt) {
-  for (let i = fx.length - 1; i >= 0; i--) {
-    const e = fx[i];
-    e.t += dt;
-    const p = e.t / e.dur;
-    if (p >= 1) { scene.remove(e.obj); fx.splice(i, 1); continue; }
-    if (e.type === 'flash') { e.obj.scale.setScalar(0.14 + p * 0.6); e.obj.material.opacity = 1 - p; }
-    else { e.v.y -= 5.5 * dt; e.obj.position.addScaledVector(e.v, dt); e.obj.scale.setScalar(Math.max(0.2, 1 - p)); }
-  }
-}
-
-/* three little stars orbiting the hurt man's crown */
-function starGeometry(outer, inner) {
-  const shape = new THREE.Shape();
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
-    if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
-  }
-  shape.closePath();
-  return new THREE.ShapeGeometry(shape);
-}
-const stars = new THREE.Group();
-const starMat = new THREE.MeshBasicMaterial({ color: 0xffd54a, side: THREE.DoubleSide });
-const starEls = [];
-for (let i = 0; i < 3; i++) {
-  const m = new THREE.Mesh(starGeometry(0.055, 0.024), starMat);
-  stars.add(m);
-  starEls.push(m);
-}
-stars.visible = false;
-scene.add(stars);
-let starsT = 0;
-function updateStars(dt) {
-  if (!stars.visible) return;
-  starsT += dt;
-  const head = man.bones.Head;
-  if (!head) return;
-  head.getWorldPosition(_sv);
-  stars.position.set(_sv.x, _sv.y + 0.22, _sv.z);
-  for (let i = 0; i < 3; i++) {
-    const a = starsT * 2.6 + (i / 3) * Math.PI * 2;
-    const el = starEls[i];
-    el.position.set(Math.cos(a) * 0.24, Math.sin(starsT * 3 + i) * 0.03, Math.sin(a) * 0.13);
-    el.rotation.y = a;
-    el.rotation.z = starsT * 3;
-  }
 }
 
 /* ---------- show state ---------- */
-let phase = 'load';       // intro | reveal | shift | settle | attack | aftermath | docked
+let phase = 'load';       // intro | reveal | paused | docked
 let showT = 0;
 let revT = 0, shown = 0;
-let shiftT = 0, settleT = 0, attackT = 0, afterT = 0, dockT = 0;
-let fired = false, manBackIdle = false, steppedBack = false;
-let shakeT = 0;
 
 function freezeWoman() {
   const wa = woman.actions.jab;
@@ -657,75 +459,55 @@ function freezeWoman() {
   woman.group.updateMatrixWorld(true);
 }
 
-function contact() {
-  /* the capped punch lands on the chest — react with the body hit, not a
-   * head snap */
-  play(man, 'hit-body', { clamp: true, fade: 0.06 });
-  /* spark right where the glove actually is (no head-aim compensation) */
-  const glove = woman.bones.LeftHand ? woman.bones.LeftHand.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(contactX + gloveXF, 1.3, 0);
-  spawnImpact(glove);
-  stars.visible = true;
-  starsT = 0;
-  shakeT = 0.5;
-}
-
+/* Close: dock the canvas into the article flow. She keeps the frozen,
+ * annotated pose — the callouts re-layout onto the small stage and the user
+ * can orbit around her. */
 function dock() {
   phase = 'docked';
-  dockT = 0;
-  stageEl.classList.remove('jab-live');
+  stageEl.classList.remove('jab-live', 'jab-paused');
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
-  wordEl.classList.remove('show');
-  /* both fighters settle into the same fight idle once docked — the sculpt's
-   * own baked idle when present (baked from the user's Mixamo Idle (4).fbx
-   * donor), else the runtime-retargeted fight idle, else guard */
-  play(woman, woman.actions.idle ? 'idle'
-    : woman.actions['idle-fight'] ? 'idle-fight' : 'guard', { fade: 0.3, loop: true });
+  layoutCallouts();
   resize();
-  /* hand the camera over to the user */
+  /* hand the camera over to the user, close enough to fill the small canvas */
   controls.target.copy(camTgt);
+  camera.position.copy(controls.target)
+    .add(camera.position.clone().sub(controls.target).setLength(2.9));
   controls.enabled = true;
   controls.update();
 }
 
 function resetShow() {
+  const wasDocked = controls.enabled;
   phase = 'intro';
   showT = 0;
   revT = 0; shown = 0;
-  shiftT = 0; settleT = 0; attackT = 0; afterT = 0; dockT = 0;
-  fired = false; manBackIdle = false; steppedBack = false;
-  shakeT = 0; starsT = 0;
   hideCallouts();
-  for (const e of fx) scene.remove(e.obj);
-  fx.length = 0;
-  stars.visible = false;
-  stageEl.classList.remove('jab-docked');
+  stageEl.classList.remove('jab-docked', 'jab-paused');
   stageEl.classList.add('jab-live');
   replayBtn.hidden = true;
-  /* scripted camera takes over again — start the easing from wherever the
-   * user had orbited to, so the return is a smooth sweep, not a snap */
-  if (controls.enabled) camPos.copy(camera.position);
+  /* scripted camera takes over again — when coming back from the docked
+   * stage, start the easing from wherever the user had orbited to, so the
+   * return is a smooth sweep, not a snap */
+  if (wasDocked) {
+    camPos.copy(camera.position);
+    camTgt.copy(controls.target);
+  } else {
+    camPos.set(0, 1.2, 4.5);
+    camTgt.set(0, 0.95, 0);
+  }
   controls.enabled = false;
   woman.group.position.set(0, 0, 0);
   woman.mixer.stopAllAction();
   play(woman, 'jab', { fade: 0, clamp: true });
-  man.group.visible = false;
-  man.group.position.set(MAN_X - 2.2, 0, 0);
-  man.mixer.stopAllAction();
-  camPos.set(0, 1.2, 4.5);
-  camTgt.set(0, 0.95, 0);
   resize();
 }
 
 function advance(dt) {
   showT += dt;
-  const dancing = phase !== 'reveal';   // her mixer freezes during the callouts
-  if (dancing && woman.mixer) woman.mixer.update(dt);
-  if (phase === 'intro') straightenLeadArm();   // keep the lead arm straight
-  if (phase === 'attack' || phase === 'aftermath') suppressLeadLift();
-  if (man.group.visible && man.mixer) man.mixer.update(dt);
-
   if (phase === 'intro') {
+    if (woman.mixer) woman.mixer.update(dt);
+    straightenLeadArm();   // keep the lead arm straight
     const wa = woman.actions.jab;
     if (wa && wa.time >= jabImpact - 1e-3) {
       freezeWoman();
@@ -736,83 +518,20 @@ function advance(dt) {
       /* only while the reveal is actually on screen — a fast stepTo() jump
        * would otherwise fire this rAF after hideCallouts() and the word
        * would haunt the docked stage */
-      requestAnimationFrame(() => { if (phase === 'reveal') wordEl.classList.add('show'); });
+      requestAnimationFrame(() => { if (phase !== 'intro') wordEl.classList.add('show'); });
       prefillCallouts();
     }
   } else if (phase === 'reveal') {
     revT += dt;
     while (shown < 5 && revT >= shown * STAGGER) revealAt(shown++);
     if (shown === 5 && revT >= 5 * STAGGER + HOLD) {
-      hideCallouts();
-      phase = 'shift';
-      shiftT = 0;
-      play(woman, 'guard', { fade: 0.3, loop: true });
-      man.group.visible = true;
-      man.group.position.set(MAN_X - 2.2, 0, 0);
-      play(man, 'idle', { fade: 0.25, loop: true });
+      /* every callout is up: hold the annotated pose centre-stage and offer
+       * Replay / Close at the bottom of the stage */
+      phase = 'paused';
+      stageEl.classList.add('jab-paused');
     }
-  } else if (phase === 'shift') {
-    shiftT += dt;
-    const p = Math.min(1, shiftT / SHIFT_DUR);
-    const e = p * p * (3 - 2 * p);
-    woman.group.position.x = THREE.MathUtils.lerp(0, WOMAN_X, e);
-    man.group.position.x = THREE.MathUtils.lerp(MAN_X - 2.2, MAN_X, e);
-    if (p >= 1) { phase = 'settle'; settleT = 0; }
-  } else if (phase === 'settle') {
-    settleT += dt;
-    if (settleT >= SETTLE) {
-      phase = 'attack';
-      attackT = 0;
-      fired = false;
-      play(woman, woman.actions['jab-fight'] ? 'jab-fight' : 'jab', { fade: 0.1, clamp: true });
-    }
-  } else if (phase === 'attack') {
-    /* the fight jab steps in with its own footwork — she only glides the
-     * remaining distance on the ground, no extra hop arc */
-    attackT += dt;
-    const p = Math.min(1, attackT / Math.max(0.2, fightImpact));
-    const e = p * p * (3 - 2 * p);
-    woman.group.position.x = THREE.MathUtils.lerp(WOMAN_X, contactX, e);
-    const wa = woman.actions['jab-fight'] || woman.actions.jab;
-    const impact = woman.actions['jab-fight'] ? fightImpact : jabImpact;
-    if (!fired && wa && wa.time >= impact - 1e-3) {
-      fired = true;
-      contact();
-      phase = 'aftermath';
-      afterT = 0;
-    }
-  } else if (phase === 'aftermath') {
-    afterT += dt;
-    /* she doesn't linger chest-to-chest: half a second after the hit she
-     * returns to her own spot in guard, so the docked canvas shows the two
-     * squared up at sparring distance */
-    if (!steppedBack && afterT >= 0.25) {
-      steppedBack = true;
-      play(woman, 'guard', { fade: 0.25, loop: true });
-      woman.retreatFrom = woman.group.position.x;
-    }
-    if (steppedBack) {
-      const p = Math.min(1, (afterT - 0.25) / 0.6);
-      const e = p * p * (3 - 2 * p);
-      woman.group.position.x = THREE.MathUtils.lerp(woman.retreatFrom, WOMAN_X, e);
-    }
-    if (afterT >= AFTERMATH) dock();
-  } else if (phase === 'docked') {
-    dockT += dt;
-    if (dockT > 2.5) stars.visible = false;
   }
-
-  /* the hurt man settles back to his idle once hit-body has played out */
-  const hh = man.actions['hit-body'];
-  if (hh && !manBackIdle && (phase === 'aftermath' || phase === 'docked')
-      && hh.time >= hitBodyDur - 0.03) {
-    manBackIdle = true;
-    play(man, 'idle', { fade: 0.35, loop: true });
-  }
-
-  if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
-  updateFx(dt);
-  updateStars(dt);
+  /* 'paused' and 'docked': frozen annotated pose, nothing to advance */
 }
 
 /* ---------- camera ---------- */
@@ -820,25 +539,13 @@ const _want = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
 function computeCamera() {
   const aspect = camera.aspect || 1;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
-  const portrait = aspect < 0.8;   // phones: everyone a step further away
-  if (phase === 'intro' || phase === 'reveal') {
-    /* solo: she fills the frame like the homepage hero demo */
-    const zH = 1.32 / tanH;                      // ~2.2m visible height at fov 38
-    const zW = 0.85 / (tanH * aspect);
-    const z = Math.max(3.6, zH, zW) * (portrait ? 1.2 : 1);
-    _want.tgt.set(-0.15, 0.92, 0);
-    _want.pos.set(_want.tgt.x + z * 0.30, _want.tgt.y + z * 0.12, z);
-  } else {
-    const wx = woman.group.position.x;
-    const mx = man.group.visible ? man.group.position.x : MAN_X;
-    const mid = (wx + mx) / 2;
-    const span = Math.abs(wx - mx) + 1.5;
-    const zH = 1.12 / tanH;
-    const zW = (span / 2) / (tanH * aspect);
-    const z = Math.max(2.9, zH, zW) * (portrait ? 1.1 : 1);
-    _want.tgt.set(mid, 1.02, 0);
-    _want.pos.set(mid + z * 0.16, 1.18, z);
-  }
+  const portrait = aspect < 0.8;   // phones: a step further away
+  /* solo: she fills the frame like the homepage hero demo */
+  const zH = 1.32 / tanH;                      // ~2.2m visible height at fov 38
+  const zW = 0.85 / (tanH * aspect);
+  const z = Math.max(3.6, zH, zW) * (portrait ? 1.2 : 1);
+  _want.tgt.set(-0.15, 0.92, 0);
+  _want.pos.set(_want.tgt.x + z * 0.30, _want.tgt.y + z * 0.12, z);
 }
 function updateCamera(dt) {
   if (controls.enabled) {
@@ -853,11 +560,6 @@ function updateCamera(dt) {
   camPos.lerp(_want.pos, k);
   camTgt.lerp(_want.tgt, k);
   camera.position.copy(camPos);
-  if (shakeT > 0) {
-    const s = shakeT * 0.045;
-    camera.position.x += (Math.random() - 0.5) * s;
-    camera.position.y += (Math.random() - 0.5) * s;
-  }
   camera.lookAt(camTgt);
   headFill.position.copy(camera.position).sub(camTgt).setLength(6).add(camTgt);
   headFill.target.position.copy(camTgt);
@@ -921,9 +623,9 @@ function stopLoop() {
   running = false;
 }
 
-replayBtn.addEventListener('click', () => {
-  resetShow();
-});
+replayBtn.addEventListener('click', resetShow);      // docked -> big show
+bigReplayBtn.addEventListener('click', resetShow);   // big stage: replay
+closeBtn.addEventListener('click', dock);            // big stage: dock small
 
 let visible = true;
 if ('IntersectionObserver' in window) {
@@ -938,130 +640,8 @@ document.addEventListener('visibilitychange', () => {
   else if (!document.hidden && visible && phase !== 'load') startLoop();
 });
 
-/* Retarget a donor clip onto the sculpt rig by skeleton transfer.
- *
- * The rigs share bone NAMES but their per-bone rest orientations (and even
- * the armature nodes' own orientations) differ, and glTF animation tracks
- * REPLACE a bone's local quaternion, so raw donor clips twist the sculpt.
- * Instead every frame the donor skeleton's armature-space pose is mapped
- * into the sculpt's armature space (a pure rotation between the two spaces)
- * and the sculpt bones are re-expressed under it — the same transfer the
- * Blender bake (build/build_jab_woman.py) performs, just at load time. */
-function bakeRetarget(donorGltf, clip) {
-  const norm = (s) => s.replace(/[^a-z]/gi, '').toLowerCase();
-  const donorRoot = donorGltf.scene;
-  const dBone = new Map();
-  donorRoot.traverse((o) => { if (o.isBone) dBone.set(norm(o.name), o); });
-
-  // sculpt armature node = topmost bone's parent
-  let sArm = woman.bones.Hips;
-  while (sArm.parent && sArm.parent.isBone) sArm = sArm.parent;
-  sArm = sArm.parent || sArm;                    // the Armature node, not the top bone
-  // donor armature node = topmost bone's parent
-  let dArm = null;
-  donorRoot.traverse((o) => { if (o.isBone && (!dArm || !dArm.parent || o.parent.isBone)) { if (!dArm) dArm = o; } });
-  while (dArm.parent && dArm.parent.isBone) dArm = dArm.parent;
-  dArm = dArm.parent || dArm;                    // the Armature node, not the top bone
-
-  /* map the donor's world pose onto the sculpt's: donor Mixamo characters
-   * face +Z in their own scene; the page wants her facing LEFT (−X world) —
-   * the node-space rotation must include that yaw, otherwise the sculpt
-   * armature's own world rotation cancels the group's facing correction */
-  const RDesired = new THREE.Quaternion().setFromAxisAngle(
-    new THREE.Vector3(0, 1, 0), -Math.PI / 2);       // +Z facing -> −X facing
-  const RMap = new THREE.Quaternion()
-    .copy(sArm.getWorldQuaternion(new THREE.Quaternion())).invert()
-    .multiply(RDesired)
-    .multiply(dArm.getWorldQuaternion(new THREE.Quaternion()));
-  const RMapM = new THREE.Matrix4().makeRotationFromQuaternion(RMap);
-
-  const mixer = new THREE.AnimationMixer(donorRoot);
-  const act = mixer.clipAction(clip);
-  act.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-
-  const FPS = 30;
-  const n = Math.max(2, Math.round(clip.duration * FPS) + 1);
-  const times = new Float32Array(n);
-  const qTracks = new Map();   // norm bone name -> { name, values }
-  const pBone = null;          // hips = first bone in traversal order
-  let pBoneName = null;
-  const order = [];
-  woman.root.traverse((o) => { if (o.isBone) order.push(o); });
-
-  const _m = new THREE.Matrix4(), _mi = new THREE.Matrix4();
-  const _p = new THREE.Vector3(), _qv = new THREE.Quaternion(), _sv = new THREE.Vector3();
-  const parentAccum = new Map();  // sculpt bone -> pose matrix in armature space
-
-  for (let f = 0; f < n; f++) {
-    const t = Math.min(clip.duration, f / FPS);
-    times[f] = t;
-    mixer.setTime(t);
-    donorRoot.updateMatrixWorld(true);
-    for (const b of order) {
-      const key = norm(b.name);
-      const db = dBone.get(key);
-      let localM;
-      if (db) {
-        // donor bone pose mapped into the sculpt's armature space
-        _mi.copy(dArm.matrixWorld).invert().multiply(db.matrixWorld);
-        _m.copy(RMapM).multiply(_mi);
-        parentAccum.set(key, _m.clone());
-        const parentKey = b.parent && b.parent.isBone ? norm(b.parent.name) : null;
-        const pm = parentKey ? parentAccum.get(parentKey) : null;
-        localM = pm ? _mi.copy(pm).invert().multiply(_m) : _m;
-        localM.decompose(_p, _qv, _sv);
-      } else {
-        _p.copy(b.position); _qv.copy(b.quaternion); _sv.set(1, 1, 1);
-      }
-      /* full skeleton transfer: the sculpt follows the donor skeleton
-       * (positions included) exactly like the proven Blender bake */
-      let rec = qTracks.get(key);
-      if (!rec) {
-        rec = {
-          name: b.name,
-          values: new Float32Array(n * 4),
-          pos: new Float32Array(n * 3),
-        };
-        qTracks.set(key, rec);
-      }
-      _qv.toArray(rec.values, f * 4);
-      _p.toArray(rec.pos, f * 3);
-      if (!pBoneName) pBoneName = b.name;   // first bone in traversal order = hips
-    }
-  }
-  mixer.stopAllAction();
-
-  const tracks = [];
-  for (const rec of qTracks.values()) {
-    tracks.push(new THREE.QuaternionKeyframeTrack(rec.name + '.quaternion', times, rec.values));
-    tracks.push(new THREE.VectorKeyframeTrack(rec.name + '.position', times, rec.pos));
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
-}
-
-function build(wg, mg, fg) {
+function build(wg) {
   buildWoman(wg);
-  buildMan(mg);
-  /* the baked jab-fight clip came from a donor with a different node
-   * convention — replace it with a runtime retarget of the fight-game jab */
-  const fClip = fg && (fg.animations || []).find((c) => c.name === 'jab');
-  if (fClip) {
-    const retargeted = bakeRetarget(fg, fClip);
-    const act = woman.mixer.clipAction(retargeted);
-    act.enabled = true;
-    woman.actions['jab-fight'] = act;
-    console.log('[jab] jab-fight retargeted from the fight-game rig');
-  }
-  /* the sculpt has no idle clip of her own — retarget the fight-game idle so
-   * both fighters can settle into the same pose once the stage docks */
-  const iClip = fg && (fg.animations || []).find((c) => c.name === 'idle');
-  if (iClip) {
-    const retargeted = bakeRetarget(fg, iClip);
-    const act = woman.mixer.clipAction(retargeted);
-    act.enabled = true;
-    woman.actions['idle-fight'] = act;
-    console.log('[jab] idle retargeted from the fight-game rig');
-  }
   probe();
   loadingEl.classList.add('hidden');
   layoutCallouts();
@@ -1071,9 +651,8 @@ function build(wg, mg, fg) {
   window.__jab = {
     get phase() { return phase; },
     get t() { return showT; },
-    jabImpact, fightImpact, contactX, gloveXF,
-    suppressLeadLift,
-    woman, man, camera, THREE, samplePose,
+    jabImpact,
+    woman, camera, THREE, samplePose,
     stepTo(target) {
       stopLoop();              // exact-time QA: no wall-clock interleaving
       const dt = 1 / 30;
