@@ -5,6 +5,7 @@ Source rig:  /Users/justrun/project/boxing-game/moves/rig-character-white.fbx
              (Tripo/Mixamo 33-bone rig, 0.01 armature scale, bone translations in cm)
 Clip donors: web/training/benefits-of-boxing/models/woman.glb  (guard, jab)
              web/media/glb/boxer-woman.glb                     (jab -> "jab-fight")
+             build/donor_idle4.fbx                             (Mixamo idle -> "idle")
 
 The donor rigs' per-bone REST ROTATIONS differ from the sculpt's, and glTF
 animation tracks REPLACE a bone's local quaternion, so donor clips cannot be
@@ -25,6 +26,7 @@ SRC = "/Users/justrun/project/boxing-game/moves/rig-character-white.fbx"
 ROOT = "/Users/justrun/project/boxing-3"
 DONOR_MOVES = os.path.join(ROOT, "web/training/benefits-of-boxing/models/woman.glb")
 DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
+DONOR_IDLE = os.path.join(ROOT, "build/donor_idle4.fbx")
 OUT = os.path.join(ROOT, "web/media/glb/jab-woman.glb")
 MAXTEX = 2048
 FPS = 30.0
@@ -78,6 +80,18 @@ if WITH_CLIPS:
     rig_game = next(o for o in bpy.data.objects
                     if o.type == "ARMATURE" and o not in known)
     known.add(rig_game)
+    # the Mixamo idle donor (FBX, 33 bones, no mesh). Mixamo ships 24fps keys;
+    # drop the scene to 24fps before importing so that, when the idle iteration
+    # of the bake loop runs, retimed_to_fps rescales the keys 24 -> 30 instead
+    # of letting them play 19% fast at 30fps (idle is the LAST CLIPS entry, so
+    # the earlier donors are unaffected)
+    rig_idle = None
+    if os.path.exists(DONOR_IDLE):
+        bpy.context.scene.render.fps = 24
+        bpy.ops.import_scene.fbx(filepath=DONOR_IDLE)
+        rig_idle = next(o for o in bpy.data.objects
+                        if o.type == "ARMATURE" and o not in known)
+        known.add(rig_idle)
     # drop the donors' meshes up front so they never pollute the export
     for o in list(bpy.data.objects):
         if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
@@ -130,6 +144,10 @@ if WITH_CLIPS:
         (rig_moves, acts_moves, "jab", "jab"),
         (rig_game, acts_game, "jab", "jab-fight"),
     ]
+    if rig_idle is not None:
+        acts_idle = rig_actions(rig_idle)
+        print(f"  donor idle clips: {sorted(acts_idle)}")
+        CLIPS.append((rig_idle, acts_idle, "Layer0", "idle"))
 
     M_n = rig_n.matrix_world.copy()
     hips_n = rig_n.pose.bones["mixamorig:Hips"]
@@ -207,9 +225,9 @@ if WITH_CLIPS:
         if o is not rig_n and o is not mesh_n:
             bpy.data.objects.remove(o, do_unlink=True)
 
-    # keep only the three retargeted actions (donor actions are still in the
+    # keep only the retargeted actions (donor actions are still in the
     # file and would all be exported in ACTIONS mode)
-    keep = {"guard", "jab", "jab-fight"}
+    keep = {"guard", "jab", "jab-fight", "idle"}
     for a in list(bpy.data.actions):
         if a.name not in keep:
             bpy.data.actions.remove(a)

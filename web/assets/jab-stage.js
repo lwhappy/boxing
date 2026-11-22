@@ -29,11 +29,11 @@ const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 const replayBtn = document.getElementById('jab-replay');
 
-/* page woman: the "white rig" sculpt — mesh + rig + three retargeted clips
- * (guard / jab / jab-fight), built by build/build_jab_woman.py from
+/* page woman: the "white rig" sculpt — mesh + rig + retargeted clips
+ * (guard / jab / jab-fight / idle), built by build/build_jab_woman.py from
  * rig-character-white.fbx; donor clips were resampled in Blender because the
  * rigs' per-bone rest rotations differ */
-const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=1', import.meta.url).href;
+const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=2', import.meta.url).href;
 /* clip donor: the fight-game boxer-woman — her jab steps in with the lead
  * foot. Same Mixamo rig (identical bone names + rest transforms), so the
  * clip plays straight on the page model. */
@@ -645,8 +645,11 @@ function dock() {
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
   wordEl.classList.remove('show');
-  /* both fighters settle into the same fight idle once docked */
-  play(woman, woman.actions['idle-fight'] ? 'idle-fight' : 'guard', { fade: 0.3, loop: true });
+  /* both fighters settle into the same fight idle once docked — the sculpt's
+   * own baked idle when present (baked from the user's Mixamo Idle (4).fbx
+   * donor), else the runtime-retargeted fight idle, else guard */
+  play(woman, woman.actions.idle ? 'idle'
+    : woman.actions['idle-fight'] ? 'idle-fight' : 'guard', { fade: 0.3, loop: true });
   resize();
   /* hand the camera over to the user */
   controls.target.copy(camTgt);
