@@ -468,11 +468,11 @@ function dock() {
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
   hideCallouts();
-  /* the docked look mirrors what the fight-game man used to show: facing
-   * screen-right, angled ~45° out of the screen toward the viewer (yaw
-   * swept 90..180° — 112.5° reads best: face and gloves visible, three-
-   * quarter to the camera) */
-  woman.group.rotation.y = Math.PI * 0.625;
+  /* docked look: facing screen-right angled out toward the viewer. Yaw
+   * swept 90..180 deg earlier; the user then asked for a further 45 deg
+   * right turn from 112.5 deg -> 67.5 deg (3PI/8): nose to screen-right,
+   * ~22 deg off profile toward the camera, face and gloves visible */
+  woman.group.rotation.y = Math.PI * 0.375;
   woman.mixer.stopAllAction();
   play(woman, 'idle', { fade: 0.3, loop: true });
   resize();
