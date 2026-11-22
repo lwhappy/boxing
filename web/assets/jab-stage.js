@@ -37,7 +37,7 @@ const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=3', import.meta.url).hre
 
 const STAGGER = 0.72;      // callout card interval (s)
 const HOLD = 1.0;          // hold after all callouts are shown (user spec: 1 s)
-const ARM_STRAIGHTEN = 0.7; // corrective blend for the page clip's bent lead arm
+const ARM_STRAIGHTEN = 0.9; // corrective blend at full reach (user: straighter lead arm)
 
 /* the five homepage-hero jab callouts, verbatim */
 const CALLS = [
@@ -320,27 +320,42 @@ scene.add(woman.group);
 const _sv = new THREE.Vector3();
 
 /* The page clip's lead arm keeps a bend at the elbow through the jab (baked
- * into the source animation). We can't edit the GLB, so we straighten the
- * arm procedurally: rotate the forearm onto the upper-arm axis every frame
- * the pose is evaluated, blended by ARM_STRAIGHTEN. */
+ * into the source animation — 60.5° short of straight at the reach frame).
+ * We can't edit the GLB, so we straighten the arm procedurally: rotate the
+ * forearm onto the upper-arm axis every frame the pose is evaluated, blended
+ * by ARM_STRAIGHTEN at full reach and ramped in over the extension so the
+ * guard wind-up keeps its natural fold. */
 const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3();
+const _sd = new THREE.Vector3(), _se = new THREE.Vector3();
 const _sq = new THREE.Quaternion(), _sq2 = new THREE.Quaternion(), _sq3 = new THREE.Quaternion();
 /* world-space delta -> parent-local delta: L' = (P⁻¹·D·P)·L */
 function worldDeltaToLocal(bone, worldDelta, out) {
   bone.parent.getWorldQuaternion(_sq2);
   return out.copy(_sq2).invert().multiply(worldDelta).multiply(_sq2);
 }
-function straightenLeadArm() {
+const smooth = (u) => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
+/* correction weight grows over the final ~40% of the punch so the arm only
+ * straightens as it extends toward the reach frame */
+function straightenWeight(clipT) {
+  const t0 = jabImpact * 0.6;
+  return ARM_STRAIGHTEN * smooth((clipT - t0) / Math.max(1e-4, jabImpact - t0));
+}
+function straightenLeadArm(clipT) {
   const sh = woman.bones.LeftArm, el = woman.bones.LeftForeArm, hd = woman.bones.LeftHand;
   if (!sh || !el || !hd) return;
+  const w = straightenWeight(clipT === undefined ? jabImpact : clipT);
+  if (w <= 0) return;
   woman.group.updateMatrixWorld(true);
   sh.getWorldPosition(_sa);
   el.getWorldPosition(_sb);
   hd.getWorldPosition(_sc);
-  const upper = _sa.copy(_sb).sub(_sa).normalize();   // shoulder -> elbow
-  const fore = _sb.copy(_sc).sub(_sb).normalize();    // elbow -> hand
+  /* NOTE: the copy targets (_sd/_se) must differ from the subtract operands —
+   * an earlier draft aliased them (`_sa.copy(_sb).sub(_sa)`) which produced a
+   * zero vector and silently disabled the whole corrective. */
+  const upper = _sd.copy(_sb).sub(_sa).normalize();   // shoulder -> elbow
+  const fore = _se.copy(_sc).sub(_sb).normalize();    // elbow -> hand
   _sq.setFromUnitVectors(fore, upper);                // world correction
-  _sq3.identity().slerp(_sq, ARM_STRAIGHTEN);
+  _sq3.identity().slerp(_sq, w);
   worldDeltaToLocal(el, _sq3, _sq);
   el.quaternion.premultiply(_sq);
   el.updateMatrixWorld(true);
@@ -437,7 +452,7 @@ function probe() {
   for (let i = 0; i <= 64; i++) {
     const t = (jabDur * i) / 64;
     woman.mixer.setTime(t);
-    straightenLeadArm();
+    straightenLeadArm(t);
     woman.group.updateMatrixWorld(true);
     hand.getWorldPosition(_sv);
     if (_sv.x < best.x) best = { t, x: _sv.x };
@@ -455,7 +470,7 @@ function freezeWoman() {
   const wa = woman.actions.jab;
   wa.time = Math.min(jabImpact, jabDur);
   woman.mixer.update(0);
-  straightenLeadArm();
+  straightenLeadArm(jabImpact);   // full weight at the frozen reach pose
   woman.group.updateMatrixWorld(true);
 }
 
@@ -518,8 +533,8 @@ function advance(dt) {
   showT += dt;
   if (phase === 'intro') {
     if (woman.mixer) woman.mixer.update(dt);
-    straightenLeadArm();   // keep the lead arm straight
     const wa = woman.actions.jab;
+    straightenLeadArm(wa ? wa.time : undefined);   // keep the lead arm straight
     if (wa && wa.time >= jabImpact - 1e-3) {
       freezeWoman();
       phase = 'reveal';
