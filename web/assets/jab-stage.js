@@ -13,11 +13,14 @@
  *   4. 1 s later the show ends: the stage docks back into the article flow
  *      as a small borderless canvas where both fighters idle. Replay restarts.
  *
- * Mouse actions are off everywhere (fixed-camera show); the wheel scrolls the
- * page. Deterministic timeline with a stepTo(t) QA hook.
+ * Mouse actions during the show are off (fixed-camera cinematic); the wheel
+ * scrolls the page. Once the show docks into the article flow the small stage
+ * can be orbited by drag (rotate only — wheel still scrolls). Deterministic
+ * timeline with a stepTo(t) QA hook.
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.getElementById('stage-canvas');
 const stageEl = canvas.parentElement;
@@ -171,6 +174,24 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
 const camPos = new THREE.Vector3(0, 1.2, 4.5);
 const camTgt = new THREE.Vector3(0, 0.95, 0);
+
+/* drag-to-orbit, enabled only on the docked small stage. The cinematic show
+ * drives the camera itself (camPos/camTgt), so the controls stay disabled
+ * until dock(). Rotate only: the wheel must keep scrolling the article, and
+ * pan has no job here. touch-action is relaxed back to pan-y so a vertical
+ * swipe on the docked canvas still scrolls the page on phones. */
+const controls = new OrbitControls(camera, canvas);
+controls.enabled = false;
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enableZoom = false;
+controls.enablePan = false;
+controls.rotateSpeed = 0.85;
+controls.minDistance = 2.0;
+controls.maxDistance = 7.5;
+controls.minPolarAngle = 0.45;
+controls.maxPolarAngle = Math.PI / 2 + 0.12;   // never dip below the floor
+canvas.style.touchAction = 'pan-y';
 
 scene.add(new THREE.HemisphereLight(0xe6f0ff, 0x4a4640, 2.9));
 const key = new THREE.DirectionalLight(0xffe8d2, 4.0);
@@ -623,8 +644,13 @@ function dock() {
   stageEl.classList.remove('jab-live');
   stageEl.classList.add('jab-docked');
   replayBtn.hidden = false;
+  wordEl.classList.remove('show');
   play(woman, 'guard', { fade: 0.3, loop: true });
   resize();
+  /* hand the camera over to the user */
+  controls.target.copy(camTgt);
+  controls.enabled = true;
+  controls.update();
 }
 
 function resetShow() {
@@ -641,6 +667,10 @@ function resetShow() {
   stageEl.classList.remove('jab-docked');
   stageEl.classList.add('jab-live');
   replayBtn.hidden = true;
+  /* scripted camera takes over again — start the easing from wherever the
+   * user had orbited to, so the return is a smooth sweep, not a snap */
+  if (controls.enabled) camPos.copy(camera.position);
+  controls.enabled = false;
   woman.group.position.set(0, 0, 0);
   woman.mixer.stopAllAction();
   play(woman, 'jab', { fade: 0, clamp: true });
@@ -667,7 +697,10 @@ function advance(dt) {
       revT = 0; shown = 0;
       wordEl.textContent = 'JAB';
       wordEl.classList.add('pos-a');
-      requestAnimationFrame(() => wordEl.classList.add('show'));
+      /* only while the reveal is actually on screen — a fast stepTo() jump
+       * would otherwise fire this rAF after hideCallouts() and the word
+       * would haunt the docked stage */
+      requestAnimationFrame(() => { if (phase === 'reveal') wordEl.classList.add('show'); });
       prefillCallouts();
     }
   } else if (phase === 'reveal') {
@@ -772,6 +805,13 @@ function computeCamera() {
   }
 }
 function updateCamera(dt) {
+  if (controls.enabled) {
+    /* docked + user camera: damping needs update() every frame */
+    controls.update();
+    headFill.position.copy(camera.position).sub(controls.target).setLength(6).add(controls.target);
+    headFill.target.position.copy(controls.target);
+    return;
+  }
   computeCamera();
   const k = vt !== null ? 1 : 1 - Math.exp(-dt * 3.2);
   camPos.lerp(_want.pos, k);

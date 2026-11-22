@@ -69,8 +69,13 @@
   .jab-stage.jab-docked { max-width: 480px; aspect-ratio: 16 / 7; min-height: 0;
     border: none; background: transparent; box-shadow: none; }
   .jab-stage.jab-docked::before { display: none; }
-  /* fixed-camera show: mouse actions off, wheel scrolls the page */
+  /* fixed-camera show: mouse actions off, wheel scrolls the page. Once the
+   * stage docks, the canvas takes pointer events again for drag-to-orbit;
+   * touch-action pan-y keeps vertical swipes scrolling the article. */
   .jab-stage canvas { pointer-events: none; }
+  .jab-stage.jab-docked canvas { pointer-events: auto; touch-action: pan-y; }
+  /* callout cards / leader lines are pure visuals — never eat a drag */
+  .jab-stage .hero-ui { pointer-events: none; }
   .jab-replay { display: none; }
   .jab-stage.jab-docked .jab-replay {
     display: inline-flex; align-items: center; gap: 6px;
@@ -221,6 +226,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=14"></script>
+<script type="module" src="../assets/jab-stage.js?v=15"></script>
 </body>
 </html>
