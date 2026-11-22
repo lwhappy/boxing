@@ -60,14 +60,15 @@ console.log('gaps:', JSON.stringify(await ev(`(() => {
 
 /* frame strip 8.4 -> 12.2 — run BEFORE weightScan (weightScan runs to END_T
  * and leaves the stage docked, which changes the camera framing) */
-const dir = '/tmp/bvk_combo';
+const T0 = +(process.argv[2] || 8.4), T1 = +(process.argv[3] || 12.2);
+const dir = process.argv[4] || '/tmp/bvk_combo';
 fs.mkdirSync(dir, { recursive: true });
 await ev(`document.querySelector('.bvk-stage').classList.remove('bvk-docked');
       const st=document.createElement('style');
       st.textContent='*{visibility:hidden !important} .bvk-stage,.bvk-stage *{visibility:visible !important} body{background:#05060a}';
       document.head.appendChild(st);
-      void document.body.offsetWidth; __bvk.stepTo(8.4)`);
-for (let t = 8.4; t <= 12.21; t += 0.1) {
+      void document.body.offsetWidth; __bvk.stepTo(${T0})`);
+for (let t = T0; t <= T1 + 0.0001; t += 0.1) {
   await ev(`__bvk.stepTo(${t.toFixed(2)})`);
   const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 82 }, sid);
   fs.writeFileSync(`${dir}/f${t.toFixed(1).padStart(5, '0')}.jpg`, Buffer.from(shot.data, 'base64'));
