@@ -94,11 +94,12 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     z-index: 10;
   }
   .bb-stage.bb-docked {
-    position: relative; inset: auto; width: 100%; height: clamp(320px, 46vh, 470px);
-    max-width: 640px; margin: 10px auto 0; z-index: auto;
-    border: 1px solid var(--stroke); border-radius: 18px;
-    background: linear-gradient(180deg, rgba(255,90,106,.05), rgba(90,169,255,.04) 55%, transparent);
+    position: relative; inset: auto; width: 100%; height: clamp(170px, 24vh, 280px);
+    max-width: 480px; margin: 10px auto 0; z-index: auto;
+    border: none; border-radius: 0; background: transparent; box-shadow: none;
   }
+  .bb-stage.bb-docked canvas { pointer-events: none; }   /* mouse actions off */
+  .bb-stage.bb-docked .bb-orbit-hint { display: none; }
   .bb-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* floating word pills — the physical targets (3D balls, dummy) live in the
@@ -197,7 +198,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
   @media (max-width: 560px) {
     .bb-grid { grid-template-columns: 1fr; }
-    .bb-stage.bb-docked { height: clamp(300px, 46vh, 420px); }
+    .bb-stage.bb-docked { height: clamp(150px, 22vh, 220px); }
     .bb-orbit-hint { display: none; }
   }
 </style>
@@ -370,6 +371,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=3"></script>
+<script type="module" src="./app.js?v=4"></script>
 </body>
 </html>

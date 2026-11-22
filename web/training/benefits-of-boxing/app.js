@@ -312,6 +312,7 @@ function makeBag() {
 }
 const bag = makeBag();
 bag.position.set(0.5, 0, -0.12);             // fallback, re-placed after probing
+bag.visible = false;                          // drifts in together with the FAIL pill
 scene.add(bag);
 const BAG_X_OFF = 0.20;                      // bag sits just beyond the knee tip
 const BAG_TOP = 1.02 + 0.95 / 2 + 0.20;      // capsule top y
@@ -344,6 +345,7 @@ function placePlate(tg, t) {
   if (t < spawnT) {
     tg.el.style.opacity = '0';
     if (tg.ball3d) tg.ball3d.visible = false;
+    if (s.kind === 'post') bag.visible = false;
     return;
   }
   const p = Math.min(1, (t - spawnT) / DRIFT_DUR);
@@ -354,6 +356,11 @@ function placePlate(tg, t) {
   if (tg.ball3d) {
     tg.ball3d.visible = true;
     tg.ball3d.position.set(s.anchor.x - DRIFT * (1 - e), s.anchor.y + bob * 0.6, s.anchor.z);
+  }
+  /* the heavy bag drifts in with the FAIL pill the same way */
+  if (s.kind === 'post') {
+    bag.visible = true;
+    bag.position.x = s.anchor.x - BAG_X_OFF - DRIFT * (1 - e);
   }
   _tv.set(
     s.anchor.x - DRIFT * (1 - e) + off.x,
@@ -630,15 +637,17 @@ function updateShow(dt = 0) {
   man.group.position.x = man.baseX;
   woman.group.position.x = woman.baseX;
 
-  /* camera follow: ease toward the midpoint of the visible action; once the
-   * show is docked the camera centers on the woman alone */
+  /* camera follow: the focus sits LEFT of the action's midpoint so the woman
+   * reads as pinned to the right edge of the screen (viewHalfW*0.42 shift);
+   * once the show is docked the camera centers on the woman alone */
   const docked = stageEl.classList.contains('bb-docked');
   const active = contacts.find(c => !c.fired);
-  const focusX = (docked || done)
+  const midX = (docked || done)
     ? woman.baseX
     : (active && active.s.word && active.s.anchor
-        ? Math.min(0.45, Math.max(-0.45, (woman.baseX + active.s.anchor.x) / 2))
-        : Math.min(0.45, Math.max(-0.45, (woman.baseX + (man.baseX > MAN_WAIT_X ? man.baseX : woman.baseX)) / 2)));
+        ? (woman.baseX + active.s.anchor.x) / 2
+        : (woman.baseX + (man.baseX > MAN_WAIT_X ? man.baseX : woman.baseX)) / 2);
+  const focusX = (docked || done) ? midX : midX - viewHalfW * 0.42;
   followX += (focusX - followX) * (vt !== null ? 1 : Math.min(1, dt * 3));
   controls.target.x = followX;
   camera.position.x = followX;
@@ -673,6 +682,7 @@ function updateShow(dt = 0) {
 
 /* ---------- camera framing ---------- */
 let followX = 0;
+let viewHalfW = 2.35;         // half width of the frustum at the focus plane
 function frameCamera() {
   const w = canvas.clientWidth || 1;
   const h = canvas.clientHeight || 1;
@@ -689,6 +699,7 @@ function frameCamera() {
     : Math.min(portrait ? 8.0 : 5.0,
                Math.max(portrait ? 4.4 : 3.4, need / (tanH * camera.aspect)));
   const cy = docked ? 0.95 : 1.02;
+  viewHalfW = Math.tan(camera.fov * Math.PI / 360) * camera.aspect * z;
   camera.position.set(followX, cy, z);
   controls.target.set(followX, cy, 0);
   camera.updateProjectionMatrix();
@@ -742,7 +753,7 @@ function resetShow() {
   badTag.el.classList.remove('shatter');
   badTag.el.style.opacity = '0';
   for (const tg of targets) if (tg.ball3d) tg.ball3d.visible = true;
-  bag.visible = true;
+  bag.visible = false;   // re-enters with the FAIL pill on replay
   for (const l of labels) l.el.remove();
   labels = [];
   clearFx();
