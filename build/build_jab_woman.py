@@ -1,0 +1,294 @@
+"""
+Build the "white rig" woman GLB for moves/jab.html — mesh + rig + retargeted clips.
+
+Source rig:  /Users/justrun/project/boxing-game/moves/rig-character-white.fbx
+             (Tripo/Mixamo 33-bone rig, 0.01 armature scale, bone translations in cm)
+Clip donors: web/training/benefits-of-boxing/models/woman.glb  (guard, jab)
+             web/media/glb/boxer-woman.glb                     (jab -> "jab-fight")
+
+The donor rigs' per-bone REST ROTATIONS differ from the sculpt's, and glTF
+animation tracks REPLACE a bone's local quaternion, so donor clips cannot be
+played on the sculpt as-is (limbs end up twisted). Instead every donor action
+is resampled: at each frame the donor bone's armature-space matrix is copied
+onto the sculpt's bone, expressed in its own parent frame — a true retarget.
+
+Usage: Blender -b -P build/build_jab_woman.py -- --with-clips
+"""
+import bpy
+import os
+import sys
+
+argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+WITH_CLIPS = "--with-clips" in argv
+
+SRC = "/Users/justrun/project/boxing-game/moves/rig-character-white.fbx"
+ROOT = "/Users/justrun/project/boxing-3"
+DONOR_MOVES = os.path.join(ROOT, "web/training/benefits-of-boxing/models/woman.glb")
+DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
+OUT = os.path.join(ROOT, "web/media/glb/jab-woman.glb")
+MAXTEX = 2048
+FPS = 30.0
+
+
+def fcurves(a):
+    if a.is_action_layered:
+        return a.layers[0].strips[0].channelbags[0].fcurves
+    return a.fcurves
+
+
+def retimed_to_fps(act):
+    fps_after = bpy.context.scene.render.fps
+    k = FPS / fps_after
+    if abs(k - 1.0) > 1e-6:
+        for f in fcurves(act):
+            for kp in f.keyframe_points:
+                kp.co.x *= k
+                kp.handle_left.x *= k
+                kp.handle_right.x *= k
+            f.keyframe_points.update() if False else None
+            f.update()
+        bpy.context.scene.render.fps = FPS
+        print(f"    retimed {fps_after}fps -> {FPS}fps")
+
+
+bpy.ops.wm.read_homefile(use_empty=True)
+bpy.context.scene.render.fps = int(FPS)
+bpy.context.scene.render.fps_base = 1.0
+
+# --- the sculpt (rig + mesh, pose-only) ---
+bpy.ops.import_scene.fbx(filepath=SRC)
+rig_n = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+mesh_n = next(o for o in bpy.data.objects if o.type == "MESH")
+if rig_n.animation_data:
+    rig_n.animation_data_clear()
+for a in list(bpy.data.actions):
+    bpy.data.actions.remove(a)
+print(f"[jab-woman] sculpt rig={rig_n.name} bones={len(rig_n.data.bones)} "
+      f"mesh verts={len(mesh_n.data.vertices)} polys={len(mesh_n.data.polygons)}")
+
+if WITH_CLIPS:
+    # --- clip donors (their armatures collide with the sculpt's 'Armature'
+    # name, so track them by object identity, not by name) ---
+    known = {rig_n}
+    bpy.ops.import_scene.gltf(filepath=DONOR_MOVES)
+    rig_moves = next(o for o in bpy.data.objects
+                     if o.type == "ARMATURE" and o not in known)
+    known.add(rig_moves)
+    bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
+    rig_game = next(o for o in bpy.data.objects
+                    if o.type == "ARMATURE" and o not in known)
+    known.add(rig_game)
+    # drop the donors' meshes up front so they never pollute the export
+    for o in list(bpy.data.objects):
+        if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
+            bpy.data.objects.remove(o, do_unlink=True)
+
+    for r in (rig_moves, rig_game):
+        print(f"  donor {r.name}: matrix_world rot ok? "
+              f"{[round(v, 3) for v in r.matrix_world.to_euler()]}")
+    print(f"  sculpt armature euler: {[round(v, 3) for v in rig_n.matrix_world.to_euler()]}")
+
+    CLIPS = [
+        (rig_moves, "guard", "guard"),
+        (rig_moves, "jab", "jab"),
+        (rig_game, "jab", "jab-fight"),
+    ]
+
+    ad_n = rig_n.animation_data_create()
+
+    def rig_actions(rig):
+        """actions owned by this rig, via its NLA tracks (glTF importer layout)"""
+        out = {}
+        ad = rig.animation_data
+        if ad:
+            for track in ad.nla_tracks:
+                for strip in track.strips:
+                    if strip.action:
+                        name = strip.action.name.split("|")[-1].split("/")[-1]
+                        out.setdefault(name, strip.action)
+        if ad and ad.action:
+            name = ad.action.name.split("|")[-1].split("/")[-1]
+            out.setdefault(name, ad.action)
+        return out
+
+    acts_moves = rig_actions(rig_moves)
+    acts_game = rig_actions(rig_game)
+    print(f"  donor moves clips: {sorted(acts_moves)}")
+    print(f"  donor game clips: {sorted(acts_game)}")
+
+    def find_clip(acts, name):
+        """exact match first, then base-name match (importer suffixes .001...)"""
+        if name in acts:
+            return acts[name]
+        for k, a in acts.items():
+            if k.split(".")[0] == name and "cross" not in k:
+                return a
+        return None
+
+    CLIPS = [
+        (rig_moves, acts_moves, "guard", "guard"),
+        (rig_moves, acts_moves, "jab", "jab"),
+        (rig_game, acts_game, "jab", "jab-fight"),
+    ]
+
+    M_n = rig_n.matrix_world.copy()
+    hips_n = rig_n.pose.bones["mixamorig:Hips"]
+    hips_rest = hips_n.bone.matrix_local.copy()          # armature-space rest
+    hips_rest_mag = hips_rest.to_translation().length    # raw skeleton size proxy
+
+    for donor_rig, donor_acts, src_name, out_name in CLIPS:
+        act = find_clip(donor_acts, src_name)
+        assert act, f"donor action {src_name} not found"
+        retimed_to_fps(act)
+        M_d = donor_rig.matrix_world.copy()
+        # donor -> sculpt armature-space mapping (both armatures carry the same
+        # 0.01 scale, so the product is a pure rotation)
+        M_map = (M_n.inverted() @ M_d)
+        R_map = M_map.to_3x3()
+        for v in R_map:
+            v.normalize()
+
+        # the donor hips' raw rest height sets the size ratio: donor skeletons
+        # ship at different unit scales (57cm vs 104cm hips for a ~1m vs ~1.8m
+        # raw character), so hips motion must be scaled onto the sculpt
+        hips_d = donor_rig.pose.bones["mixamorig:Hips"]
+        hips_rest_d = hips_d.bone.matrix_local.copy()
+        k = hips_rest_mag / hips_rest_d.to_translation().length
+        print(f"  {out_name}: donor hips rest {hips_rest_d.to_translation().length:.1f}cm "
+              f"-> sculpt {hips_rest_mag:.1f}cm (k={k:.3f})")
+
+        # the imported donors keep every clip on a MUTED NLA track, so nothing
+        # would evaluate while sampling — assign the wanted action directly
+        ad_d = donor_rig.animation_data
+        ad_d.action = None
+        for track in ad_d.nla_tracks:
+            track.mute = True
+        ad_d.action = act
+
+        fr0, fr1 = int(act.frame_range[0]), int(act.frame_range[1])
+        ad_n.action = None
+        new_act = bpy.data.actions.new(out_name)
+        new_act.use_fake_user = True
+        ad_n.action = new_act
+
+        for f in range(fr0, fr1 + 1):
+            bpy.context.scene.frame_set(f)
+            bpy.context.view_layer.update()
+            for b in rig_n.pose.bones:
+                db = donor_rig.pose.bones.get(b.name)
+                if db is None:
+                    continue
+                # desired pose in sculpt armature space: the donor bone's
+                # world matrix expressed in the sculpt's armature frame
+                desired = M_map @ db.matrix
+                if b.name == "mixamorig:Hips":
+                    # rescale the hips motion onto the sculpt skeleton
+                    rest_mapped = (M_map @ hips_rest_d).to_translation()
+                    off = desired.to_translation() - rest_mapped
+                    desired.translation = hips_rest.to_translation() + off * k
+                # assigning .matrix lets Blender decompose the correct basis
+                b.matrix = desired
+                b.keyframe_insert("rotation_quaternion", frame=f)
+                if b.name == "mixamorig:Hips":
+                    b.keyframe_insert("location", frame=f)
+        print(f"  retargeted {src_name} ({fr1 - fr0 + 1} frames) -> {out_name}")
+
+        ad_d.action = None
+
+        ad_n.action = None
+        track = ad_n.nla_tracks.new()
+        track.name = out_name
+        strip = track.strips.new(out_name, fr0, new_act)
+        strip.name = out_name
+        track.mute = True
+
+    # donors are done — remove their rigs and meshes entirely
+    for o in list(bpy.data.objects):
+        if o is not rig_n and o is not mesh_n:
+            bpy.data.objects.remove(o, do_unlink=True)
+
+    # keep only the three retargeted actions (donor actions are still in the
+    # file and would all be exported in ACTIONS mode)
+    keep = {"guard", "jab", "jab-fight"}
+    for a in list(bpy.data.actions):
+        if a.name not in keep:
+            bpy.data.actions.remove(a)
+    for track in list(ad_n.nla_tracks):
+        if track.strips and track.strips[0].action is None:
+            ad_n.nla_tracks.remove(track)
+
+# --- material: opaque base colour + normal only, JPEG-friendly ---
+old_mat = mesh_n.material_slots[0].material
+old_nt = old_mat.node_tree
+base_img = normal_img = None
+for link in old_nt.links:
+    if link.from_node.type != "TEX_IMAGE" or not link.from_node.image:
+        continue
+    if link.to_node.type == "BSDF_PRINCIPLED" and link.to_socket.name == "Base Color":
+        base_img = link.from_node.image
+    elif link.to_node.type == "NORMAL_MAP":
+        normal_img = link.from_node.image
+print(f"  maps: base={base_img and base_img.name} normal={normal_img and normal_img.name}")
+
+mat = bpy.data.materials.new("jab_woman")
+mat.use_nodes = True
+nt = mat.node_tree
+bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+bsdf.inputs["Metallic"].default_value = 0.0
+bsdf.inputs["Roughness"].default_value = 0.72
+if base_img:
+    base_img.alpha_mode = "NONE"
+    tx = nt.nodes.new("ShaderNodeTexImage")
+    tx.image = base_img
+    tx.location = (-600, 300)
+    nt.links.new(tx.outputs["Color"], bsdf.inputs["Base Color"])
+if normal_img:
+    normal_img.colorspace_settings.name = "Non-Color"
+    tx = nt.nodes.new("ShaderNodeTexImage")
+    tx.image = normal_img
+    tx.location = (-600, -60)
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nm.location = (-300, -60)
+    nt.links.new(tx.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+for attr, val in (("blend_method", "OPAQUE"), ("surface_render_method", "DITHERED")):
+    if hasattr(mat, attr):
+        try:
+            setattr(mat, attr, val)
+        except Exception as e:
+            print(f"  (skip {attr}={val}: {e})")
+
+mesh_n.data.materials.clear()
+mesh_n.data.materials.append(mat)
+
+used = {i.name for i in (base_img, normal_img) if i}
+for img in list(bpy.data.images):
+    if img.name not in used:
+        bpy.data.images.remove(img)
+        continue
+    w, h = img.size
+    if max(w, h) > MAXTEX:
+        k = MAXTEX / max(w, h)
+        img.scale(int(w * k), int(h * k))
+        print(f"  resized {img.name} {w}x{h} -> {img.size[0]}x{img.size[1]}")
+bpy.data.materials.remove(old_mat)
+
+bpy.ops.object.select_all(action="DESELECT")
+rig_n.select_set(True)
+mesh_n.select_set(True)
+bpy.context.view_layer.objects.active = rig_n
+
+bpy.ops.export_scene.gltf(
+    filepath=OUT,
+    export_format="GLB",
+    use_selection=True,
+    export_apply=True,
+    export_animations=WITH_CLIPS,
+    export_animation_mode="ACTIONS",
+    export_skins=True,
+    export_morph=False,
+    export_yup=True,
+    export_image_format="JPEG",
+    export_jpeg_quality=88,
+)
+print(f"[jab-woman] wrote {OUT} size={os.path.getsize(OUT) / 1024:.0f} KB")

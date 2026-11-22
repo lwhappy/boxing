@@ -26,9 +26,11 @@ const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
 const replayBtn = document.getElementById('jab-replay');
 
-/* bvk's kickboxer and the benefits-page woman are the same rig (identical
- * woman.fbx) — the benefits GLB already carries guard + jab. */
-const WOMAN_URL = new URL('../training/benefits-of-boxing/models/woman.glb?v=1', import.meta.url).href;
+/* page woman: the "white rig" sculpt — mesh + rig + three retargeted clips
+ * (guard / jab / jab-fight), built by build/build_jab_woman.py from
+ * rig-character-white.fbx; donor clips were resampled in Blender because the
+ * rigs' per-bone rest rotations differ */
+const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=1', import.meta.url).href;
 /* clip donor: the fight-game boxer-woman — her jab steps in with the lead
  * foot. Same Mixamo rig (identical bone names + rest transforms), so the
  * clip plays straight on the page model. */
@@ -211,6 +213,8 @@ function fixMaterials(root) {
         if (m.isMeshStandardMaterial) {
           m = new THREE.MeshPhongMaterial({
             map: mats[mi].map || null,
+            normalMap: mats[mi].normalMap || null,
+            normalScale: mats[mi].normalScale ? mats[mi].normalScale.clone() : undefined,
             color: mats[mi].color.clone(),
             side: mats[mi].side,
             transparent: mats[mi].transparent,
@@ -275,11 +279,12 @@ function play(f, name, { fade = 0.2, clamp = false, loop = false } = {}) {
 }
 
 /* ---------- loading ---------- */
+const FILE_COUNT = 3;
 let loadDone = 0;
 function prog(e) {
   if (!e.total) return;
   loadDone++;
-  loadingText.textContent = `Loading 3D models — ${Math.min(100, Math.round(((loadDone - 1) + (e.loaded / e.total)) / 2 * 100))}%`;
+  loadingText.textContent = `Loading 3D models — ${Math.min(100, Math.round(((loadDone - 1) + (e.loaded / e.total)) / FILE_COUNT * 100))}%`;
 }
 function loadGLB(url) {
   return new Promise((res, rej) => new GLTFLoader().load(url, res, prog, rej));
@@ -357,18 +362,26 @@ function samplePose(root, budget = 9000) {
   return pts;
 }
 
-/* kickboxer: Z-up bind pose (Mixamo FBX heritage) — rotate, normalize to
- * 1.75 m off a guard frame, drop the soles to y=0. Faces LEFT (-X). */
+/* the woman: normalize to 1.75 m off a guard frame, ground the soles, face
+ * LEFT (-X). The sculpt comes out of the exporter Y-up (upright) while the
+ * older FBX-derived rigs were Z-up and lying flat, so stand it up only when
+ * the bind pose really is flat. */
 function buildWoman(gltf) {
   const root = gltf.scene;
   fixMaterials(root);
   woman.root = root;
   woman.group.add(root);
   woman.group.rotation.y = -Math.PI / 2;
-  /* the bind pose is Z-up and lying flat — stand the rig up first, then
-   * measure the real skinned height off a guard frame */
-  root.rotation.x = -Math.PI / 2;
   root.updateMatrixWorld(true);
+  {
+    const pts = samplePose(root, 4000);
+    const ext = (k) => Math.max(...pts.map((p) => p[k])) - Math.min(...pts.map((p) => p[k]));
+    if (ext('y') < ext('z')) {
+      root.rotation.x = -Math.PI / 2;
+      root.updateMatrixWorld(true);
+      console.log('[jab] woman rig was Z-up flat — stood it up');
+    }
+  }
   for (const n of [...ANCHOR_KEYS, 'LeftArm', 'LeftForeArm']) woman.bones[n] = boneByName(root, n);
   woman.mixer = new THREE.AnimationMixer(root);
   for (const clip of gltf.animations) {
@@ -377,6 +390,16 @@ function buildWoman(gltf) {
     act.enabled = true;
     woman.actions[clip.name] = act;
   }
+  /* snapshot the bind-pose local quaternions BEFORE anything plays — the
+   * runtime retarget below is expressed against them */
+  woman.restQ = new Map();
+  woman.restPos = new Map();
+  root.traverse((o) => {
+    if (o.isBone) {
+      woman.restQ.set(o.name, o.quaternion.clone());
+      woman.restPos.set(o.name, o.position.clone());
+    }
+  });
   const guard = woman.actions.guard || Object.values(woman.actions)[0];
   guard.reset().play();
   woman.mixer.setTime(0.5);
@@ -839,17 +862,119 @@ document.addEventListener('visibilitychange', () => {
   else if (!document.hidden && visible && phase !== 'load') startLoop();
 });
 
+/* Retarget a donor clip onto the sculpt rig by skeleton transfer.
+ *
+ * The rigs share bone NAMES but their per-bone rest orientations (and even
+ * the armature nodes' own orientations) differ, and glTF animation tracks
+ * REPLACE a bone's local quaternion, so raw donor clips twist the sculpt.
+ * Instead every frame the donor skeleton's armature-space pose is mapped
+ * into the sculpt's armature space (a pure rotation between the two spaces)
+ * and the sculpt bones are re-expressed under it — the same transfer the
+ * Blender bake (build/build_jab_woman.py) performs, just at load time. */
+function bakeRetarget(donorGltf, clip) {
+  const norm = (s) => s.replace(/[^a-z]/gi, '').toLowerCase();
+  const donorRoot = donorGltf.scene;
+  const dBone = new Map();
+  donorRoot.traverse((o) => { if (o.isBone) dBone.set(norm(o.name), o); });
+
+  // sculpt armature node = topmost bone's parent
+  let sArm = woman.bones.Hips;
+  while (sArm.parent && sArm.parent.isBone) sArm = sArm.parent;
+  sArm = sArm.parent || sArm;                    // the Armature node, not the top bone
+  // donor armature node = topmost bone's parent
+  let dArm = null;
+  donorRoot.traverse((o) => { if (o.isBone && (!dArm || !dArm.parent || o.parent.isBone)) { if (!dArm) dArm = o; } });
+  while (dArm.parent && dArm.parent.isBone) dArm = dArm.parent;
+  dArm = dArm.parent || dArm;                    // the Armature node, not the top bone
+
+  /* map the donor's world pose onto the sculpt's: donor Mixamo characters
+   * face +Z in their own scene; the page wants her facing LEFT (−X world) —
+   * the node-space rotation must include that yaw, otherwise the sculpt
+   * armature's own world rotation cancels the group's facing correction */
+  const RDesired = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 1, 0), -Math.PI / 2);       // +Z facing -> −X facing
+  const RMap = new THREE.Quaternion()
+    .copy(sArm.getWorldQuaternion(new THREE.Quaternion())).invert()
+    .multiply(RDesired)
+    .multiply(dArm.getWorldQuaternion(new THREE.Quaternion()));
+  const RMapM = new THREE.Matrix4().makeRotationFromQuaternion(RMap);
+
+  const mixer = new THREE.AnimationMixer(donorRoot);
+  const act = mixer.clipAction(clip);
+  act.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+
+  const FPS = 30;
+  const n = Math.max(2, Math.round(clip.duration * FPS) + 1);
+  const times = new Float32Array(n);
+  const qTracks = new Map();   // norm bone name -> { name, values }
+  const pBone = null;          // hips = first bone in traversal order
+  let pBoneName = null;
+  const order = [];
+  woman.root.traverse((o) => { if (o.isBone) order.push(o); });
+
+  const _m = new THREE.Matrix4(), _mi = new THREE.Matrix4();
+  const _p = new THREE.Vector3(), _qv = new THREE.Quaternion(), _sv = new THREE.Vector3();
+  const parentAccum = new Map();  // sculpt bone -> pose matrix in armature space
+
+  for (let f = 0; f < n; f++) {
+    const t = Math.min(clip.duration, f / FPS);
+    times[f] = t;
+    mixer.setTime(t);
+    donorRoot.updateMatrixWorld(true);
+    for (const b of order) {
+      const key = norm(b.name);
+      const db = dBone.get(key);
+      let localM;
+      if (db) {
+        // donor bone pose mapped into the sculpt's armature space
+        _mi.copy(dArm.matrixWorld).invert().multiply(db.matrixWorld);
+        _m.copy(RMapM).multiply(_mi);
+        parentAccum.set(key, _m.clone());
+        const parentKey = b.parent && b.parent.isBone ? norm(b.parent.name) : null;
+        const pm = parentKey ? parentAccum.get(parentKey) : null;
+        localM = pm ? _mi.copy(pm).invert().multiply(_m) : _m;
+        localM.decompose(_p, _qv, _sv);
+      } else {
+        _p.copy(b.position); _qv.copy(b.quaternion); _sv.set(1, 1, 1);
+      }
+      /* full skeleton transfer: the sculpt follows the donor skeleton
+       * (positions included) exactly like the proven Blender bake */
+      let rec = qTracks.get(key);
+      if (!rec) {
+        rec = {
+          name: b.name,
+          values: new Float32Array(n * 4),
+          pos: new Float32Array(n * 3),
+        };
+        qTracks.set(key, rec);
+      }
+      _qv.toArray(rec.values, f * 4);
+      _p.toArray(rec.pos, f * 3);
+      if (!pBoneName) pBoneName = b.name;   // first bone in traversal order = hips
+    }
+  }
+  mixer.stopAllAction();
+
+  const tracks = [];
+  for (const rec of qTracks.values()) {
+    tracks.push(new THREE.QuaternionKeyframeTrack(rec.name + '.quaternion', times, rec.values));
+    tracks.push(new THREE.VectorKeyframeTrack(rec.name + '.position', times, rec.pos));
+  }
+  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
+}
+
 function build(wg, mg, fg) {
   buildWoman(wg);
   buildMan(mg);
-  /* donor clip: the fight-game jab (lead-foot step) retargeted onto her rig */
-  if (fg && woman.mixer) {
-    const fjab = (fg.animations || []).find(c => c.name === 'jab');
-    if (fjab) {
-      const act = woman.mixer.clipAction(fjab);
-      act.enabled = true;
-      woman.actions['jab-fight'] = act;
-    }
+  /* the baked jab-fight clip came from a donor with a different node
+   * convention — replace it with a runtime retarget of the fight-game jab */
+  const fClip = fg && (fg.animations || []).find((c) => c.name === 'jab');
+  if (fClip) {
+    const retargeted = bakeRetarget(fg, fClip);
+    const act = woman.mixer.clipAction(retargeted);
+    act.enabled = true;
+    woman.actions['jab-fight'] = act;
+    console.log('[jab] jab-fight retargeted from the fight-game rig');
   }
   probe();
   loadingEl.classList.add('hidden');
