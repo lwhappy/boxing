@@ -101,7 +101,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
   .bb-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-  /* floating word plates — the bad habits she destroys */
+  /* floating word pills — the physical targets (3D balls, dummy) live in the
+   * canvas; only the word pill is HTML */
   .bt-target {
     position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
     pointer-events: none; white-space: nowrap;
@@ -112,25 +113,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     border: 1px solid rgba(255, 90, 106, .60);
     box-shadow: 0 0 26px rgba(255, 90, 106, .28), inset 0 0 14px rgba(255, 90, 106, .16);
     will-change: transform, opacity;
-  }
-  .bt-target.ball::before {
-    content: ''; position: absolute; left: 50%; bottom: calc(100% - 2px);
-    width: 2px; height: 78px; transform: translateX(-50%);
-    background: linear-gradient(rgba(255,255,255,.38), rgba(255,255,255,.05));
-  }
-  .bt-target.ball::after {
-    content: ''; position: absolute; left: 50%; bottom: calc(100% - 5px);
-    width: 18px; height: 18px; border-radius: 50%; transform: translateX(-50%);
-    background: radial-gradient(circle at 35% 30%, #ff8a92, #a2262e 70%);
-    box-shadow: 0 0 12px rgba(255,90,106,.65);
-  }
-  .bt-target.post::after {
-    content: ''; position: absolute; left: 50%; top: calc(100% - 2px);
-    width: 54px; height: 190px; transform: translateX(-50%);
-    border-radius: 10px 10px 14px 14px;
-    background: linear-gradient(90deg, #3a2026, #57303a 30%, #6b3a46 50%, #57303a 70%, #3a2026);
-    border: 1px solid rgba(255, 90, 106, .35);
-    box-shadow: 0 10px 24px rgba(0,0,0,.5);
   }
   .bt-target.shatter { animation: bt-shatter .55s ease-out forwards; }
   @keyframes bt-shatter {
@@ -388,6 +370,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=2"></script>
+<script type="module" src="./app.js?v=3"></script>
 </body>
 </html>

@@ -206,38 +206,40 @@ const CLIP_DUR = {
   'jab': 1.067, 'cross': 0.90, 'kick': 1.633, 'combo-knee': 5.70, 'flying-kick': 1.533,
   guard: 5.033, 'knocked-out': 4.93,
 };
+/* the combo-knee take chains three knees; the standing dummy breaks on the
+ * LAST one (probed: knees at raw 1.64 / 2.20 / 2.76, same max depth) */
 const STRIKES = [
-  { key: 'disease',  word: 'DISEASE',  kind: 'ball', clip: 'jab',   bone: 'LeftHand',    frac: 0.563, label: 'JAB',   at: 2.0 },
-  { key: 'weak',     word: 'WEAK',     kind: 'ball', clip: 'cross', bone: 'RightHand',   frac: 0.411, label: 'CROSS', at: 3.7 },
-  { key: 'hopeless', word: 'HOPELESS', kind: 'ball', clip: 'kick',  bone: 'LeftToeBase', frac: 0.410, label: 'KICK',  at: 5.5 },
-  { key: 'fail',     word: 'FAIL',     kind: 'post', clip: 'combo-knee', bone: 'RightLeg', frac: 1.60 / 5.70, label: 'KNEE', at: 7.8, breakAtEnd: true },
-  { key: 'partner',  clip: 'flying-kick', bone: 'LeftToeBase', frac: 0.470, label: 'FLYING KICK', at: 14.1 },
+  { key: 'disease',  word: 'DISEASE',  kind: 'ball', clip: 'jab',   bone: 'LeftHand',    frac: 0.563, label: 'JAB',   at: 1.5 },
+  { key: 'weak',     word: 'WEAK',     kind: 'ball', clip: 'cross', bone: 'RightHand',   frac: 0.411, label: 'CROSS', at: 2.75 },
+  { key: 'hopeless', word: 'HOPELESS', kind: 'ball', clip: 'kick',  bone: 'LeftToeBase', frac: 0.410, label: 'KICK',  at: 4.1 },
+  { key: 'fail',     word: 'FAIL',     kind: 'post', clip: 'combo-knee', bone: 'RightLeg', frac: 1.64 / 5.70, lastFrac: 2.76 / 5.70, label: 'KNEE', at: 6.12 },
+  { key: 'partner',  clip: 'flying-kick', bone: 'LeftToeBase', frac: 0.470, label: 'FLYING KICK', at: 10.8 },
 ];
-const TS = 1.0;
-const MAN_IN_T = 12.35;    // partner floats in only after the knee combo finishes
-const MAN_IN_DUR = 0.9;
+const TS = 1.4;            // global play speed — every clip runs this much faster
+const MAN_IN_T = 9.35;     // partner floats in right after the knee combo ends
+const MAN_IN_DUR = 0.7;
 const KO_PUSH = -0.30;     // he is driven back as he drops
-const END_T = 16.6;
+const END_T = 13.4;
 
 /* timeline entries derived from STRIKES */
 const TL = [
   { t: 0, who: 'w', clip: 'guard' },
   ...STRIKES.filter(s => s.key !== 'partner').map(s => ({
-    t: s.at - s.frac * CLIP_DUR[s.clip],
+    t: s.at - s.frac * CLIP_DUR[s.clip] / TS,
     who: 'w', clip: s.clip, clamp: true, fade: 0.14, strike: s.key,
   })),
-  /* the combo-knee take plays out in full (6.2 → 11.9), then back to guard */
-  { t: 11.95, who: 'w', clip: 'guard', fade: 0.2 },
+  /* the combo-knee take plays out in full (4.95 → 9.02), then back to guard */
+  { t: 9.05, who: 'w', clip: 'guard', fade: 0.2 },
   { t: 0, who: 'm', clip: 'guard' },
   { t: MAN_IN_T - 0.05, who: 'm', show: true },   // he waits offstage until his entrance
   { t: MAN_IN_T, who: 'm', moveX: MAN_X, dur: MAN_IN_DUR },
   /* flying kick — she launches from her spot on the right and covers the
    * whole gap to the partner, landing the toe exactly on his head */
   {
-    t: STRIKES[4].at - STRIKES[4].frac * CLIP_DUR['flying-kick'],
+    t: STRIKES[4].at - STRIKES[4].frac * CLIP_DUR['flying-kick'] / TS,
     who: 'w', clip: 'flying-kick', clamp: true, fade: 0.14, strike: 'partner', fly: true,
   },
-  { t: 15.1, who: 'w', clip: 'guard', fade: 0.2 },
+  { t: 11.5, who: 'w', clip: 'guard', fade: 0.2 },
 ];
 /* ---------- engine ---------- */
 let clock0 = null;
@@ -256,9 +258,9 @@ function tweenX(who, to, dur, t0) {
 }
 
 /* ---------- word plates ---------- */
-const PLATE_LIFT = { ball: 0.10, post: 0.34 };   // plate sits above the bone anchor
+const PLATE_LIFT = { ball: 0.5, post: 1.25 };   // pill sits above the 3D prop
 const DRIFT = 2.4;        // world units of approach
-const DRIFT_DUR = 2.0;    // seconds of approach
+const DRIFT_DUR = 1.4;    // seconds of approach
 
 const targets = STRIKES.filter(s => s.word).map(s => {
   const el = document.createElement('div');
@@ -270,6 +272,50 @@ const targets = STRIKES.filter(s => s.word).map(s => {
   return { el, strike: s, anchor: null, shattered: false };
 });
 const targetOf = (key) => targets.find(t => t.strike.key === key);
+
+/* ---------- 3D props: hanging speed balls + standing dummy ----------
+ * The word pills are HTML; the physical objects she hits are real meshes. */
+const propMat = new THREE.MeshStandardMaterial({ color: 0xa2262e, roughness: 0.5 });
+const dummyMat = new THREE.MeshStandardMaterial({ color: 0x3a2026, roughness: 0.65 });
+const baseMat = new THREE.MeshStandardMaterial({ color: 0x1c1c20, roughness: 0.5 });
+const stringMat = new THREE.MeshBasicMaterial({ color: 0x8a8a8a });
+const BALL_R = 0.24;
+const STRING_TOP = 3.4;
+
+function makeSpeedBall() {
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 18), propMat.clone());
+  ball.scale.y = 1.15;                       // slightly pear-shaped speed bag
+  ball.castShadow = true;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 1, 6), stringMat);
+  rod.scale.y = 2.5;
+  rod.position.y = BALL_R * 1.15 + 1.25;
+  g.add(ball, rod);
+  g.userData = { ball, rod };
+  return g;
+}
+for (const tg of targets) {
+  if (tg.strike.kind !== 'ball') continue;
+  tg.ball3d = makeSpeedBall();
+  scene.add(tg.ball3d);
+}
+
+function makeDummy() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.12, 24), baseMat);
+  base.position.y = 0.06;
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.30, 1.0, 6, 18), dummyMat);
+  body.position.y = 0.85;
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.36, 22, 16), dummyMat);
+  chest.position.y = 1.45; chest.scale.set(1.2, 0.85, 0.95);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 22, 16), dummyMat);
+  head.position.y = 1.86;
+  for (const m of [base, body, chest, head]) { m.castShadow = true; g.add(m); }
+  return g;
+}
+const dummy = makeDummy();
+dummy.position.set(0.5, 0, -0.12);           // fallback, re-placed after probing
+scene.add(dummy);
 
 /* ---------- "BAD MAN" tag hanging over the partner's head ---------- */
 const badTag = (() => {
@@ -285,7 +331,8 @@ function placeBadTag() {
   const head = man.bones && man.bones.Head;
   if (badTag.shattered || !man.group.visible || !head) { badTag.el.style.opacity = '0'; return; }
   head.getWorldPosition(_tv);
-  _tv.y += 0.58;
+  _tv.x += 0.55;   // beside his head so it never clips the top of the screen
+  _tv.y += 0.08;
   projectTo(_tv, badTag.el);
   badTag.el.style.opacity = '1';
 }
@@ -295,10 +342,19 @@ function placePlate(tg, t) {
   if (!s.anchor) return;
   if (tg.shattered) return;
   const spawnT = s.at - DRIFT_DUR;
-  if (t < spawnT) { tg.el.style.opacity = '0'; return; }
+  if (t < spawnT) {
+    tg.el.style.opacity = '0';
+    if (tg.ball3d) tg.ball3d.visible = false;
+    return;
+  }
   const p = Math.min(1, (t - spawnT) / DRIFT_DUR);
   const e = p * p * (3 - 2 * p);                       // smoothstep
   const bob = (1 - p) * 0.05 * Math.sin(t * 4.2 + s.at * 2.1);
+  /* the physical ball drifts in with its word pill, then hangs at the anchor */
+  if (tg.ball3d) {
+    tg.ball3d.visible = true;
+    tg.ball3d.position.set(s.anchor.x - DRIFT * (1 - e), s.anchor.y + bob * 0.6, s.anchor.z);
+  }
   _tv.set(
     s.anchor.x - DRIFT * (1 - e),
     s.anchor.y + PLATE_LIFT[s.kind] + bob,
@@ -476,13 +532,25 @@ async function probeAnchors() {
   for (const s of STRIKES) {
     const clip = woman.actions[s.clip].getClip();
     const act = woman.mixer.clipAction(clip);
-    act.reset().setEffectiveWeight(1).play();
+    /* scrub in raw clip time — neutralize the global TS speed-up first */
+    act.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
     woman.mixer.setTime(Math.min(clip.duration - 0.01, s.frac * clip.duration));
     woman.model.updateMatrixWorld(true);
     const b = woman.bones[s.bone];
     s.anchor = b ? b.getWorldPosition(new THREE.Vector3()).clone() : null;
     s.bonePos = s.anchor ? s.anchor.clone() : null;
     woman.mixer.stopAllAction();
+    /* position the 3D prop she is supposed to hit */
+    if (s.kind === 'ball' && s.anchor) {
+      const g = targetOf(s.key).ball3d;
+      g.position.set(s.anchor.x, s.anchor.y, s.anchor.z);
+      const len = Math.max(0.15, STRING_TOP - (s.anchor.y + BALL_R * 1.15));
+      g.userData.rod.scale.y = len;
+      g.userData.rod.position.y = BALL_R * 1.15 + len / 2;
+    }
+    if (s.key === 'fail' && s.anchor) {
+      dummy.position.set(s.anchor.x - 0.34, 0, s.anchor.z);
+    }
   }
   woman.play('guard', { fade: 0 });
   console.log('[bb] anchors', STRIKES.map(s => `${s.key}=${s.anchor ? s.anchor.toArray().map(v => +v.toFixed(2)).join(',') : 'null'}`).join('  '));
@@ -490,9 +558,9 @@ async function probeAnchors() {
 
 /* ---------- contacts ---------- */
 const contacts = STRIKES.map(s => ({ s, t: s.at, fired: false }));
-/* the FAIL post only breaks after the whole combo-knee take has played out */
-const breaks = STRIKES.filter(s => s.breakAtEnd).map(s => ({
-  t: s.at + (1 - s.frac) * CLIP_DUR[s.clip], s, done: false,
+/* the FAIL dummy only breaks on the FINAL knee of the combo */
+const breaks = STRIKES.filter(s => s.lastFrac).map(s => ({
+  t: s.at + (s.lastFrac - s.frac) * CLIP_DUR[s.clip] / TS, s, done: false,
 }));
 
 function fireContact(c) {
@@ -502,17 +570,18 @@ function fireContact(c) {
   const b = w.bones[s.bone];
   const pos = b ? b.getWorldPosition(new THREE.Vector3()) : (s.anchor || new THREE.Vector3());
   const kind = s.key === 'partner' ? 'ko' : (s.clip === 'kick' || s.clip === 'combo-knee' || s.clip === 'flying-kick' ? 'kick' : 'punch');
-  /* the post survives the whole combo — only the move label pops mid-take */
+  /* the dummy survives the first knees — only the move label pops on them */
   if (s.key !== 'fail') {
     spawnImpact(pos, kind);
     AudioFX.hit(kind);
     shake(kind);
   }
   showLabel(s.label, pos);
-  if (s.word && s.key !== 'fail') {
+  if (s.kind === 'ball') {
     const tg = targetOf(s.key);
     tg.shattered = true;
     tg.el.classList.add('shatter');
+    if (tg.ball3d) tg.ball3d.visible = false;
   }
   if (s.key === 'partner') {
     /* he is out — the KO clip enters mid-buckle so he drops right away */
@@ -537,11 +606,12 @@ function updateShow(dt = 0) {
     if (b.clip) f.play(b.clip, { clamp: !!b.clamp, fade: b.fade ?? 0.14, rate: b.rate || 1, start: b.start || 0 });
     if (b.moveX !== undefined) tweenX(b.who, b.moveX, b.dur || 0.6, t);
     if (b.fly) {
-      /* land the toe exactly on the partner's head: travel = head x - anchor x */
+      /* land the toe exactly on the partner's head: travel = head x - anchor x.
+       * The tween must finish right at the contact instant (contact - start). */
       const s = STRIKES[4];
       const headX = man.baseX + 0.06;
       const travel = s.anchor ? (headX - s.anchor.x) : -0.62;
-      tweenX('w', WOMAN_X + travel, 0.55, t + 0.12);
+      tweenX('w', WOMAN_X + travel, 0.35, t + 0.15);
     }
   }
 
@@ -578,9 +648,10 @@ function updateShow(dt = 0) {
       br.done = true;
       const s = br.s;
       const pos = s.anchor ? s.anchor.clone() : new THREE.Vector3();
-      spawnImpact(pos, 'kick');
-      AudioFX.hit('kick');
-      shake('kick');
+      spawnImpact(pos, 'ko');
+      AudioFX.hit('ko');
+      shake('ko');
+      dummy.visible = false;
       const tg = targetOf(s.key);
       if (tg) { tg.shattered = true; tg.el.classList.add('shatter'); }
     }
@@ -667,6 +738,8 @@ function resetShow() {
   badTag.shattered = false;
   badTag.el.classList.remove('shatter');
   badTag.el.style.opacity = '0';
+  for (const tg of targets) if (tg.ball3d) tg.ball3d.visible = true;
+  dummy.visible = true;
   for (const l of labels) l.el.remove();
   labels = [];
   clearFx();
