@@ -86,8 +86,15 @@ if WITH_CLIPS:
     # name, so track them by object identity, not by name) ---
     known = {rig_n}
     if MOVE_DONOR:
-        # per-move variant: no glb donors — idle, guard and the FBX move clip
-        rig_moves = rig_game = None
+        # per-move variant: guard + the FBX move clip, plus the glTF 'idle'
+        # (boxer-woman.glb) so the docked widget plays the exact same idle
+        # as the jab page. NOTE: the glTF import must happen AFTER the FBX
+        # donor imports — importing it first flips the FBX bake's rotation
+        # convention (guard comes out upright instead of lying, which makes
+        # the page's orientation check fire and rotate the FBX move clips
+        # flat).
+        rig_moves = None
+        rig_game = None
     else:
         bpy.ops.import_scene.gltf(filepath=DONOR_MOVES)
         rig_moves = next(o for o in bpy.data.objects
@@ -136,6 +143,13 @@ if WITH_CLIPS:
     rig_move = None
     if MOVE_DONOR:
         rig_move = import_fbx_donor(MOVE_DONOR)
+    if MOVE_DONOR:
+        # glTF idle donor LAST — see the convention note in the MOVE_DONOR
+        # branch above (importing glTF before FBX flips the FBX bake)
+        bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
+        rig_game = next(o for o in bpy.data.objects
+                        if o.type == "ARMATURE" and o not in known)
+        known.add(rig_game)
     # drop the donors' meshes up front so they never pollute the export
     for o in list(bpy.data.objects):
         if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
@@ -166,10 +180,15 @@ if WITH_CLIPS:
         print(f"  donor game clips: {sorted(acts_game)}")
         CLIPS.append((rig_moves, acts_moves, "jab", "jab"))
         CLIPS.append((rig_game, acts_game, "jab", "jab-fight"))
-    if rig_idle is not None:
+    if rig_idle is not None and not MOVE_DONOR:
         acts_idle = rig_actions(rig_idle)
         print(f"  donor idle clips: {sorted(acts_idle)}")
         CLIPS.append((rig_idle, acts_idle, "Layer0", "idle"))
+    if MOVE_DONOR:
+        # the jab page's docked idle, straight from the glTF donor
+        acts_game = rig_actions(rig_game)
+        print(f"  donor game clips: {sorted(acts_game)}")
+        CLIPS.append((rig_game, acts_game, "idle", "idle"))
 
     M_n = rig_n.matrix_world.copy()
     hips_n = rig_n.pose.bones["mixamorig:Hips"]
@@ -216,6 +235,14 @@ if WITH_CLIPS:
 
         fr0, fr1 = int(act.frame_range[0]), int(act.frame_range[1])
         ad_n.action = None
+        # donor actions can share the output name (boxer-woman.glb ships
+        # 'guard' and 'idle') — Blender would then name the baked action
+        # '<name>.001' and the exporter would emit the RAW donor action
+        # instead of the baked one (wrong skeleton convention). Rename the
+        # donor's action out of the way first.
+        for a in bpy.data.actions:
+            if a.name == out_name:
+                a.name = f"donor_{out_name}"
         new_act = bpy.data.actions.new(out_name)
         new_act.use_fake_user = True
         ad_n.action = new_act

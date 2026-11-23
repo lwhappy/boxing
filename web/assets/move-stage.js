@@ -560,9 +560,9 @@ function dock() {
   hideCallouts();
   woman.group.rotation.y = Math.PI * 0.375;   // nose to screen-right, ~22° off profile
   woman.mixer.stopAllAction();
-  /* docked pose: the guard clip — same tight boxing stance as the jab page's
-   * docked idle (the FBX idle donor stands notably wider) */
-  play(woman, woman.actions.guard ? 'guard' : 'idle', { fade: 0.3, loop: true });
+  /* docked pose: the same glTF-donor idle the jab page's docked widget plays
+   * (baked into every move GLB by build_jab_woman.py) */
+  play(woman, woman.actions.idle ? 'idle' : 'guard', { fade: 0.3, loop: true });
   resize();
   /* hand the camera over to the user on a front 3/4 view. NOTE: the view
    * direction must be captured BEFORE copying the target into
