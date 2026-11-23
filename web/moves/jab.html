@@ -76,6 +76,7 @@
   .jab-stage.jab-docked { position: fixed; left: 0; top: auto; bottom: 0; z-index: 30;
     overflow: hidden;   /* clip the canvas overhang: the figure hugs the corner */
     width: min(320px, 44vw); max-width: 320px; min-height: 0;
+    aspect-ratio: auto;   /* kill the base 6/5 hero ratio: it padded 45px between her feet and the button */
     padding-bottom: 44px; border-radius: 0;
     border: none; background: transparent; box-shadow: none;
     -webkit-backdrop-filter: none; backdrop-filter: none;
