@@ -13,8 +13,10 @@ globalThis.__pending = new Map();
 
 const CHROME = 'http://127.0.0.1:9222';
 const targetInfos = await (await fetch(CHROME + '/json/list')).json();
-const page = targetInfos.find((t) => t.type === 'page' && /leadhook/.test(t.url));
-if (!page) { console.error('no leadhook page tab'); process.exit(1); }
+const PAGE_PAT = new RegExp(process.env.PAGE_PAT || 'leadhook');
+const ACT = process.env.ACT || 'leadhook';
+const page = targetInfos.find((t) => t.type === 'page' && PAGE_PAT.test(t.url));
+if (!page) { console.error('no page tab for ' + PAGE_PAT); process.exit(1); }
 
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 globalThis.__ws = ws;
@@ -49,11 +51,11 @@ for (let i = 0; i < 120; i++) {
   await new Promise((r) => setTimeout(r, 500));
 }
 
-const times = ['0', '1.75', '1.9', '2.1', '2.3'];
+const times = (process.env.LH_TIMES || '1.0,1.1,1.2,1.3,1.4,1.5,1.6').split(',');
 for (const t of times) {
   await ev(`(() => {
     const m = window.__move, w = m.woman;
-    const act = w.actions['leadhook'];
+    const act = w.actions[ACT];
     act.reset().play();
     w.mixer.setTime(${t});
     w.group.updateMatrixWorld(true);
@@ -65,7 +67,7 @@ for (const t of times) {
 // restore the frozen state
 await ev(`(() => {
   const m = window.__move, w = m.woman;
-  const act = w.actions['leadhook'];
+  const act = w.actions[ACT];
   act.time = m.moveFreeze; w.mixer.update(0);
   return true;
 })()`);

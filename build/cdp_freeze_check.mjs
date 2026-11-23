@@ -2,8 +2,10 @@
 // frozen frame, to verify the rear heel is grounded at freeze time.
 const CHROME = 'http://127.0.0.1:9222';
 const list = await (await fetch(CHROME + '/json')).json();
-const page = list.find((t) => t.type === 'page' && /leadhook/.test(t.url));
-if (!page) { console.error('no leadhook page tab'); process.exit(1); }
+const PAGE_PAT = new RegExp(process.env.PAGE_PAT || 'leadhook');
+const ACT = process.env.ACT || 'leadhook';
+const page = list.find((t) => t.type === 'page' && PAGE_PAT.test(t.url));
+if (!page) { console.error('no page tab for ' + PAGE_PAT); process.exit(1); }
 
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 ws.addEventListener('message', (ev) => {
@@ -43,11 +45,11 @@ const out = await evalJs(`(() => {
   lf.getWorldPosition(v); const ly = v.y;
   rf.getWorldPosition(v); const ry = v.y;
   // also sample the whole clip after reach for the heel curve
-  const act = w.actions[m.woman ? 'leadhook' : ''];
+  const act = w.actions[ACT];
   return {
     phase: m.phase, moveImpact: m.moveImpact, moveFreeze: m.moveFreeze,
     leftFootY: ly, rightFootY: ry, dy: ry - ly,
-    actionTime: w.actions['leadhook'] ? w.actions['leadhook'].time : null,
+    actionTime: w.actions[ACT] ? w.actions[ACT].time : null,
   };
 })()`);
 console.log(JSON.stringify(out, null, 2));

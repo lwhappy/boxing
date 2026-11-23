@@ -1,7 +1,7 @@
 // leadhook replay-transition probe: dock -> Replay -> screenshot frame-0 and
 // mid-punch frames; also check console errors and hand trajectory (hook arc).
 import fs from 'node:fs';
-const slug = 'leadhook';
+const slug = process.env.PAGE || 'leadhook';
 const ver = await (await fetch('http://127.0.0.1:9222/json/version')).json();
 const ws = new WebSocket(ver.webSocketDebuggerUrl);
 let idc = 0; const pending = new Map();
@@ -28,7 +28,7 @@ for (let i = 0; i < 20; i++) { await sleep(1000); if (await ev('__move.phase') =
 // hand trajectory over the move clip (hook arc sanity)
 console.log('traj:', await ev(`(() => {
   const j = __move, T = j.THREE;
-  const mixer = j.woman.mixer, act = j.woman.actions.leadhook;
+  const mixer = j.woman.mixer, act = j.woman.actions[process.env.ACT || 'leadhook'];
   const dur = act.getClip().duration;
   mixer.stopAllAction(); act.reset().play();
   const v = new T.Vector3(), out = [];

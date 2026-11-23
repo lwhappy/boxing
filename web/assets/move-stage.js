@@ -608,6 +608,25 @@ function probe() {
    * beats the auto-detection when a page wants an exact frame (e.g. tuned
    * by eye against a reference pose) */
   if (typeof CFG.freezeAt === 'number') moveFreeze = CFG.freezeAt;
+  /* freeze where a bone tops out (CFG.freezeHighest, e.g. an uppercut's
+   * fist at the peak of its vertical drive): argmax world y over the clip */
+  if (CFG.freezeHighest) {
+    const hb = boneByName(woman.root, CFG.freezeHighest);
+    if (hb) {
+      wAct.reset().play();
+      let best = { t: moveImpact, y: -Infinity };
+      for (let i = 0; i <= 96; i++) {
+        const t = (moveDur * i) / 96;
+        woman.mixer.setTime(t);
+        woman.group.updateMatrixWorld(true);
+        hb.getWorldPosition(_sa);
+        if (_sa.y > best.y) best = { t, y: _sa.y };
+      }
+      moveFreeze = best.t;
+      console.log('[move] freeze at highest', CFG.freezeHighest, moveFreeze.toFixed(2));
+    }
+    woman.mixer.stopAllAction();
+  }
   woman.mixer.stopAllAction();
 }
 
