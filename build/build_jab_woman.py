@@ -19,6 +19,7 @@ Usage: Blender -b -P build/build_jab_woman.py -- --with-clips
 import bpy
 import os
 import sys
+from mathutils import Matrix
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 WITH_CLIPS = "--with-clips" in argv
@@ -32,6 +33,40 @@ if "--move-donor" in argv:
     MOVE_DONOR = argv[argv.index("--move-donor") + 1]
     MOVE_NAME = argv[argv.index("--move-name") + 1]
 
+# move clip straight from the boxer-woman.glb game action set (it ships the
+# full repertoire: jab/cross/lead-hook/rear-hook/lead-uppercut/... — e.g.
+#   --game-move lead-hook --move-name leadhook
+# bakes a REAL lead hook without needing a dedicated FBX). guard + idle keep
+# their usual donors; the game donor produces upright clips like the FBX
+# donors (its armature ships X+90°-rotated), so conventions stay consistent.
+GAME_MOVE = None
+if "--game-move" in argv:
+    GAME_MOVE = argv[argv.index("--game-move") + 1]
+    if "--move-name" in argv:
+        MOVE_NAME = argv[argv.index("--move-name") + 1]
+    else:
+        MOVE_NAME = GAME_MOVE.replace("-", "")
+
+# synthesize the OPPOSITE-side variant of a move from its donor FBX (e.g. a
+# lead hook from the rear-hook donor): the upper body (arms, spine, head and
+# the hips' rotation + weight shift) is mirrored across the character's
+# sagittal plane, while the LEG CHAINS keep the donor data so the stance
+# stays the same (left foot forward). The clip's first BLEND_IN frames blend
+# from the baked 'idle' pose into the mirrored motion so the clip starts on
+# the exact pose the docked widget idles with (no pop on Replay).
+MIRROR_UPPER = "--mirror-upper" in argv
+BLEND_IN = 0
+if "--blend-in" in argv:
+    BLEND_IN = int(argv[argv.index("--blend-in") + 1])
+if MIRROR_UPPER and BLEND_IN == 0:
+    BLEND_IN = 8
+LEG_BONES = {
+    "mixamorig:LeftUpLeg", "mixamorig:LeftLeg",
+    "mixamorig:LeftFoot", "mixamorig:LeftToeBase",
+    "mixamorig:RightUpLeg", "mixamorig:RightLeg",
+    "mixamorig:RightFoot", "mixamorig:RightToeBase",
+}
+
 SRC = "/Users/justrun/project/boxing-game/moves/rig-character-white.fbx"
 ROOT = "/Users/justrun/project/boxing-3"
 DONOR_MOVES = os.path.join(ROOT, "web/training/benefits-of-boxing/models/woman.glb")
@@ -39,7 +74,7 @@ DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
 DONOR_IDLE = os.path.join(ROOT, "build/donor_idle4.fbx")
 DONOR_GUARD = os.path.join(ROOT, "build/donor_guard.fbx")
 OUT = os.path.join(ROOT, "web/media/glb/jab-man.glb")
-if MOVE_DONOR:
+if MOVE_DONOR or GAME_MOVE:
     OUT = argv[argv.index("--out") + 1]   # after the default OUT above
 MAXTEX = 2048
 FPS = 30.0
@@ -143,7 +178,7 @@ if WITH_CLIPS:
     rig_move = None
     if MOVE_DONOR:
         rig_move = import_fbx_donor(MOVE_DONOR)
-    if MOVE_DONOR:
+    if MOVE_DONOR or GAME_MOVE:
         # glTF idle donor LAST — see the convention note in the MOVE_DONOR
         # branch above (importing glTF before FBX flips the FBX bake)
         bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
@@ -169,26 +204,33 @@ if WITH_CLIPS:
         acts_guard = rig_actions(rig_guard)
         print(f"  donor guard clips: {sorted(acts_guard)}")
         CLIPS.append((rig_guard, acts_guard, "Layer0", "guard"))
+    if MOVE_DONOR or GAME_MOVE:
+        # the jab page's docked idle, straight from the glTF donor — baked
+        # BEFORE the move clip so --mirror-upper can blend its first frames
+        # into the idle pose (the mirror needs the idle pose as reference)
+        acts_game = rig_actions(rig_game)
+        print(f"  donor game clips: {sorted(acts_game)}")
+        CLIPS.append((rig_game, acts_game, "idle", "idle"))
     if MOVE_DONOR:
         acts_move = rig_actions(rig_move)
         print(f"  donor move clips: {sorted(acts_move)}")
         CLIPS.append((rig_move, acts_move, "Layer0", MOVE_NAME))
+    elif GAME_MOVE:
+        src = GAME_MOVE if GAME_MOVE in acts_game else next(
+            (k for k in acts_game if k.split(".")[0] == GAME_MOVE), None)
+        assert src, f"game action {GAME_MOVE} not found in {sorted(acts_game)}"
+        CLIPS.append((rig_game, acts_game, src, MOVE_NAME))
     else:
         acts_moves = rig_actions(rig_moves)
-        acts_game = rig_actions(rig_game)
+        acts_game2 = rig_actions(rig_game)
         print(f"  donor moves clips: {sorted(acts_moves)}")
-        print(f"  donor game clips: {sorted(acts_game)}")
+        print(f"  donor game clips: {sorted(acts_game2)}")
         CLIPS.append((rig_moves, acts_moves, "jab", "jab"))
-        CLIPS.append((rig_game, acts_game, "jab", "jab-fight"))
-    if rig_idle is not None and not MOVE_DONOR:
+        CLIPS.append((rig_game, acts_game2, "jab", "jab-fight"))
+    if rig_idle is not None and not MOVE_DONOR and not GAME_MOVE:
         acts_idle = rig_actions(rig_idle)
         print(f"  donor idle clips: {sorted(acts_idle)}")
         CLIPS.append((rig_idle, acts_idle, "Layer0", "idle"))
-    if MOVE_DONOR:
-        # the jab page's docked idle, straight from the glTF donor
-        acts_game = rig_actions(rig_game)
-        print(f"  donor game clips: {sorted(acts_game)}")
-        CLIPS.append((rig_game, acts_game, "idle", "idle"))
 
     M_n = rig_n.matrix_world.copy()
     hips_n = rig_n.pose.bones["mixamorig:Hips"]
@@ -202,6 +244,10 @@ if WITH_CLIPS:
         for k, a in acts.items():
             if k.split(".")[0] == name and "cross" not in k:
                 return a
+        # synthesized moves reuse another donor's FBX (leadhook = mirrored
+        # rearhook donor) — the shipped action keeps its original name
+        if len(acts) == 1:
+            return next(iter(acts.values()))
         return None
 
     for donor_rig, donor_acts, src_name, out_name in CLIPS:
@@ -215,6 +261,39 @@ if WITH_CLIPS:
         R_map = M_map.to_3x3()
         for v in R_map:
             v.normalize()
+
+        mirror_this = MIRROR_UPPER and out_name == MOVE_NAME
+        M_mir = None
+        ref_pose = None
+        if mirror_this:
+            # sagittal mirror plane, derived from the donor rig itself: normal
+            # = axis between the left/right thigh heads, through their midpoint
+            pL = donor_rig.pose.bones["mixamorig:LeftUpLeg"].bone.matrix_local.to_translation()
+            pR = donor_rig.pose.bones["mixamorig:RightUpLeg"].bone.matrix_local.to_translation()
+            axis = pR - pL
+            axis.normalize()
+            mid = (pL + pR) * 0.5
+            M3 = Matrix.Identity(3)
+            for i in range(3):
+                for j in range(3):
+                    M3[i][j] -= 2.0 * axis[i] * axis[j]
+            Tmid = Matrix.Translation(mid)
+            M_mir = Tmid @ M3.to_4x4() @ Tmid.inverted()
+            chk = M_mir @ pL
+            print(f"  mirror: LeftUpLeg {tuple(round(v, 1) for v in pL)} -> "
+                  f"{tuple(round(v, 1) for v in chk)} (want RightUpLeg "
+                  f"{tuple(round(v, 1) for v in pR)})")
+            # blend reference: the baked idle pose (the docked widget's loop),
+            # so the mirrored clip starts on the exact idle pose
+            idle_act = bpy.data.actions.get("idle")
+            if idle_act is not None and BLEND_IN > 0:
+                ad_n.action = idle_act
+                bpy.context.scene.frame_set(
+                    int((idle_act.frame_range[0] + idle_act.frame_range[1]) / 2))
+                bpy.context.view_layer.update()
+                ref_pose = {b.name: b.matrix.copy() for b in rig_n.pose.bones}
+                ad_n.action = None
+                print(f"  mirror: blending first {BLEND_IN} frames into the idle pose")
 
         # the donor hips' raw rest height sets the size ratio: donor skeletons
         # ship at different unit scales (57cm vs 104cm hips for a ~1m vs ~1.8m
@@ -270,6 +349,11 @@ if WITH_CLIPS:
             rest_rel_inv[b.name] = rest_rel.inverted()
         for f in range(fr0 - 1, fr1 + 1):
             sf = max(f, fr0)
+            # mirror blend weight: 0 = pure idle pose, 1 = full mirrored move
+            w_mir = 1.0
+            if mirror_this and BLEND_IN > 0:
+                u = min(1.0, max(0.0, (sf - fr0) / BLEND_IN))
+                w_mir = u * u * (3 - 2 * u)
             bpy.context.scene.frame_set(sf)
             bpy.context.view_layer.update()
             desired_map = {}
@@ -277,14 +361,35 @@ if WITH_CLIPS:
                 db = donor_rig.pose.bones.get(b.name)
                 if db is None:
                     continue
+                dbm = db.matrix
+                if mirror_this and b.name not in LEG_BONES:
+                    # upper body: mirror across the sagittal plane (proper
+                    # rigid transform: M·A·M keeps det=+1, so quaternion
+                    # decomposition stays valid). Leg chains keep the donor
+                    # data so the stance (left foot forward) is unchanged.
+                    dbm = M_mir @ dbm @ M_mir
                 # desired pose in sculpt armature space: the donor bone's
                 # world matrix expressed in the sculpt's armature frame
-                desired = M_map @ db.matrix
+                desired = M_map @ dbm
                 if b.name == "mixamorig:Hips":
                     # rescale the hips motion onto the sculpt skeleton
-                    rest_mapped = (M_map @ hips_rest_d).to_translation()
+                    rest_d = hips_rest_d.to_translation()
+                    if mirror_this:
+                        rest_d = (M_mir @ hips_rest_d).to_translation()
+                    rest_mapped = (M_map @ Matrix.Translation(rest_d)).to_translation()
                     off = desired.to_translation() - rest_mapped
                     desired.translation = hips_rest.to_translation() + off * k
+                # blend the wind-up into the baked idle pose: frame 0 starts
+                # exactly on the idle the docked widget plays, so Replay from
+                # the docked stage never pops
+                if (w_mir < 1.0 and ref_pose is not None
+                        and b.name not in LEG_BONES and b.name in ref_pose):
+                    refm = ref_pose[b.name]
+                    q_b = refm.to_quaternion().copy().slerp(
+                        desired.to_quaternion(), w_mir)
+                    t_b = refm.to_translation().copy().lerp(
+                        desired.to_translation(), w_mir)
+                    desired = Matrix.Translation(t_b) @ q_b.to_matrix().to_4x4()
                 desired_map[b.name] = desired.copy()
             for b in rig_n.pose.bones:
                 if b.name not in desired_map:

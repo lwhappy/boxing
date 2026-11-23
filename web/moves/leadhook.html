@@ -53,6 +53,116 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
+<style>
+  /* cinematic jab demo: the stage goes fullscreen (transparent, fixed) while
+   * the show plays, then docks back into the article flow as a small
+   * borderless canvas — same form as the boxing-vs-kickboxing page */
+  .jab-stage.jab-live {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+    max-width: none; aspect-ratio: auto; min-height: 0;
+    border: none; border-radius: 0;
+    /* dim the page behind so the callout cards read cleanly over it */
+    background: rgba(9, 12, 16, .58);
+    box-shadow: none; z-index: 40; margin: 0;
+  }
+  .jab-stage.jab-live::before { display: none; }
+  /* canvas box: fills the stage during the fullscreen show; docked it is a
+   * plain 16:9 block so the stage container can add a Replay strip below */
+  .jab-stage .jab-canvas-box { position: absolute; inset: 0; }
+  /* docked stage: pinned to the very bottom-left corner of the screen
+   * (user spec: flush corner). Fully transparent — no card chrome. The
+   * canvas box keeps 16:9 and the padding below it hosts the Replay pill
+   * so the button still reads as "under the figure". */
+  .jab-stage.jab-docked { position: fixed; left: 0; top: auto; bottom: 0; z-index: 30;
+    overflow: hidden;   /* clip the canvas overhang: the figure hugs the corner */
+    width: min(320px, 44vw); max-width: 320px; min-height: 0;
+    aspect-ratio: auto;   /* kill the base 6/5 hero ratio: it padded 45px between her feet and the button */
+    padding-bottom: 44px; border-radius: 0;
+    border: none; background: transparent; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    margin: 0; }
+  .jab-stage.jab-docked .jab-canvas-box { position: relative; inset: auto;
+    width: 100%; aspect-ratio: 16 / 9;
+    /* she renders centred in the 16:9 canvas — slide the canvas left so the
+     * figure itself lands on the screen's left edge (the overhang is clipped
+     * above). Orbit still spins around her: the clip offset is constant in
+     * screen space. */
+    margin-left: -36%; }
+  .jab-stage.jab-docked::before { display: none; }
+  /* docked stage keeps the annotated pose: pack the callout cards tighter so
+   * all five fit the small canvas */
+  .jab-stage.jab-docked .hero-callout { width: 126px; padding: 5px 7px 6px; border-radius: 8px; }
+  .jab-stage.jab-docked .hero-callout .tag { font-size: 7px; letter-spacing: .1em; margin-bottom: 2px; }
+  .jab-stage.jab-docked .hero-callout .txt { font-size: 9px; line-height: 1.26; }
+  /* drag-to-orbit works on both the fullscreen show (once the pose freezes)
+   * and the docked stage. The cinematic intro still drives its own camera;
+   * touch-action pan-y keeps vertical swipes scrolling the article, and the
+   * wheel keeps page-scrolling because zoom is disabled in move-stage.js. */
+  .jab-stage canvas { pointer-events: auto; touch-action: pan-y; }
+  /* callout cards / leader lines are pure visuals — never eat a drag */
+  .jab-stage .hero-ui { pointer-events: none; }
+  .jab-replay { display: none; }
+  .jab-stage.jab-docked .jab-replay {
+    display: inline-flex; align-items: center; gap: 5px;
+    position: absolute; right: auto; top: auto; bottom: 8px;
+    /* she renders centred in the canvas, and the canvas is shifted left by
+     * 36% -> her centre lands at 14% of the stage width; centre the pill on
+     * her (slightly smaller so it fits the corner on phones) */
+    left: 14%; transform: translateX(-50%); z-index: 6;
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #fff;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: rgba(16, 19, 25, .55);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-stage.jab-docked .jab-replay:hover { background: rgba(16, 19, 25, .75); border-color: rgba(255, 122, 61, .7); }
+  /* big stage, end of the show: Replay / Close centred at the bottom while
+   * she holds the annotated pose */
+  .jab-actions {
+    display: none; position: absolute; left: 50%; bottom: 36px;
+    transform: translateX(-50%); gap: 10px; z-index: 6;
+  }
+  .jab-stage.jab-paused .jab-actions { display: flex; }
+  .jab-action {
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 700; letter-spacing: .05em; color: #fff;
+    padding: 7px 18px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .32);
+    background: rgba(16, 19, 25, .6);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-action:hover { background: rgba(16, 19, 25, .82); border-color: rgba(255, 122, 61, .7); }
+  .jab-action-close { border-color: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .85); }
+  /* fullscreen show: the LEAD HOOK badge sits a little lower than the homepage
+   * hero word (user: move it down from the very top edge) */
+  .jab-stage.jab-live .hero-word.pos-a { top: 48px; }
+  @media (max-width: 620px) {
+    .jab-stage.jab-live .hero-word.pos-a { top: 36px; }
+  }
+  @media (max-width: 620px) {
+    .jab-stage.jab-docked { width: min(260px, 62vw); padding-bottom: 40px; }
+    .jab-stage.jab-docked .jab-replay { font-size: 10px; padding: 4px 8px; gap: 4px;
+      left: calc(14% + 3px); }   /* user: nudge the pill 3px right on phones */
+  }
+  /* vertical hero: the 3D stage sits on top of the page, copy below.
+   * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
+  .hero-grid.move-hero { grid-template-columns: 1fr; gap: 30px; }
+  .move-hero .stage:not(.jab-live):not(.jab-docked) { position: relative; top: auto; }
+  /* the docked widget is position:fixed now — it leaves the grid flow on its
+   * own, nothing extra to reset here */
+  /* full-width copy: wider intro + technique notes in two columns
+   * (the global .hero p { max-width: 46ch } would squeeze them to ~360px) */
+  .move-hero .hero-copy > p { max-width: 64ch; }
+  .move-hero .move-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 40px; margin-top: 30px; }
+  .move-hero .move-notes p { max-width: none; }
+  .move-hero .pager { grid-column: 1 / -1; }
+  @media (max-width: 980px) {
+    .move-hero .move-notes { grid-template-columns: 1fr; }
+  }
+</style>
 <script>
 window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Lead Hook' }] };
 </script>
@@ -100,10 +210,19 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Lead Hook' }]
   <section class="hero">
     <div class="hero-grid move-hero">
 
-      <!-- Left: 3D stage (auto-plays this move once, Replay + slow-mo buttons) -->
-      <div class="stage hero-stage" aria-label="3D demo of the lead hook">
-        <canvas id="stage-canvas"></canvas>
-        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the lead hook" hidden></div>
+            <!-- Left: 3D stage (fullscreen lead hook show on load, then docks
+           bottom-left). .jab-canvas-box keeps the render + callout overlay
+           tied to the canvas area only, so the docked corner widget can
+           reserve a bottom strip for its Replay button. -->
+      <div class="stage hero-stage jab-stage jab-live" id="jab-stage" aria-label="3D demo of the lead hook">
+        <div class="jab-canvas-box">
+          <canvas id="stage-canvas"></canvas>
+        </div>
+        <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
+        <div class="jab-actions" id="jab-actions">
+          <button type="button" class="jab-action" id="jab-replay-big">↻ Replay</button>
+          <button type="button" class="jab-action jab-action-close" id="jab-close">✕ Close</button>
+        </div>
         <div class="stage-loading" id="stage-loading">
           <div class="ring"></div>
           <span id="stage-loading-text">Loading 3D model…</span>
@@ -164,14 +283,8 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Lead Hook' }]
   <span><a href="../index.html">Home</a> · <a href="../moves/">Moves</a> · <a href="../combos/">Combos</a> · <a href="../training/">Training</a> · <a href="../guides/">Guides</a> · <a href="../contact/">Contact</a> · <a href="../about/">About</a> · <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></span>
 </footer>
 
-<!-- Shared stage: this page asks for one move only, auto-played on load -->
-<script>
-window.STAGE = {
-  buttons: ['lead-hand-hook'],
-  labels: { 'lead-hand-hook': 'Replay' },
-  autoPlay: 'lead-hand-hook'
-};
-</script>
+<!-- Shared cinematic stage: this page plays its own move, freezes on
+     the reach frame, annotates, then docks bottom-left -->
 <script type="importmap">
 {
   "imports": {
@@ -180,6 +293,22 @@ window.STAGE = {
   }
 }
 </script>
-<script type="module" src="../assets/home-stage.js?v=13"></script>
+<script>
+window.MOVE_STAGE = {
+  glb: '../media/glb/leadhook-man.glb?v=1',
+  move: 'leadhook',
+  word: 'LEAD HOOK',
+  probeBone: 'LeftHand',
+  straighten: null,      // the hook keeps its bend — no arm corrective
+  callouts: [
+    ['Lead fist', 'Swings on a level arc into the side of the jaw, knuckles leading.', 'LeftHand', 'l', 13],
+    ['Rear hand', 'Stays welded to the chin, covering you through the whole turn.', 'RightHand', 'r', 13],
+    ['Hips', 'The lead side whips through — the arm is just the delivery.', 'Hips', 'l', 40],
+    ['Lead leg', 'Absorbs the rotation and keeps the base under you.', 'LeftFoot', 'l', 69],
+    ['Rear foot', 'Anchors your base while the lead side turns over.', 'RightFoot', 'r', 55],
+  ],
+};
+</script>
+<script type="module" src="../assets/move-stage.js?v=6"></script>
 </body>
 </html>
