@@ -144,7 +144,8 @@
   }
   @media (max-width: 620px) {
     .jab-stage.jab-docked { width: min(260px, 62vw); padding-bottom: 40px; }
-    .jab-stage.jab-docked .jab-replay { font-size: 10px; padding: 4px 8px; gap: 4px; }
+    .jab-stage.jab-docked .jab-replay { font-size: 10px; padding: 4px 8px; gap: 4px;
+      left: calc(14% + 3px); }   /* user: nudge the pill 3px right on phones */
   }
   /* vertical hero: the 3D stage sits on top of the page, copy below.
    * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
