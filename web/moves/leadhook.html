@@ -304,6 +304,11 @@ window.MOVE_STAGE = {
   yaw: -Math.PI / 2 + 1.27,
   probeBone: 'LeftHand',
   straighten: null,      // the hook keeps its bend — no arm corrective
+  /* freeze past the reach: hold through the follow-through until the pivoting
+   * rear (right) foot is flat on the floor again — tracked by ankle + toe
+   * bone both returning to their guard-pose heights */
+  freezeBone: 'RightFoot',
+  freezeRefBone: 'RightToeBase',
   callouts: [
     ['Lead fist', 'Swings on a level arc into the side of the jaw, knuckles leading.', 'LeftHand', 'l', 13],
     ['Rear hand', 'Stays welded to the chin, covering you through the whole turn.', 'RightHand', 'r', 13],
@@ -313,6 +318,6 @@ window.MOVE_STAGE = {
   ],
 };
 </script>
-<script type="module" src="../assets/move-stage.js?v=7"></script>
+<script type="module" src="../assets/move-stage.js?v=8"></script>
 </body>
 </html>

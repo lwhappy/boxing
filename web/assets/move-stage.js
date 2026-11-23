@@ -527,6 +527,7 @@ function buildWoman(gltf) {
 /* ---------- choreography probes ---------- */
 let moveDur = 1.0;
 let moveImpact = 0.6;     // intro-clip time of the reach frame
+let moveFreeze = 0.6;     // intro-clip time of the frozen pose (>= moveImpact)
 
 function probe() {
   const hand = woman.bones[CFG.probeBone || ANCHOR_KEYS[0]];
@@ -550,6 +551,48 @@ function probe() {
     if (d > best.d) best = { t, d };
   }
   moveImpact = best.t;
+
+  /* optional late freeze (CFG.freezeBone): hold the pose past the reach until
+   * the follow-through settles — e.g. the lead hook keeps turning after the
+   * fist arrives, and freezing at the reach catches the pivoting rear foot
+   * mid-air. Track that bone until it drops back to the planted reference
+   * foot's height (ground level); fall back to the lowest point found. */
+  moveFreeze = moveImpact;
+  if (CFG.freezeBone) {
+    const bones = [CFG.freezeBone, CFG.freezeRefBone].filter(Boolean)
+      .map((n) => boneByName(woman.root, n)).filter(Boolean);
+    if (bones.length) {
+      wAct.reset().play();
+      /* baseline: each tracked bone's height at the clip start (guard — feet
+       * flat on the floor). The rear foot pivots through a hook and only
+       * truly settles well after the fist lands; ankle height alone reads
+       * "level" too early because the pivot mostly rotates the foot —
+       * track the toe bone too (freezeRefBone) and require BOTH back down. */
+      const base = bones.map((b) => {
+        woman.mixer.setTime(0);
+        woman.group.updateMatrixWorld(true);
+        b.getWorldPosition(_sa);
+        return _sa.y;
+      });
+      const TOL = 0.015;
+      let hit = null;
+      for (let i = 0; i <= 96; i++) {
+        const t = moveImpact + ((moveDur - moveImpact) * i) / 96;
+        woman.mixer.setTime(t);
+        woman.group.updateMatrixWorld(true);
+        let ok = true;
+        for (let bi = 0; bi < bones.length; bi++) {
+          bones[bi].getWorldPosition(_sa);
+          if (_sa.y > base[bi] + TOL) { ok = false; break; }
+        }
+        if (ok) { hit = t; break; }
+      }
+      moveFreeze = hit === null ? moveDur : hit;
+      console.log('[move] freeze at', moveFreeze.toFixed(2), 'of', moveDur.toFixed(2),
+        '(reach', moveImpact.toFixed(2) + ')');
+    }
+    woman.mixer.stopAllAction();
+  }
   woman.mixer.stopAllAction();
 }
 
@@ -561,7 +604,7 @@ let whooshed = false;     // one whoosh per show run
 
 function freezeWoman() {
   const wa = woman.actions[MOVE];
-  wa.time = Math.min(moveImpact, moveDur);
+  wa.time = Math.min(moveFreeze, moveDur);
   woman.mixer.update(0);
   straightenPunchArm(moveImpact);   // full weight at the frozen reach pose
   woman.group.updateMatrixWorld(true);
@@ -630,7 +673,7 @@ function advance(dt) {
       whooshed = true;
       playWhoosh();
     }
-    if (wa && wa.time >= moveImpact - 1e-3) {
+    if (wa && wa.time >= moveFreeze - 1e-3) {
       freezeWoman();
       phase = 'reveal';
       revT = 0; shown = 0;
@@ -782,6 +825,7 @@ function build(wg) {
     get phase() { return phase; },
     get t() { return showT; },
     moveImpact,
+    moveFreeze,
     woman, camera, THREE, samplePose,
     get frames() { return frames; },
     get running() { return running; },
