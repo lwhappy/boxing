@@ -41,6 +41,37 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
+<style>
+  /* ---- training lab cards: real scene thumbnail instead of the glove icon ---- */
+  @media (min-width: 981px) {
+    #labs .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  #labs .card { padding-top: 0; }
+  #labs .card .lab-thumb {
+    display: block;
+    position: relative;
+    margin: 0 -20px 2px;
+    overflow: hidden;
+    background: #0b0e14;
+  }
+  #labs .card .lab-thumb img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform .45s cubic-bezier(.2, .8, .3, 1);
+  }
+  #labs .card .lab-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10, 12, 17, 0) 58%, rgba(13, 16, 22, 0.62));
+    pointer-events: none;
+  }
+  #labs .card:hover .lab-thumb img,
+  #labs .card:focus-visible .lab-thumb img { transform: scale(1.03); }
+</style>
 <script>
 window.PAGE = { section: 'training', depth: 1 };
 </script>
@@ -115,28 +146,28 @@ window.PAGE = { section: 'training', depth: 1 };
     <div class="grid">
 
       <a class="card" href="./simulator/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/training/simulator.jpg" alt="Heavy bag simulator: a rear hook landing on the bag as water bursts off the leather in the rain" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Heavy Bag Simulator <span class="arrow">&rarr;</span></h3>
         <p>Boxing hands and kickboxing legs on the same bag: thirteen strikes — jab, cross, hooks, uppercuts, roundhouse and flying kicks, elbows and knees — thrown in a flooded yard while the sky tears open. The bag swings, water bursts off the leather, thunder answers every shot.</p>
         <div class="meta"><span class="tag">two sports · one bag</span><span>13 strikes · storm scene</span></div>
       </a>
 
       <a class="card" href="./punch-demo/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/training/punch-demo.jpg" alt="Punch demo: a cross landing on a live defender in the ring" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Live Punch Demo <span class="arrow">&rarr;</span></h3>
         <p>Pick one punch and watch it land on a defender who reacts to it — where the fist meets the head, how the body answers, and how the attacker gets back to stance.</p>
         <div class="meta"><span class="tag">technique</span><span>6 punches · live defender</span></div>
       </a>
 
       <a class="card" href="./boxing-vs-kickboxing/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/training/boxing-vs-kickboxing.jpg" alt="Boxing vs kickboxing: a flying kick landing on the boxer's guard" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Boxing vs Kickboxing <span class="arrow">&rarr;</span></h3>
         <p>A boxer and a kickboxer settle the range battle: roundhouse and flying kicks score from the outside, the boxer blocks on his gloves, closes the distance and finishes with a jab-cross-uppercut knockout.</p>
         <div class="meta"><span class="tag">styles clash</span><span>kicks vs hands · KO finish</span></div>
       </a>
 
       <a class="card" href="./benefits-of-boxing/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/training/benefits-of-boxing.jpg" alt="Benefits of boxing: a kickboxer striking the floating HOPELESS target" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Benefits of Boxing &amp; Kickboxing <span class="arrow">&rarr;</span></h3>
         <p>A kickboxer knocks out disease, weakness, hopelessness and failure one strike at a time — jab, cross, kick, punch-knee and flying kick — and every benefit of the workout is explained beside the animation.</p>
         <div class="meta"><span class="tag">why train</span><span>5 strikes · 6 benefits</span></div>
