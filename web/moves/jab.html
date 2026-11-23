@@ -66,16 +66,22 @@
     box-shadow: none; z-index: 40; margin: 0;
   }
   .jab-stage.jab-live::before { display: none; }
-  /* docked stage: compact floating widget pinned to the page's bottom-left
-   * corner (user spec: smaller, bottom-left). No card chrome at all — fully
-   * transparent, just her over the article (user spec). Replay hangs below. */
-  .jab-stage.jab-docked { position: fixed; left: 12px; top: auto; bottom: 58px; z-index: 30;
-    overflow: visible;   /* the Replay pill hangs below the card — never clip it */
+  /* canvas box: fills the stage during the fullscreen show; docked it is a
+   * plain 16:9 block so the stage container can add a Replay strip below */
+  .jab-stage .jab-canvas-box { position: absolute; inset: 0; }
+  /* docked stage: pinned to the very bottom-left corner of the screen
+   * (user spec: flush corner). Fully transparent — no card chrome. The
+   * canvas box keeps 16:9 and the padding below it hosts the Replay pill
+   * so the button still reads as "under the figure". */
+  .jab-stage.jab-docked { position: fixed; left: 0; top: auto; bottom: 0; z-index: 30;
+    overflow: visible;
     width: min(320px, 44vw); max-width: 320px; min-height: 0;
-    aspect-ratio: 16 / 9; border-radius: 0;
+    padding-bottom: 44px; border-radius: 0;
     border: none; background: transparent; box-shadow: none;
     -webkit-backdrop-filter: none; backdrop-filter: none;
     margin: 0; }
+  .jab-stage.jab-docked .jab-canvas-box { position: relative; inset: auto;
+    width: 100%; aspect-ratio: 16 / 9; }
   .jab-stage.jab-docked::before { display: none; }
   /* docked stage keeps the annotated pose: pack the callout cards tighter so
    * all five fit the small canvas */
@@ -92,8 +98,8 @@
   .jab-replay { display: none; }
   .jab-stage.jab-docked .jab-replay {
     display: inline-flex; align-items: center; gap: 6px;
-    position: absolute; right: auto; bottom: auto;
-    top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px; z-index: 6;
+    position: absolute; right: auto; top: auto; bottom: 8px;
+    left: 50%; transform: translateX(-50%); z-index: 6;
     appearance: none; cursor: pointer; font: inherit;
     font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #fff;
     padding: 6px 13px; border-radius: 999px;
@@ -128,8 +134,7 @@
     .jab-stage.jab-live .hero-word.pos-a { top: 36px; }
   }
   @media (max-width: 620px) {
-    .jab-stage.jab-docked { width: min(260px, 62vw); aspect-ratio: 16 / 10;
-      left: 10px; bottom: 54px; }
+    .jab-stage.jab-docked { width: min(260px, 62vw); padding-bottom: 40px; }
   }
   /* vertical hero: the 3D stage sits on top of the page, copy below.
    * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
@@ -193,9 +198,14 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   <section class="hero">
     <div class="hero-grid move-hero">
 
-      <!-- Left: 3D stage (fullscreen jab show on load, then docks here) -->
+      <!-- Left: 3D stage (fullscreen jab show on load, then docks here).
+           .jab-canvas-box keeps the render + callout overlay tied to the
+           canvas area only, so the docked corner widget can reserve a
+           bottom strip for its Replay button. -->
       <div class="stage hero-stage jab-stage jab-live" id="jab-stage" aria-label="3D demo of the jab">
-        <canvas id="stage-canvas"></canvas>
+        <div class="jab-canvas-box">
+          <canvas id="stage-canvas"></canvas>
+        </div>
         <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
         <div class="jab-actions" id="jab-actions">
           <button type="button" class="jab-action" id="jab-replay-big">↻ Replay</button>
@@ -270,6 +280,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=28"></script>
+<script type="module" src="../assets/jab-stage.js?v=29"></script>
 </body>
 </html>

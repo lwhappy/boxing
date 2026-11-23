@@ -19,7 +19,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.getElementById('stage-canvas');
+/* stageEl is the render surface (canvas box): renderer sizing, callout
+ * projection and the hero-ui overlay all anchor here. hostEl is the stage
+ * container that carries the phase classes (jab-live / jab-paused /
+ * jab-docked) the CSS keys off — they must not be the same node now that
+ * the canvas is wrapped in .jab-canvas-box. */
 const stageEl = canvas.parentElement;
+const hostEl = stageEl.closest('.jab-stage') || stageEl;
 const loadingEl = document.getElementById('stage-loading');
 const loadingText = document.getElementById('stage-loading-text');
 const errorEl = document.getElementById('stage-error');
@@ -307,7 +313,7 @@ loadGLB(WOMAN_URL).then((wg) => {
 }).catch(fail);
 
 function fail(err) {
-  stageEl.classList.remove('jab-live');
+  hostEl.classList.remove('jab-live');
   loadingEl.classList.add('hidden');
   errorEl.hidden = false;
   errorEl.textContent = 'Failed to load the 3D model.\n' + (err && err.message ? err.message : err);
@@ -542,8 +548,8 @@ function freezeWoman() {
  * Replay returns to the full annotated show. */
 function dock() {
   phase = 'docked';
-  stageEl.classList.remove('jab-live', 'jab-paused');
-  stageEl.classList.add('jab-docked');
+  hostEl.classList.remove('jab-live', 'jab-paused');
+  hostEl.classList.add('jab-docked');
   replayBtn.hidden = false;
   hideCallouts();
   /* docked look: facing screen-right angled out toward the viewer. Yaw
@@ -572,8 +578,8 @@ function resetShow() {
   revT = 0; shown = 0;
   whooshed = false;
   hideCallouts();
-  stageEl.classList.remove('jab-docked', 'jab-paused');
-  stageEl.classList.add('jab-live');
+  hostEl.classList.remove('jab-docked', 'jab-paused');
+  hostEl.classList.add('jab-live');
   replayBtn.hidden = true;
   /* scripted camera takes over again — when coming back from the docked
    * stage, start the easing from wherever the user had orbited to, so the
@@ -628,7 +634,7 @@ function advance(dt) {
       /* every callout is up: hold the annotated pose centre-stage and offer
        * Replay / Close at the bottom of the stage */
       phase = 'paused';
-      stageEl.classList.add('jab-paused');
+      hostEl.classList.add('jab-paused');
     }
   } else if (phase === 'docked') {
     /* idle keeps looping on the small stage */
