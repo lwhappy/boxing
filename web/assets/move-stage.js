@@ -575,9 +575,15 @@ function probe() {
         return _sa.y;
       });
       const TOL = 0.015;
-      let hit = null;
+      const step = (moveDur - moveImpact) / 96;
+      /* a momentary dip (mid weight-shift bounce) reads "level" for ~0.2s
+       * while the foot is still visually pivoted — require the settle to
+       * HOLD for 0.3s before trusting it, else keep waiting for the true
+       * stance (the clip tail after the last bounce) */
+      const need = Math.max(1, Math.ceil(0.3 / step));
+      let run = 0, hit = null;
       for (let i = 0; i <= 96; i++) {
-        const t = moveImpact + ((moveDur - moveImpact) * i) / 96;
+        const t = moveImpact + step * i;
         woman.mixer.setTime(t);
         woman.group.updateMatrixWorld(true);
         let ok = true;
@@ -585,7 +591,12 @@ function probe() {
           bones[bi].getWorldPosition(_sa);
           if (_sa.y > base[bi] + TOL) { ok = false; break; }
         }
-        if (ok) { hit = t; break; }
+        if (ok) {
+          if (hit === null) hit = t;
+          if (++run >= need) break;      // settled and holding
+        } else {
+          hit = null; run = 0;           // bounced again — keep waiting
+        }
       }
       moveFreeze = hit === null ? moveDur : hit;
       console.log('[move] freeze at', moveFreeze.toFixed(2), 'of', moveDur.toFixed(2),
