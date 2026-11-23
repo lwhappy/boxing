@@ -604,6 +604,10 @@ function probe() {
     }
     woman.mixer.stopAllAction();
   }
+  /* explicit freeze time override (CFG.freezeAt, seconds into the clip):
+   * beats the auto-detection when a page wants an exact frame (e.g. tuned
+   * by eye against a reference pose) */
+  if (typeof CFG.freezeAt === 'number') moveFreeze = CFG.freezeAt;
   woman.mixer.stopAllAction();
 }
 

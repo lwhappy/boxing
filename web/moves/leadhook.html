@@ -309,6 +309,10 @@ window.MOVE_STAGE = {
    * bone both returning to their guard-pose heights */
   freezeBone: 'RightFoot',
   freezeRefBone: 'RightToeBase',
+  /* tuned by eye: t=1.30 is just past impact — the hook is landing at the
+   * jaw with the elbow out and the rear heel has come back down (the auto
+   * settle-detection picks 1.75, which reads as plain guard) */
+  freezeAt: 1.3,
   callouts: [
     ['Lead fist', 'Swings on a level arc into the side of the jaw, knuckles leading.', 'LeftHand', 'l', 13],
     ['Rear hand', 'Stays welded to the chin, covering you through the whole turn.', 'RightHand', 'r', 13],
@@ -318,6 +322,6 @@ window.MOVE_STAGE = {
   ],
 };
 </script>
-<script type="module" src="../assets/move-stage.js?v=9"></script>
+<script type="module" src="../assets/move-stage.js?v=10"></script>
 </body>
 </html>
