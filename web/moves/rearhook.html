@@ -58,7 +58,11 @@
    * the show plays, then docks back into the article flow as a small
    * borderless canvas — same form as the boxing-vs-kickboxing page */
   .jab-stage.jab-live {
-    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+    /* fullscreen show, but anchored BELOW the sticky site header + breadcrumb
+     * row (--show-top measured in JS) so those bars stay visible + clickable */
+    position: fixed; left: 0; right: 0; bottom: 0;
+    top: var(--show-top, 0px);
+    width: auto; height: auto;
     max-width: none; aspect-ratio: auto; min-height: 0;
     border: none; border-radius: 0;
     /* dim the page behind so the callout cards read cleanly over it */
@@ -309,6 +313,6 @@ window.MOVE_STAGE = {
   ],
 };
 </script>
-<script type="module" src="../assets/move-stage.js?v=6"></script>
+<script type="module" src="../assets/move-stage.js?v=12"></script>
 </body>
 </html>

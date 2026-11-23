@@ -212,6 +212,27 @@ function resize() {
 new ResizeObserver(resize).observe(stageEl);
 resize();
 
+/* ---------- keep the site chrome clickable ----------
+ * The live show is a fixed overlay; at full height its canvas would sit on
+ * top of the sticky header and breadcrumb row and swallow their clicks. So
+ * the overlay starts BELOW those bars: --show-top (px) is measured here and
+ * the .jab-live CSS anchors top/bottom to it. */
+function chromeBottom() {
+  for (const sel of ['.breadcrumbs', '.site-head']) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height > 0) return Math.max(0, Math.round(r.bottom));
+  }
+  return 0;
+}
+function applyShowTop() {
+  hostEl.style.setProperty('--show-top', chromeBottom() + 'px');
+}
+window.addEventListener('resize', applyShowTop);
+window.addEventListener('scroll', applyShowTop, { passive: true });
+applyShowTop();
+
 /* ---------- shared helpers ---------- */
 function forceOpaque(mat) {
   if (!mat || !mat.transparent) return;
@@ -596,6 +617,7 @@ function resetShow() {
   woman.group.rotation.y = -Math.PI / 2;   // back to the show-facing yaw
   woman.mixer.stopAllAction();
   play(woman, 'jab', { fade: 0, clamp: true });
+  applyShowTop();
   resize();
 }
 
