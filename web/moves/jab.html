@@ -74,14 +74,19 @@
    * canvas box keeps 16:9 and the padding below it hosts the Replay pill
    * so the button still reads as "under the figure". */
   .jab-stage.jab-docked { position: fixed; left: 0; top: auto; bottom: 0; z-index: 30;
-    overflow: visible;
+    overflow: hidden;   /* clip the canvas overhang: the figure hugs the corner */
     width: min(320px, 44vw); max-width: 320px; min-height: 0;
     padding-bottom: 44px; border-radius: 0;
     border: none; background: transparent; box-shadow: none;
     -webkit-backdrop-filter: none; backdrop-filter: none;
     margin: 0; }
   .jab-stage.jab-docked .jab-canvas-box { position: relative; inset: auto;
-    width: 100%; aspect-ratio: 16 / 9; }
+    width: 100%; aspect-ratio: 16 / 9;
+    /* she renders centred in the 16:9 canvas — slide the canvas left so the
+     * figure itself lands on the screen's left edge (the overhang is clipped
+     * above). Orbit still spins around her: the clip offset is constant in
+     * screen space. */
+    margin-left: -36%; }
   .jab-stage.jab-docked::before { display: none; }
   /* docked stage keeps the annotated pose: pack the callout cards tighter so
    * all five fit the small canvas */
@@ -99,7 +104,7 @@
   .jab-stage.jab-docked .jab-replay {
     display: inline-flex; align-items: center; gap: 6px;
     position: absolute; right: auto; top: auto; bottom: 8px;
-    left: 50%; transform: translateX(-50%); z-index: 6;
+    left: 29%; transform: translateX(-50%); z-index: 6;
     appearance: none; cursor: pointer; font: inherit;
     font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #fff;
     padding: 6px 13px; border-radius: 999px;
