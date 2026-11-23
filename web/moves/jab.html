@@ -67,15 +67,14 @@
   }
   .jab-stage.jab-live::before { display: none; }
   /* docked stage: compact floating widget pinned to the page's bottom-left
-   * corner (user spec: smaller, bottom-left). Soft card backdrop keeps her
-   * legible over the article text; Replay hangs just below the figure. */
+   * corner (user spec: smaller, bottom-left). No card chrome at all — fully
+   * transparent, just her over the article (user spec). Replay hangs below. */
   .jab-stage.jab-docked { position: fixed; left: 12px; top: auto; bottom: 58px; z-index: 30;
     overflow: visible;   /* the Replay pill hangs below the card — never clip it */
     width: min(320px, 44vw); max-width: 320px; min-height: 0;
-    aspect-ratio: 16 / 9; border-radius: 12px;
-    background: rgba(9, 12, 16, .62);
-    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, .4);
+    aspect-ratio: 16 / 9; border-radius: 0;
+    border: none; background: transparent; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
     margin: 0; }
   .jab-stage.jab-docked::before { display: none; }
   /* docked stage keeps the annotated pose: pack the callout cards tighter so
