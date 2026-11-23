@@ -74,11 +74,11 @@
   .jab-stage.jab-docked .hero-callout { width: 126px; padding: 5px 7px 6px; border-radius: 8px; }
   .jab-stage.jab-docked .hero-callout .tag { font-size: 7px; letter-spacing: .1em; margin-bottom: 2px; }
   .jab-stage.jab-docked .hero-callout .txt { font-size: 9px; line-height: 1.26; }
-  /* fixed-camera show: mouse actions off, wheel scrolls the page. Once the
-   * stage docks, the canvas takes pointer events again for drag-to-orbit;
-   * touch-action pan-y keeps vertical swipes scrolling the article. */
-  .jab-stage canvas { pointer-events: none; }
-  .jab-stage.jab-docked canvas { pointer-events: auto; touch-action: pan-y; }
+  /* drag-to-orbit works on both the fullscreen show (once the pose freezes)
+   * and the docked stage. The cinematic intro still drives its own camera;
+   * touch-action pan-y keeps vertical swipes scrolling the article, and the
+   * wheel keeps page-scrolling because zoom is disabled in jab-stage.js. */
+  .jab-stage canvas { pointer-events: auto; touch-action: pan-y; }
   /* callout cards / leader lines are pure visuals — never eat a drag */
   .jab-stage .hero-ui { pointer-events: none; }
   .jab-replay { display: none; }
@@ -259,6 +259,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=27"></script>
+<script type="module" src="../assets/jab-stage.js?v=28"></script>
 </body>
 </html>

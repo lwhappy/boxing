@@ -144,6 +144,7 @@ function hideCallouts() {
 function revealAt(i) {
   callEls[i].classList.add('show');
   lineEls[i].g.style.opacity = '1';
+  playTick(i);
 }
 function prefillCallouts() {
   for (let i = 0; i < callEls.length; i++) {
@@ -361,6 +362,67 @@ function straightenLeadArm(clipT) {
   el.updateMatrixWorld(true);
 }
 
+/* ---------- sfx: Web Audio synthesis, no asset files ---------- */
+let audioCtx = null;
+function ac() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { audioCtx = new AC(); } catch { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+/* autoplay policy: the show starts without a gesture, so the first run may
+ * be silent until the user clicks/taps anything — unlock from then on */
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(ev, ac, { passive: true });
+}
+/* punch whoosh: band-passed noise burst, pitch sweeps up through the
+ * extension — the "hu" of a thrown jab */
+function playWhoosh() {
+  const ctx = ac();
+  if (!ctx || ctx.state !== 'running') return;
+  const dur = 0.28;
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 1.1;
+  const t0 = ctx.currentTime;
+  bp.frequency.setValueAtTime(420, t0);
+  bp.frequency.exponentialRampToValueAtTime(1400, t0 + dur * 0.6);
+  bp.frequency.exponentialRampToValueAtTime(500, t0 + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.45, t0 + dur * 0.35);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(t0);
+  src.stop(t0 + dur);
+}
+/* callout reveal: short ascending blip, one per card */
+function playTick(i) {
+  const ctx = ac();
+  if (!ctx || ctx.state !== 'running') return;
+  const t0 = ctx.currentTime;
+  const f = 620 + i * 90;
+  const o = ctx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f, t0);
+  o.frequency.exponentialRampToValueAtTime(f * 1.5, t0 + 0.07);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0);
+  o.stop(t0 + 0.14);
+}
+
 function samplePose(root, budget = 9000) {
   root.updateMatrixWorld(true);
   const meshes = [];
@@ -465,6 +527,7 @@ function probe() {
 let phase = 'load';       // intro | reveal | paused | docked
 let showT = 0;
 let revT = 0, shown = 0;
+let whooshed = false;     // one whoosh per show run
 
 function freezeWoman() {
   const wa = woman.actions.jab;
@@ -507,6 +570,7 @@ function resetShow() {
   phase = 'intro';
   showT = 0;
   revT = 0; shown = 0;
+  whooshed = false;
   hideCallouts();
   stageEl.classList.remove('jab-docked', 'jab-paused');
   stageEl.classList.add('jab-live');
@@ -535,10 +599,20 @@ function advance(dt) {
     if (woman.mixer) woman.mixer.update(dt);
     const wa = woman.actions.jab;
     straightenLeadArm(wa ? wa.time : undefined);   // keep the lead arm straight
+    /* whoosh once as the punch starts extending */
+    if (wa && !whooshed && wa.time >= jabImpact - 0.18) {
+      whooshed = true;
+      playWhoosh();
+    }
     if (wa && wa.time >= jabImpact - 1e-3) {
       freezeWoman();
       phase = 'reveal';
       revT = 0; shown = 0;
+      /* pose is frozen from here on: hand the camera to the user — drag to
+       * orbit the annotated stance (wheel still page-scrolls, zoom is off) */
+      controls.target.copy(camTgt);
+      controls.enabled = true;
+      controls.update();
       wordEl.textContent = 'JAB';
       wordEl.classList.add('pos-a');
       /* only while the reveal is actually on screen — a fast stepTo() jump
