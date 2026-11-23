@@ -98,13 +98,13 @@
    * she holds the annotated pose */
   .jab-actions {
     display: none; position: absolute; left: 50%; bottom: 36px;
-    transform: translateX(-50%); gap: 14px; z-index: 6;
+    transform: translateX(-50%); gap: 10px; z-index: 6;
   }
   .jab-stage.jab-paused .jab-actions { display: flex; }
   .jab-action {
     appearance: none; cursor: pointer; font: inherit;
-    font-size: 14px; font-weight: 700; letter-spacing: .05em; color: #fff;
-    padding: 10px 26px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: .05em; color: #fff;
+    padding: 7px 18px; border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, .32);
     background: rgba(16, 19, 25, .6);
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
@@ -112,6 +112,12 @@
   }
   .jab-action:hover { background: rgba(16, 19, 25, .82); border-color: rgba(255, 122, 61, .7); }
   .jab-action-close { border-color: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .85); }
+  /* fullscreen show: the JAB badge sits a little lower than the homepage
+   * hero word (user: move it down from the very top edge) */
+  .jab-stage.jab-live .hero-word.pos-a { top: 48px; }
+  @media (max-width: 620px) {
+    .jab-stage.jab-live .hero-word.pos-a { top: 36px; }
+  }
   @media (max-width: 620px) {
     .jab-stage.jab-docked { max-width: 420px; aspect-ratio: 16 / 10; }
   }
@@ -253,6 +259,6 @@ window.PAGE = { section: 'moves', depth: 1, breadcrumb: [{ label: 'Jab' }] };
   }
 }
 </script>
-<script type="module" src="../assets/jab-stage.js?v=26"></script>
+<script type="module" src="../assets/jab-stage.js?v=27"></script>
 </body>
 </html>

@@ -569,10 +569,11 @@ function computeCamera() {
   const aspect = camera.aspect || 1;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
   const portrait = aspect < 0.8;   // phones: a step further away
-  /* solo: she fills the frame like the homepage hero demo */
-  const zH = 1.32 / tanH;                      // ~2.2m visible height at fov 38
-  const zW = 0.85 / (tanH * aspect);
-  const z = Math.max(3.6, zH, zW) * (portrait ? 1.2 : 1);
+  /* solo: she fills the frame like the homepage hero demo — but a step back
+   * from the very first fullscreen cut (user: a smaller figure) */
+  const zH = 1.55 / tanH;                      // ~3.1m visible height at fov 38
+  const zW = 1.00 / (tanH * aspect);
+  const z = Math.max(4.2, zH, zW) * (portrait ? 1.2 : 1);
   _want.tgt.set(-0.15, 0.92, 0);
   _want.pos.set(_want.tgt.x + z * 0.30, _want.tgt.y + z * 0.12, z);
 }
