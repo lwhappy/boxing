@@ -252,10 +252,27 @@ if WITH_CLIPS:
         # first sample extrapolates garbage — an unsorted time entry that
         # throws three.js's binary-search interpolation off for the WHOLE
         # clip). Frame 0 simply repeats the donor's first pose.
+        #
+        # The basis is computed MANUALLY (pose_arm = parent_pose @ rest_rel @
+        # basis) instead of relying on pose_bone.matrix assignment: the
+        # setter's loc/rot/scale decomposition reads the parent chain's
+        # *current* state, so early frames inherit whatever pose the previous
+        # clip's bake left on the rig — garbage keys for the first few frames
+        # that then flash on every loop wrap.
+        rest_rel_inv = {}     # bone.name -> (rest_rel @ pose-rel rest) inverse
+        rest_arm = {}         # bone.name -> armature-space rest matrix
+        for b in rig_n.pose.bones:
+            rest_arm[b.name] = b.bone.matrix_local.copy()
+            if b.parent is not None:
+                rest_rel = b.parent.bone.matrix_local.inverted() @ b.bone.matrix_local
+            else:
+                rest_rel = b.bone.matrix_local.copy()
+            rest_rel_inv[b.name] = rest_rel.inverted()
         for f in range(fr0 - 1, fr1 + 1):
             sf = max(f, fr0)
             bpy.context.scene.frame_set(sf)
             bpy.context.view_layer.update()
+            desired_map = {}
             for b in rig_n.pose.bones:
                 db = donor_rig.pose.bones.get(b.name)
                 if db is None:
@@ -268,8 +285,19 @@ if WITH_CLIPS:
                     rest_mapped = (M_map @ hips_rest_d).to_translation()
                     off = desired.to_translation() - rest_mapped
                     desired.translation = hips_rest.to_translation() + off * k
-                # assigning .matrix lets Blender decompose the correct basis
-                b.matrix = desired
+                desired_map[b.name] = desired.copy()
+            for b in rig_n.pose.bones:
+                if b.name not in desired_map:
+                    continue
+                desired = desired_map[b.name]
+                if b.parent is not None and b.parent.name in desired_map:
+                    rel = desired_map[b.parent.name].inverted() @ desired
+                else:
+                    rel = desired
+                basis_mat = rest_rel_inv[b.name] @ rel
+                b.rotation_quaternion = basis_mat.to_quaternion()
+                if b.name == "mixamorig:Hips":
+                    b.location = basis_mat.to_translation()
                 b.keyframe_insert("rotation_quaternion", frame=f)
                 if b.name == "mixamorig:Hips":
                     b.keyframe_insert("location", frame=f)
@@ -280,7 +308,13 @@ if WITH_CLIPS:
         ad_n.action = None
         track = ad_n.nla_tracks.new()
         track.name = out_name
-        strip = track.strips.new(out_name, fr0, new_act)
+        # strip start MUST match the action's own range start: the strip maps
+        # action frames 1:1 onto the timeline from here, and the glTF exporter
+        # samples through it. With the frame-0 key the action now starts at 0;
+        # a strip at fr0(=1) would shift the sampled range to action frames
+        # -1..N-1 — garbage extrapolation for the first ~4 frames that flashes
+        # on every loop wrap of the docked idle.
+        strip = track.strips.new(out_name, int(new_act.frame_range[0]), new_act)
         strip.name = out_name
         track.mute = True
 

@@ -487,15 +487,25 @@ function buildWoman(gltf) {
     console.log('[move] clips were Z-up flat — stood the root up');
     pts = samplePose(root, 4000);
   }
+  /* normalize on the IDLE pose, not the guard: docked plays this idle — the
+   * same clip the jab page docks with. The target height is calibrated so
+   * the resulting rig scale equals the jab page's (1.927): jab scales 1.75
+   * off its (glTF-donor) guard pose, whose raw height differs from this
+   * FBX-donor idle — a naive 1.75 target here made the docked figure ~8%
+   * larger than jab's, clipping head and feet at the 2.9 m docked camera. */
+  const idleAct = woman.actions.idle || guard;
+  idleAct.reset().play();
+  woman.mixer.setTime(0.5);
+  pts = samplePose(root, 4000);
   const h0 = ext('y');
-  root.scale.setScalar(1.75 / h0);
+  root.scale.setScalar(1.72 / h0);
   root.updateMatrixWorld(true);
   pts = samplePose(root);
   root.position.y -= Math.min(...pts.map(p => p.y));
   root.updateMatrixWorld(true);
   /* the FBX-donor clips carry the donor armature's bind offset, which lands
    * as a ~1.1 m horizontal shift (the glTF donors sit centred on the origin).
-   * Centre the guard pose so the hips sit at world x/z 0 — like the jab page —
+   * Centre the idle pose so the hips sit at world x/z 0 — like the jab page —
    * keeping the big-stage framing centred and the docked yaw pivoting in
    * place. Only x/z: the grounding above owns the vertical. */
   const hipsB = woman.bones.Hips || boneByName(root, 'mixamorig:Hips');
