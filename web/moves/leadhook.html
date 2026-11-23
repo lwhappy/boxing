@@ -298,6 +298,10 @@ window.MOVE_STAGE = {
   glb: '../media/glb/leadhook-man.glb?v=1',
   move: 'leadhook',
   word: 'LEAD HOOK',
+  /* rotate the show yaw toward the camera: the default left profile shows
+   * the lead hook from behind, with the punching arm hidden by the body —
+   * a front-left 3/4 view keeps the whole left-hand arc in sight */
+  yaw: -Math.PI / 2 + 1.27,
   probeBone: 'LeftHand',
   straighten: null,      // the hook keeps its bend — no arm corrective
   callouts: [
@@ -309,6 +313,6 @@ window.MOVE_STAGE = {
   ],
 };
 </script>
-<script type="module" src="../assets/move-stage.js?v=6"></script>
+<script type="module" src="../assets/move-stage.js?v=7"></script>
 </body>
 </html>

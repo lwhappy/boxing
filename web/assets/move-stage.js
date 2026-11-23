@@ -31,6 +31,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CFG = window.MOVE_STAGE || {};
 const MOVE = CFG.move || 'cross';
 const WORD = CFG.word || (MOVE || '').toUpperCase();
+/* show-facing yaw: default -90° puts her in left profile (nose to screen-left).
+ * Pages can override — e.g. the lead hook rotates toward the camera so the
+ * punching (lead) arm reads clearly instead of hiding behind the body. */
+const SHOW_YAW = (typeof CFG.yaw === 'number') ? CFG.yaw : -Math.PI / 2;
 
 const canvas = document.getElementById('stage-canvas');
 /* stageEl is the render surface (canvas box): renderer sizing, callout
@@ -455,7 +459,7 @@ function buildWoman(gltf) {
   fixMaterials(root);
   woman.root = root;
   woman.group.add(root);
-  woman.group.rotation.y = -Math.PI / 2;
+  woman.group.rotation.y = SHOW_YAW;
   root.updateMatrixWorld(true);
   for (const n of new Set([...ANCHOR_KEYS, 'LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm'])) {
     woman.bones[n] = boneByName(root, n);
@@ -527,19 +531,23 @@ let moveImpact = 0.6;     // intro-clip time of the reach frame
 function probe() {
   const hand = woman.bones[CFG.probeBone || ANCHOR_KEYS[0]];
 
-  /* find the reach frame to freeze on: the tracked hand's most forward
-   * world x (she faces -X) — hooks/uppercuts read fine on the same metric */
+  /* find the reach frame to freeze on: the tracked hand's most forward point
+   * along the show-facing direction. (The old metric — min world x — assumed
+   * the default -90° left profile; pages overriding yaw need the general
+   * form. For SHOW_YAW=-π/2 the forward vector is exactly -X.) */
   const wAct = woman.actions[MOVE];
   moveDur = wAct.getClip().duration;
   wAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  let best = { t: 0, x: Infinity };
+  const fwd = new THREE.Vector3(Math.sin(SHOW_YAW), 0, Math.cos(SHOW_YAW));
+  let best = { t: 0, d: -Infinity };
   for (let i = 0; i <= 64; i++) {
     const t = (moveDur * i) / 64;
     woman.mixer.setTime(t);
     straightenPunchArm(t);
     woman.group.updateMatrixWorld(true);
     hand.getWorldPosition(_sv);
-    if (_sv.x < best.x) best = { t, x: _sv.x };
+    const d = _sv.x * fwd.x + _sv.z * fwd.z;
+    if (d > best.d) best = { t, d };
   }
   moveImpact = best.t;
   woman.mixer.stopAllAction();
@@ -605,7 +613,7 @@ function resetShow() {
   }
   controls.enabled = false;
   woman.group.position.set(0, 0, 0);
-  woman.group.rotation.y = -Math.PI / 2;   // back to the show-facing yaw
+  woman.group.rotation.y = SHOW_YAW;   // back to the show-facing yaw
   woman.mixer.stopAllAction();
   play(woman, MOVE, { fade: 0, clamp: true });
   resize();
