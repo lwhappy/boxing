@@ -33,13 +33,13 @@ const replayBtn = document.getElementById('jab-replay');
 const bigReplayBtn = document.getElementById('jab-replay-big');
 const closeBtn = document.getElementById('jab-close');
 
-/* page woman: the "white rig" sculpt — mesh + rig + retargeted clips
+/* page man: the "white rig" sculpt — mesh + rig + retargeted clips
  * (guard / jab / jab-fight / idle), built by build/build_jab_woman.py from
  * rig-character-white.fbx; guard/idle come from the user's Mixamo FBX donors
  * (build/donor_guard.fbx, build/donor_idle4.fbx), the jab from the in-repo
  * rigs — all resampled in Blender because the rigs' per-bone rest rotations
  * differ. Only the solo jab clip is used here. */
-const WOMAN_URL = new URL('../media/glb/jab-woman.glb?v=3', import.meta.url).href;
+const MAN_URL = new URL('../media/glb/jab-man.glb?v=3', import.meta.url).href;
 
 const STAGGER = 0.72;      // callout card interval (s)
 const HOLD = 1.0;          // hold after all callouts are shown (user spec: 1 s)
@@ -307,7 +307,7 @@ function loadGLB(url) {
   return new Promise((res, rej) => new GLTFLoader().load(url, res, prog, rej));
 }
 
-loadGLB(WOMAN_URL).then((wg) => {
+loadGLB(MAN_URL).then((wg) => {
   try { build(wg); }
   catch (err) { fail(err); }
 }).catch(fail);

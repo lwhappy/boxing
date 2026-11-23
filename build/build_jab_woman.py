@@ -23,13 +23,24 @@ import sys
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 WITH_CLIPS = "--with-clips" in argv
 
+# per-move variant: instead of the glb jab donors, bake an FBX punch clip
+# (build_move_woman.py semantics on top of the proven jab pipeline):
+#   --move-donor build/donor_cross.fbx --move-name cross --out web/media/glb/cross-woman.glb
+MOVE_DONOR = None
+MOVE_NAME = None
+if "--move-donor" in argv:
+    MOVE_DONOR = argv[argv.index("--move-donor") + 1]
+    MOVE_NAME = argv[argv.index("--move-name") + 1]
+
 SRC = "/Users/justrun/project/boxing-game/moves/rig-character-white.fbx"
 ROOT = "/Users/justrun/project/boxing-3"
 DONOR_MOVES = os.path.join(ROOT, "web/training/benefits-of-boxing/models/woman.glb")
 DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
 DONOR_IDLE = os.path.join(ROOT, "build/donor_idle4.fbx")
 DONOR_GUARD = os.path.join(ROOT, "build/donor_guard.fbx")
-OUT = os.path.join(ROOT, "web/media/glb/jab-woman.glb")
+OUT = os.path.join(ROOT, "web/media/glb/jab-man.glb")
+if MOVE_DONOR:
+    OUT = argv[argv.index("--out") + 1]   # after the default OUT above
 MAXTEX = 2048
 FPS = 30.0
 
@@ -67,21 +78,25 @@ if rig_n.animation_data:
     rig_n.animation_data_clear()
 for a in list(bpy.data.actions):
     bpy.data.actions.remove(a)
-print(f"[jab-woman] sculpt rig={rig_n.name} bones={len(rig_n.data.bones)} "
+print(f"[jab-man] sculpt rig={rig_n.name} bones={len(rig_n.data.bones)} "
       f"mesh verts={len(mesh_n.data.vertices)} polys={len(mesh_n.data.polygons)}")
 
 if WITH_CLIPS:
     # --- clip donors (their armatures collide with the sculpt's 'Armature'
     # name, so track them by object identity, not by name) ---
     known = {rig_n}
-    bpy.ops.import_scene.gltf(filepath=DONOR_MOVES)
-    rig_moves = next(o for o in bpy.data.objects
-                     if o.type == "ARMATURE" and o not in known)
-    known.add(rig_moves)
-    bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
-    rig_game = next(o for o in bpy.data.objects
-                    if o.type == "ARMATURE" and o not in known)
-    known.add(rig_game)
+    if MOVE_DONOR:
+        # per-move variant: no glb donors — idle, guard and the FBX move clip
+        rig_moves = rig_game = None
+    else:
+        bpy.ops.import_scene.gltf(filepath=DONOR_MOVES)
+        rig_moves = next(o for o in bpy.data.objects
+                         if o.type == "ARMATURE" and o not in known)
+        known.add(rig_moves)
+        bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
+        rig_game = next(o for o in bpy.data.objects
+                        if o.type == "ARMATURE" and o not in known)
+        known.add(rig_game)
 
     def rig_actions(rig):
         """actions owned by this rig, via its NLA tracks (glTF importer layout)"""
@@ -118,40 +133,39 @@ if WITH_CLIPS:
     rig_guard = None
     if os.path.exists(DONOR_GUARD):
         rig_guard = import_fbx_donor(DONOR_GUARD)
+    rig_move = None
+    if MOVE_DONOR:
+        rig_move = import_fbx_donor(MOVE_DONOR)
     # drop the donors' meshes up front so they never pollute the export
     for o in list(bpy.data.objects):
         if o.type == "MESH" and o.parent not in (None, rig_n) and o is not mesh_n:
             bpy.data.objects.remove(o, do_unlink=True)
 
     for r in (rig_moves, rig_game):
+        if r is None:
+            continue
         print(f"  donor {r.name}: matrix_world rot ok? "
               f"{[round(v, 3) for v in r.matrix_world.to_euler()]}")
     print(f"  sculpt armature euler: {[round(v, 3) for v in rig_n.matrix_world.to_euler()]}")
 
     ad_n = rig_n.animation_data_create()
 
-    acts_moves = rig_actions(rig_moves)
-    acts_game = rig_actions(rig_game)
-    print(f"  donor moves clips: {sorted(acts_moves)}")
-    print(f"  donor game clips: {sorted(acts_game)}")
-
-    def find_clip(acts, name):
-        """exact match first, then base-name match (importer suffixes .001...)"""
-        if name in acts:
-            return acts[name]
-        for k, a in acts.items():
-            if k.split(".")[0] == name and "cross" not in k:
-                return a
-        return None
-
-    CLIPS = [
-        (rig_moves, acts_moves, "jab", "jab"),
-        (rig_game, acts_game, "jab", "jab-fight"),
-    ]
+    CLIPS = []
     if rig_guard is not None:
         acts_guard = rig_actions(rig_guard)
         print(f"  donor guard clips: {sorted(acts_guard)}")
-        CLIPS.insert(0, (rig_guard, acts_guard, "Layer0", "guard"))
+        CLIPS.append((rig_guard, acts_guard, "Layer0", "guard"))
+    if MOVE_DONOR:
+        acts_move = rig_actions(rig_move)
+        print(f"  donor move clips: {sorted(acts_move)}")
+        CLIPS.append((rig_move, acts_move, "Layer0", MOVE_NAME))
+    else:
+        acts_moves = rig_actions(rig_moves)
+        acts_game = rig_actions(rig_game)
+        print(f"  donor moves clips: {sorted(acts_moves)}")
+        print(f"  donor game clips: {sorted(acts_game)}")
+        CLIPS.append((rig_moves, acts_moves, "jab", "jab"))
+        CLIPS.append((rig_game, acts_game, "jab", "jab-fight"))
     if rig_idle is not None:
         acts_idle = rig_actions(rig_idle)
         print(f"  donor idle clips: {sorted(acts_idle)}")
@@ -161,6 +175,15 @@ if WITH_CLIPS:
     hips_n = rig_n.pose.bones["mixamorig:Hips"]
     hips_rest = hips_n.bone.matrix_local.copy()          # armature-space rest
     hips_rest_mag = hips_rest.to_translation().length    # raw skeleton size proxy
+
+    def find_clip(acts, name):
+        """exact match first, then base-name match (importer suffixes .001...)"""
+        if name in acts:
+            return acts[name]
+        for k, a in acts.items():
+            if k.split(".")[0] == name and "cross" not in k:
+                return a
+        return None
 
     for donor_rig, donor_acts, src_name, out_name in CLIPS:
         act = find_clip(donor_acts, src_name)
@@ -197,8 +220,14 @@ if WITH_CLIPS:
         new_act.use_fake_user = True
         ad_n.action = new_act
 
-        for f in range(fr0, fr1 + 1):
-            bpy.context.scene.frame_set(f)
+        # Bake from frame 0: the glTF exporter mis-samples actions whose frame
+        # range starts at frame > 0 (it emits frames 0..N-1 regardless, so the
+        # first sample extrapolates garbage — an unsorted time entry that
+        # throws three.js's binary-search interpolation off for the WHOLE
+        # clip). Frame 0 simply repeats the donor's first pose.
+        for f in range(fr0 - 1, fr1 + 1):
+            sf = max(f, fr0)
+            bpy.context.scene.frame_set(sf)
             bpy.context.view_layer.update()
             for b in rig_n.pose.bones:
                 db = donor_rig.pose.bones.get(b.name)
@@ -236,6 +265,8 @@ if WITH_CLIPS:
     # keep only the retargeted actions (donor actions are still in the
     # file and would all be exported in ACTIONS mode)
     keep = {"guard", "jab", "jab-fight", "idle"}
+    if MOVE_NAME:
+        keep = {"guard", "idle", MOVE_NAME}
     for a in list(bpy.data.actions):
         if a.name not in keep:
             bpy.data.actions.remove(a)
@@ -317,4 +348,4 @@ bpy.ops.export_scene.gltf(
     export_image_format="JPEG",
     export_jpeg_quality=88,
 )
-print(f"[jab-woman] wrote {OUT} size={os.path.getsize(OUT) / 1024:.0f} KB")
+print(f"[jab-man] wrote {OUT} size={os.path.getsize(OUT) / 1024:.0f} KB")
