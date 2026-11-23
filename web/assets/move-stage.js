@@ -493,6 +493,20 @@ function buildWoman(gltf) {
   pts = samplePose(root);
   root.position.y -= Math.min(...pts.map(p => p.y));
   root.updateMatrixWorld(true);
+  /* the FBX-donor clips carry the donor armature's bind offset, which lands
+   * as a ~1.1 m horizontal shift (the glTF donors sit centred on the origin).
+   * Centre the guard pose so the hips sit at world x/z 0 — like the jab page —
+   * keeping the big-stage framing centred and the docked yaw pivoting in
+   * place. Only x/z: the grounding above owns the vertical. */
+  const hipsB = woman.bones.Hips || boneByName(root, 'mixamorig:Hips');
+  if (hipsB) {
+    const hv = new THREE.Vector3();
+    hipsB.getWorldPosition(hv);
+    const dl = hv.multiplyScalar(-1).applyQuaternion(woman.group.quaternion.clone().invert());
+    root.position.x += dl.x;
+    root.position.z += dl.z;
+    root.updateMatrixWorld(true);
+  }
   woman.mixer.stopAllAction();
 }
 
@@ -546,7 +560,9 @@ function dock() {
   hideCallouts();
   woman.group.rotation.y = Math.PI * 0.375;   // nose to screen-right, ~22° off profile
   woman.mixer.stopAllAction();
-  play(woman, 'idle', { fade: 0.3, loop: true });
+  /* docked pose: the guard clip — same tight boxing stance as the jab page's
+   * docked idle (the FBX idle donor stands notably wider) */
+  play(woman, woman.actions.guard ? 'guard' : 'idle', { fade: 0.3, loop: true });
   resize();
   /* hand the camera over to the user on a front 3/4 view. NOTE: the view
    * direction must be captured BEFORE copying the target into
