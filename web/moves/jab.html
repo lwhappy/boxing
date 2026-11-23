@@ -102,12 +102,15 @@
   .jab-stage .hero-ui { pointer-events: none; }
   .jab-replay { display: none; }
   .jab-stage.jab-docked .jab-replay {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 5px;
     position: absolute; right: auto; top: auto; bottom: 8px;
-    left: 29%; transform: translateX(-50%); z-index: 6;
+    /* she renders centred in the canvas, and the canvas is shifted left by
+     * 36% -> her centre lands at 14% of the stage width; centre the pill on
+     * her (slightly smaller so it fits the corner on phones) */
+    left: 14%; transform: translateX(-50%); z-index: 6;
     appearance: none; cursor: pointer; font: inherit;
-    font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #fff;
-    padding: 6px 13px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #fff;
+    padding: 5px 10px; border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, .28);
     background: rgba(16, 19, 25, .55);
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
@@ -140,6 +143,7 @@
   }
   @media (max-width: 620px) {
     .jab-stage.jab-docked { width: min(260px, 62vw); padding-bottom: 40px; }
+    .jab-stage.jab-docked .jab-replay { font-size: 10px; padding: 4px 8px; gap: 4px; }
   }
   /* vertical hero: the 3D stage sits on top of the page, copy below.
    * :not(.jab-live) so the fixed fullscreen phase keeps its position. */
