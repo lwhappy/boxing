@@ -739,7 +739,7 @@ function tick() {
 (async () => {
   try {
     loadingText.textContent = 'Loading the boxer…';
-    await man.load('./models/boxer-man.glb', 'man');
+    await man.load('./models/boxer-man.glb?v=2', 'man');
     loadingText.textContent = 'Loading the kickboxer…';
     await woman.load('./models/kick-woman.glb', 'woman');
     for (const f of [man, woman]) {
