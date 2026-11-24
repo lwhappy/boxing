@@ -442,8 +442,11 @@ function advance(dt) {
       phase = 'paused';
       hostEl.classList.add('jab-paused');
       controls.enabled = true;
-      /* hand over to orbit at the fighter's final position */
-      controls.target.set(hipsX * 0.8, 1.0, 0);
+      /* hand over to orbit at EXACTLY the point the follow camera is already
+       * looking at (camTgt). Any delta here — e.g. snapping to the hips'
+       * exact position — rotates the view a hair and reads as the whole
+       * figure shifting backward after the freeze. */
+      controls.target.copy(camTgt);
       controls.update();
     }
   } else if (phase === 'docked' || phase === 'paused') {
