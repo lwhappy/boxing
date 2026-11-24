@@ -771,7 +771,27 @@ class Fighter {
       const k = o.name.replace(/^mixamorig[:_]?/, '');
       this.bones[k] = o;
     });
+
+    // Build the mixer/actions FIRST: the sculpt rigs ship a bind pose that
+    // lies flat on the floor (standing comes from the clips' hips rotation),
+    // so height must be measured on an ANIMATED pose, never on the bind.
+    this.mixer = new THREE.AnimationMixer(this.model);
+    this.actions = {};
+    const hips = this.bones.Hips;
+    for (const clip of gltf.animations) {
+      const c = clip.clone();
+      if (c.name !== 'defeat' && hips) stripDrift(c, hips);
+      const a = this.mixer.clipAction(c);
+      if (ONE_SHOT.has(c.name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+      else if (LOOPING.has(c.name)) a.setLoop(THREE.LoopRepeat, Infinity);
+      this.actions[c.name] = a;
+    }
+    this.current = this.actions.idle || this.actions.guard || Object.values(this.actions)[0];
+    this.current.reset().play();
+    this.mixer.setTime(Math.min(0.4, this.current.getClip().duration * 0.1));
     this.model.updateMatrixWorld(true);
+
+    // normalise height and drop the feet on the floor (on the idle pose).
     const _w = new THREE.Vector3();
     const top = this.bones.HeadTop_End || this.bones.Head;
     const yTop = top ? top.getWorldPosition(_w).y : 1;
@@ -794,20 +814,6 @@ class Fighter {
     this.root.add(this.model);
     this.root.position.set(x, 0, 0);
     this.root.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
-
-    this.mixer = new THREE.AnimationMixer(this.model);
-    this.actions = {};
-    const hips = this.bones.Hips;
-    for (const clip of gltf.animations) {
-      const c = clip.clone();
-      if (c.name !== 'defeat' && hips) stripDrift(c, hips);
-      const a = this.mixer.clipAction(c);
-      if (ONE_SHOT.has(c.name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
-      else if (LOOPING.has(c.name)) a.setLoop(THREE.LoopRepeat, Infinity);
-      this.actions[c.name] = a;
-    }
-    this.current = this.actions.idle;
-    this.current.reset().play();
 
     // soft contact shadow
     this.shadow = makeBlob(1.35);
@@ -1201,7 +1207,7 @@ async function boot() {
     const [man, woman] = await Promise.all([
       // ?v=2: the kick clip replaced the headbutt — without a new URL a visitor
       // who cached the old model keeps a fighter that has no 'kick' action
-      loadGLB('../../media/glb/boxer-man.glb?v=2', prog),
+      loadGLB('../../media/glb/fight-man.glb?v=1', prog),
       loadGLB('../../media/glb/boxer-woman.glb?v=2', prog),
     ]);
     game.manGltf = man; game.womanGltf = woman;
