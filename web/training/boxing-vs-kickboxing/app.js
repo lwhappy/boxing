@@ -750,7 +750,7 @@ function tick() {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       for (const m of mats) {
         if (!m.emissive) continue;
-        m.emissive.setHex(0x2e2e33);
+        m.emissive.setHex(0x55555c);
         m.needsUpdate = true;
       }
     });
