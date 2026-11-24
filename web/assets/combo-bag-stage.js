@@ -389,14 +389,14 @@ let showT = 0;             // real seconds since resetShow
 let settleT = 0;
 let whooshIdx = 0;
 let frames = 0;
-let hipsX = 0;             // smoothed world x of the hips (for camera follow)
+let hipsX = 0, hipsZ = 0;  // smoothed world xz of the hips (camera follow)
 
 function resetShow() {
   phase = 'combo';
   showT = 0;
   settleT = 0;
   whooshIdx = 0;
-  hipsX = 0;
+  hipsX = 0; hipsZ = 0;
   hostEl.classList.remove('jab-docked', 'jab-paused');
   hostEl.classList.add('jab-live');
   replayBtn.hidden = true;
@@ -426,7 +426,7 @@ function advance(dt) {
     fighter.mixer.update(dt);
     fighter.root.updateMatrixWorld(true);
     fighter.bones.Hips.getWorldPosition(_sv);
-    hipsX = _sv.x;
+    hipsX = _sv.x; hipsZ = _sv.z;
     while (whooshIdx < whooshTimes.length && act.time >= whooshTimes[whooshIdx]) {
       playWhoosh();
       whooshIdx++;
@@ -485,15 +485,18 @@ function dock() {
 
 /* ---------- camera (follows the fighter's forward travel, portrait aware) ---------- */
 const _want = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
-let camFollowX = 0;
+const camFollow = new THREE.Vector2(0, 0);   // smoothed fighter xz
 function computeCamera() {
   const aspect = camera.aspect || 1;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
   /* fit a 2.4m-tall / 2.6m-wide action bubble, whichever needs more distance */
   const z = Math.max(3.6, 2.4 / (2 * tanH), 2.6 / (2 * tanH * aspect));
-  const mid = camFollowX * 0.8;
-  _want.tgt.set(mid, 1.02, 0);
-  _want.pos.set(0.55 + mid, 1.32, z);
+  /* look straight at the fighter's chest — the orbit handover copies this
+   * point as its pivot, so drag-rotation must spin around HIM, not some
+   * offset point. NOTE: the combo's travel lives in the hips track on BOTH
+   * axes (x and z) — follow the full xz or the pivot lands ~1m behind him. */
+  _want.tgt.set(camFollow.x, 1.02, camFollow.y);
+  _want.pos.set(0.55 + camFollow.x, 1.32, z + camFollow.y);
 }
 function updateCamera(dt) {
   if (controls.enabled) {
@@ -502,10 +505,12 @@ function updateCamera(dt) {
     headFill.target.position.copy(controls.target);
     return;
   }
-  if (phase === 'combo') {
-    camFollowX += (hipsX - camFollowX) * (1 - Math.exp(-dt * 2.2));
-  } else if (phase !== 'settle') {
-    camFollowX = 0;
+  if (phase === 'combo' || phase === 'settle') {
+    const k = 1 - Math.exp(-dt * 2.2);
+    camFollow.x += (hipsX - camFollow.x) * k;
+    camFollow.y += (hipsZ - camFollow.y) * k;
+  } else {
+    camFollow.set(0, 0);
   }
   computeCamera();
   camera.position.copy(_want.pos);
@@ -584,7 +589,7 @@ function build(gltf) {
     whooshTimes,
     get frames() { return frames; },
     get running() { return running; },
-    woman: fighter, camera, THREE,
+    woman: fighter, camera, THREE, controls,
     restart: () => { resetShow(); startLoop(); },
     resume: () => startLoop(),
     stepTo(target) {
