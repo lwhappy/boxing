@@ -5,7 +5,7 @@
  * The boxer (European male sculpt, fight-man.glb) opens with a boxing flurry,
  * the kickboxer (woman-all.glb: boxer-woman's full 29-clip library merged
  * with kick-woman's roundhouse / flying kick / knock-out) answers with kicks,
- * they trade knees and elbows in the clinch, and the finish chains hands into
+ * she owns the clinch with elbow and knee, and the finish chains hands into
  * a head kick — the "complete striker" story the article tells.
  *
  * The two rigs ship on different pipelines: the sculpt stands upright in clip
@@ -28,6 +28,8 @@ const replayBtn = document.getElementById('ft-replay');
 const koEl = document.getElementById('ko');
 const tagBoxing = document.getElementById('tag-boxing');
 const tagKick = document.getElementById('tag-kickboxing');
+const moveBoxing = document.getElementById('move-boxing');
+const moveKick = document.getElementById('move-kickboxing');
 const chapEl = document.getElementById('ft-chap');
 
 /* ---------- renderer / scene ---------- */
@@ -96,7 +98,8 @@ function findBone(root, name) {
       || null;
 }
 const BONE_NAMES = ['Hips', 'Head', 'HeadTop_End', 'LeftHand', 'RightHand', 'LeftFoot', 'RightFoot',
-  'LeftToeBase', 'RightToeBase', 'Spine2', 'Spine1', 'Spine', 'LeftLeg', 'RightLeg'];
+  'LeftToeBase', 'RightToeBase', 'Spine2', 'Spine1', 'Spine', 'LeftLeg', 'RightLeg',
+  'LeftForeArm', 'RightForeArm'];   // forearm = elbow joint (elbow strikes contact here)
 
 /* The baked clips carry real hips root travel (punch lunges, combo walks).
  * Zero the world-space X/Z drift relative to the clip's first frame so the
@@ -338,7 +341,7 @@ const HITS = {
   wcross_g:   { frac: 0.83,  atkBone: 'RightHand',   defBone: 'LeftHand', dx: 0.15, fx: 'punch', snd: 'punch' },
   rkick_g:    { frac: 0.363, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0, fx: 'block', snd: 'kick' },
   flying_g:   { frac: 0.31,  atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.40, fx: 'block', snd: 'kick' },
-  elbow_head: { frac: 0.40,  atkBone: 'RightHand',    defBone: 'Head',     dx: 0.20, fx: 'punch', snd: 'punch', react: 'hit-head' },
+  elbow_head: { frac: 0.348, atkBone: 'RightForeArm', defBone: 'Head',     dx: 0,    fx: 'punch', snd: 'punch', react: 'hit-head' },
   knee_body:  { frac: 0.40,  atkBone: 'RightLeg',     defBone: 'Spine',    dx: 0, fx: 'punch', snd: 'punch', react: 'hit-body' },
   uppercut_rock: { frac: 0.323, atkBone: 'LeftHand',   defBone: 'Head',     dx: 0, fx: 'punch', snd: 'punch', react: 'hit-uppercut' },
   headkick_ko: { frac: 0.431, atkBone: 'RightToeBase', defBone: 'Head',   dx: 0, fx: 'ko', snd: 'ko',
@@ -396,14 +399,14 @@ const TL = [
   { t: 11.25, who: 'w', clip: 'guard', fade: 0.2 },
   { t: 11.4, chap: 'clinch' },
 
-  /* --- chapter 3: knees and elbows in the clinch --- */
-  { t: 11.70, who: 'm', clip: 'step-forward', x: -0.22, tweenDur: 0.30, rate: 2.0, clamp: true },
-  { t: 12.10, who: 'w', clip: 'guard', x: 0.52, tweenDur: 0.3, fade: 0.12 },
-  { t: 12.35, who: 'm', clip: 'elbow', x: -0.16, tweenDur: 0.25, clamp: true, hit: 'elbow_head' },
-  { t: 13.90, who: 'w', clip: 'knee', x: 0.30, tweenDur: 0.35, clamp: true, hit: 'knee_body' },
-  { t: 15.20, who: 'm', clip: 'step-back', move: -0.35, fade: 0.12, clamp: true },
-  { t: 15.80, who: 'm', clip: 'guard' },
-  { t: 15.90, who: 'w', clip: 'guard', fade: 0.2 },
+  /* --- chapter 3: the kickboxer owns the clinch (elbow -> knee) --- */
+  { t: 11.70, who: 'w', clip: 'step-forward', x: 0.26, tweenDur: 0.30, rate: 2.0, clamp: true },
+  { t: 11.75, who: 'm', clip: 'guard', x: -0.30, tweenDur: 0.35, fade: 0.12 },
+  { t: 12.20, who: 'w', clip: 'elbow', x: 0.22, tweenDur: 0.25, clamp: true, hit: 'elbow_head' },
+  { t: 13.70, who: 'w', clip: 'knee', x: 0.26, tweenDur: 0.30, clamp: true, hit: 'knee_body' },
+  { t: 15.10, who: 'w', clip: 'step-back', move: -0.35, fade: 0.12, clamp: true },
+  { t: 15.80, who: 'w', clip: 'guard', fade: 0.2 },
+  { t: 15.85, who: 'm', clip: 'guard', fade: 0.2 },
   { t: 16.0, chap: 'finish' },
 
   /* --- chapter 4: the combined finish --- */
@@ -650,6 +653,7 @@ function startBout() {
   shakeT = 0;
   koEl.classList.remove('on');
   chapEl.style.display = 'none';
+  hideMoves();
 }
 
 function nudgeRamp(c, t) {
@@ -674,6 +678,7 @@ function fireContact(c, t) {
   }
   AudioFX.hit(c.snd);
   shake(c.fx);
+  showMove(c.atk, c.hname, t);
   if (c.react) {
     defF.play(c.react, { fade: 0.03, clamp: true });
   }
@@ -797,6 +802,49 @@ function placeTag(el, fighter) {
   el.style.top = y + 'px';
 }
 
+/* ---------- move labels (name of the strike that just landed) ---------- */
+const MOVE_LABEL = {
+  jab_g: 'JAB', cross_g: 'CROSS', hook_g: 'LEAD HOOK',
+  mjab2_g: 'JAB', mcross2_g: 'CROSS', wjab_g: 'JAB', wcross_g: 'CROSS',
+  rkick_g: 'ROUNDHOUSE', flying_g: 'FLYING KICK',
+  elbow_head: 'ELBOW', knee_body: 'KNEE',
+  uppercut_rock: 'UPPERCUT', headkick_ko: 'HEAD KICK',
+};
+const MOVE_TTL = { headkick_ko: 1.7, rkick_g: 1.3, flying_g: 1.35, uppercut_rock: 1.1, elbow_head: 1.05, knee_body: 1.05 };
+const moveEls = { m: moveBoxing, w: moveKick };
+
+function showMove(who, hname, t) {
+  const el = moveEls[who];
+  const text = MOVE_LABEL[hname];
+  if (!el || !text) return;
+  el.firstElementChild.textContent = text;
+  el.dataset.born = String(t);
+  el.dataset.ttl = String(MOVE_TTL[hname] || 0.95);
+  el.classList.remove('on');
+  void el.offsetWidth;              // restart the pop animation
+  el.classList.add('on');
+}
+function hideMoves() {
+  for (const el of [moveBoxing, moveKick]) {
+    el.classList.remove('on');
+    el.dataset.born = '';
+  }
+}
+function placeMove(el, fighter) {
+  const born = parseFloat(el.dataset.born || '');
+  const ttl = parseFloat(el.dataset.ttl || '0.95');
+  if (!fighter.head || !fighter.ready || !Number.isFinite(born) || boutT() - born > ttl) {
+    el.classList.remove('on');
+    return;
+  }
+  fighter.head.getWorldPosition(v);
+  v.y += 0.32;
+  v.project(camera);
+  const stage = canvas.parentElement.getBoundingClientRect();
+  el.style.left = (v.x * 0.5 + 0.5) * stage.width + 'px';
+  el.style.top = (-v.y * 0.5 + 0.5) * stage.height + 'px';
+}
+
 /* ---------- loop ---------- */
 let frozen = false;          // QA: freeze the live loop for deterministic probes
 const clock = new THREE.Clock();
@@ -817,6 +865,8 @@ function tick() {
     if (off) camera.position.sub(off);
     placeTag(tagBoxing, man);
     placeTag(tagKick, woman);
+    placeMove(moveBoxing, man);
+    placeMove(moveKick, woman);
     requestAnimationFrame(tick);
   } catch (e) {
     window.__tickErr = String(e && e.stack || e);
@@ -828,7 +878,7 @@ function tick() {
 (async () => {
   try {
     loadingText.textContent = 'Loading the boxer…';
-    await man.load('../../media/glb/fight-man.glb?v=2', 'man');
+    await man.load('../../media/glb/fight-man.glb?v=3', 'man');
     loadingText.textContent = 'Loading the kickboxer…';
     await woman.load('../../media/glb/woman-all.glb?v=1', 'woman');
     for (const f of [man, woman]) {
@@ -863,6 +913,7 @@ function resetShow() {
   for (const c of contacts) c.fired = false;
   koEl.classList.remove('on');
   chapEl.style.display = 'none';
+  hideMoves();
   const out = homeOut();
   man.baseX = out.m; woman.baseX = out.w;
   man.group.position.set(out.m, 0, 0);
@@ -890,6 +941,8 @@ function stepTo(t) {
   renderer.render(scene, camera);
   placeTag(tagBoxing, man);
   placeTag(tagKick, woman);
+  placeMove(moveBoxing, man);
+  placeMove(moveKick, woman);
 }
 /* Contact probe: place the fighters at given x positions, play one clip alone
  * (raw 1x speed), and sample the world distance between two bones each frame.
@@ -1037,19 +1090,18 @@ function poseAt(who, clipName, rawT) {
   f.group.updateMatrixWorld(true);
   const wp = (b) => { b.updateWorldMatrix(true, false); const e = b.matrixWorld.elements; return [+e[12].toFixed(3), +e[13].toFixed(3), +e[14].toFixed(3)]; };
   const o = { rawT: +rawT.toFixed(2) };
-  for (const bn of ['RightToeBase', 'LeftToeBase', 'RightFoot', 'LeftFoot', 'RightLeg', 'Head', 'Spine2', 'LeftHand', 'RightHand', 'Hips']) {
+  for (const bn of ['RightToeBase', 'LeftToeBase', 'RightFoot', 'LeftFoot', 'RightLeg', 'Head', 'Spine2', 'Spine', 'LeftHand', 'RightHand', 'LeftForeArm', 'RightForeArm', 'Hips']) {
     if (f.bones[bn]) o[bn + (who === 'w' ? 'W' : 'M')] = wp(f.bones[bn]);
   }
   act.stop();
   return o;
 }
-/* QA: current action state of both fighters */
-function state() {
+/* QA: current action state of both fighters */function state() {
   const dump = (f) => Object.entries(f.actions)
     .filter(([n, a]) => a.isRunning() || a.getEffectiveWeight() > 0.01)
     .map(([n, a]) => `${n}(t=${a.time.toFixed(2)} w=${a.getEffectiveWeight().toFixed(2)} run=${a.isRunning()} ts=${a.getEffectiveTimeScale().toFixed(2)})`);
   return { man: dump(man), woman: dump(woman) };
 }
-window.__ft = { man, woman, camera, scene, THREE, contacts, weightScan, stepTo, probeHit, sweepContacts, sweepCurves, snap, poseAt, state, KO_T, KO_SLAM_T,
+window.__ft = { man, woman, camera, scene, THREE, contacts, weightScan, stepTo, probeHit, sweepContacts, sweepCurves, snap, poseAt, state, showMove, KO_T, KO_SLAM_T,
   freeze: () => { frozen = true; }, unfreeze: () => { frozen = false; clock.getDelta(); },
   get clock0() { return clock0; } };

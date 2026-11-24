@@ -75,8 +75,27 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     box-shadow:0 2px 10px rgba(20,30,45,.18)}
   .name-tag.boxing{background:#1d4ed8;color:#fff}
   .name-tag.kickboxing{background:#c2410c;color:#fff}
+  /* move label — the name of the strike that just landed, above the name tag */
+  .ft-move{position:absolute;transform:translate(-50%,calc(-100% - 26px));z-index:5;
+    pointer-events:none;opacity:0;transition:opacity .22s ease;white-space:nowrap}
+  .ft-move.on{opacity:1}
+  .ft-move span{display:inline-block;padding:3px 10px;border-radius:7px;
+    font-size:11px;font-weight:900;letter-spacing:.16em;color:#fff;
+    background:rgba(12,15,21,.74);
+    border:1px solid rgba(255,255,255,.22);
+    text-shadow:0 1px 6px rgba(0,0,0,.55)}
+  .ft-move.on span{animation:ft-move-pop .34s cubic-bezier(.2,1.5,.4,1) both}
+  .ft-move.boxing span{box-shadow:0 0 0 1px rgba(59,130,246,.5),0 4px 16px rgba(29,78,216,.4)}
+  .ft-move.kickboxing span{box-shadow:0 0 0 1px rgba(249,115,22,.5),0 4px 16px rgba(194,65,12,.4)}
+  @keyframes ft-move-pop{0%{transform:translateY(7px) scale(.8);opacity:0}
+    60%{transform:translateY(-2px) scale(1.05);opacity:1}
+    100%{transform:translateY(0) scale(1);opacity:1}}
+  @media (max-width:560px){
+    .ft-move span{font-size:10px;padding:2px 8px;letter-spacing:.12em}
+    .ft-move{transform:translate(-50%,calc(-100% - 20px))}
+  }
   /* chapter caption — the show tells the article's story in four acts */
-  .ft-chap{position:absolute;left:50%;top:18%;transform:translate(-50%,0);z-index:5;
+  .ft-chap{position:absolute;left:50%;bottom:6.5%;transform:translate(-50%,0);z-index:5;
     pointer-events:none;text-align:center;display:none;
     padding:7px 18px;border-radius:999px;
     font-size:13px;font-weight:800;letter-spacing:.14em;color:#fff;white-space:nowrap;
@@ -85,7 +104,7 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     border:1px solid rgba(255,255,255,.22);
     text-shadow:0 1px 6px rgba(0,0,0,.4)}
   .ft-chap small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;opacity:.75;margin-top:2px}
-  @media (max-width:560px){ .ft-chap{font-size:11px;padding:6px 12px;top:14%} }
+  @media (max-width:560px){ .ft-chap{font-size:11px;padding:6px 12px;bottom:4%} }
   .ko-slam{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
     opacity:0;transition:opacity .4s ease}
   .ko-slam.on{opacity:1}
@@ -136,6 +155,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
 
     <div class="name-tag boxing" id="tag-boxing">BOXING</div>
     <div class="name-tag kickboxing" id="tag-kickboxing">KICKBOXING</div>
+    <div class="ft-move boxing" id="move-boxing" aria-hidden="true"><span></span></div>
+    <div class="ft-move kickboxing" id="move-kickboxing" aria-hidden="true"><span></span></div>
     <div class="ft-chap" id="ft-chap"></div>
     <div class="ko-slam" id="ko" aria-hidden="true"><span>KO</span></div>
 
@@ -190,13 +211,15 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     <h2>Chapter 3 · The clinch — knees and elbows decide it</h2>
     <p>
       When the distance dies, the long weapons stop working — and the shortest
-      ones take over. The boxer steps in and lands a <strong>short elbow</strong>
-      on the chin; the kickboxer answers with a <strong>knee</strong> driven
-      into the body. Knees and elbows are the clinch's currency: no wind-up,
-      no telegraph, just the tightest arcs in fighting. In MMA and Muay Thai
-      this exchange is where fights quietly turn — the fighter who controls
-      the inside position scores with knees and elbows while the other one
-      eats them.
+      ones take over. The kickboxer steps inside, lands a <strong>short
+      elbow</strong> on the chin and follows it with a <strong>knee</strong>
+      driven into the body. Knees and elbows are the clinch's currency: no
+      wind-up, no telegraph, just the tightest arcs in fighting. In MMA and
+      Muay Thai this exchange is where fights quietly turn — the fighter who
+      controls the inside position scores with knees and elbows while the
+      other one eats them. Watch the boxer here: his hands are still the
+      fastest thing in the ring, and they are completely useless at this
+      range.
     </p>
 
     <h2>Chapter 4 · The finish — chaining hands into kicks</h2>
@@ -258,6 +281,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=16"></script>
+<script type="module" src="./app.js?v=22"></script>
 </body>
 </html>
