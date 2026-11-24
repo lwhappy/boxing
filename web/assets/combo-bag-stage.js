@@ -18,7 +18,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CFG = window.COMBO_AIR || window.COMBO_BAG || {};
 const GLB_URL = CFG.glb || '../media/glb/combo3-man.glb?v=1';
 const SPEED = 1.5;           // global punch playback speed-up ("快一点")
-const INTRO_T = 0.45;        // guard beat before the combo starts
+const JAB_TRIM = 0.3;        // cut the jab's pre-punch torso wind-up rotation
+const INTRO_T = 0.4;         // guard beat before the combo starts
 const SETTLE_T = 1.2;        // idle beat after the combo before the overlay
 
 const canvas = document.getElementById('stage-canvas');
@@ -93,6 +94,45 @@ function applyShowTop() {
 window.addEventListener('resize', applyShowTop);
 window.addEventListener('scroll', applyShowTop, { passive: true });
 applyShowTop();
+
+/* ---------- sfx: whoosh on every punch ---------- */
+let audioCtx = null;
+function ac() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { audioCtx = new AC(); } catch { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(ev, ac, { passive: true });
+}
+function playWhoosh() {
+  const ctx = ac();
+  if (!ctx || ctx.state !== 'running') return;
+  const dur = 0.24;
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 1.1;
+  const t0 = ctx.currentTime;
+  bp.frequency.setValueAtTime(420, t0);
+  bp.frequency.exponentialRampToValueAtTime(1500, t0 + dur * 0.55);
+  bp.frequency.exponentialRampToValueAtTime(520, t0 + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.42, t0 + dur * 0.35);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(t0);
+  src.stop(t0 + dur);
+}
 
 /* ---------- loading ---------- */
 function loadGLB(url) {
@@ -189,9 +229,12 @@ function play(f, name, { fade = 0.2, clamp = false, loop = false, ts = 1 } = {})
   next.play();
   for (const a of Object.values(f.actions)) {
     if (a === next) continue;
-    const w = a.getEffectiveWeight();
-    if (w > 0.001) a.fadeOut(Math.max(fade, 0.001));
-    else if (a.enabled) a.stop();
+    /* stop() does NOT clear the cached _effectiveWeight — checking
+     * getEffectiveWeight() would "fade out" dead actions and fadeIn()
+     * RE-ACTIVATES them (stale clips blend into the show = the boot-time
+     * somersault). Only fade actions that are actually running. */
+    if (a.isRunning()) a.fadeOut(Math.max(fade, 0.001));
+    else a.stop();
   }
 }
 
@@ -246,23 +289,77 @@ function buildFighter(gltf) {
 }
 
 /* ---------- combo plan (in the air) ---------- */
+/* Trim the first `startSec` seconds off a clip (lightweight subclip). */
+function trimClipStart(sourceClip, startSec) {
+  const newTracks = [];
+  for (const track of sourceClip.tracks) {
+    const times = track.times;
+    const values = track.values;
+    const itemSize = track.ValueItemSize || values.length / times.length;
+    let firstIdx = -1, lastIdx = -1;
+    for (let i = 0; i < times.length; i++) {
+      if (times[i] >= startSec) { if (firstIdx === -1) firstIdx = i; lastIdx = i; }
+    }
+    if (firstIdx === -1) continue;
+    if (firstIdx > 0) firstIdx--;
+    const count = lastIdx - firstIdx + 1;
+    const newTimes = new Float32Array(count);
+    const newValues = new values.constructor(count * itemSize);
+    for (let i = 0; i < count; i++) {
+      const srcIdx = firstIdx + i;
+      newTimes[i] = Math.max(0, times[srcIdx] - startSec);
+      for (let j = 0; j < itemSize; j++) newValues[i * itemSize + j] = values[srcIdx * itemSize + j];
+    }
+    newTracks.push(new track.constructor(track.name, newTimes, newValues, track.getInterpolation()));
+  }
+  return new THREE.AnimationClip(sourceClip.name + '_trimmed', sourceClip.duration - startSec, newTracks);
+}
+
 const STEPS = [
   { clip: 'jab',      cut: 0.62 },
   { clip: 'cross',    cut: 0.65 },
   { clip: 'leadhook', cut: 0.80 },
 ];
-const plan = [];          // per step: dur (real seconds)
+const plan = [];          // per step: dur, realDur, offVec (hips drift at cut), anchorVec
 let comboDur = 0;
+const finalAnchorVec = new THREE.Vector3();
 
 function probePlan() {
+  let anchor = new THREE.Vector3();
+  let prevOffCut = null;
   for (const st of STEPS) {
     const act = fighter.actions[st.clip];
     const dur = act.getClip().duration;
-    plan.push({ ...st, dur, realDur: (st.cut * dur) / SPEED });
+    /* measure the hips drift from the group origin at clip start and at the
+     * cut point — the baked clips lunge then return, and a trimmed clip even
+     * STARTS mid-lunge. Anchor each clip so the hips stay continuous with
+     * the previous punch (and with the intro guard) — the fighter then only
+     * ever moves FORWARD, never snapping back. */
+    act.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+    fighter.mixer.setTime(0.001);
+    fighter.group.updateMatrixWorld(true);
+    fighter.bones.Hips.getWorldPosition(_sv);
+    /* horizontal drift only — the baked vertical bob must stay relative to
+     * the floor or the whole group would be dragged down/up by the anchor */
+    const offStart = _sv.clone().sub(fighter.group.position).setY(0);
+    fighter.mixer.setTime(st.cut * dur);
+    fighter.group.updateMatrixWorld(true);
+    fighter.bones.Hips.getWorldPosition(_sv);
+    const offCut = _sv.clone().sub(fighter.group.position).setY(0);
+    fighter.mixer.stopAllAction();
+    /* anchor_k: prev hips end == this clip's hips start. The first clip
+     * starts from the guard position at weight ~0 during its fade-in, so
+     * compensating its own start offset there would overshoot — anchor it
+     * at the origin instead. */
+    if (prevOffCut) anchor = anchor.clone().add(prevOffCut).sub(offStart);
+    else anchor = new THREE.Vector3(0, 0, 0);
+    prevOffCut = offCut;
+    plan.push({ ...st, dur, realDur: (st.cut * dur) / SPEED, anchorVec: anchor.clone() });
   }
+  finalAnchorVec.copy(anchor).add(prevOffCut);
   comboDur = plan.reduce((s, p) => s + p.realDur, 0);
   console.log('[combo-air] plan', plan.map((p) =>
-    `${p.clip} dur ${p.realDur.toFixed(2)}s`).join(' | '));
+    `${p.clip} dur ${p.realDur.toFixed(2)}s anchor ${p.anchorVec.x.toFixed(2)},${p.anchorVec.z.toFixed(2)}`).join(' | '));
 }
 
 /* ---------- show state ---------- */
@@ -272,11 +369,20 @@ let stepIdx = -1;          // current punch index (-1 = intro)
 let stepT = 0;             // real seconds into the current punch
 let settleT = 0;
 let frames = 0;
+const _fwd = new THREE.Vector3();
+
+function facingDir() {
+  return _fwd.set(Math.sin(fighter.group.rotation.y), 0, Math.cos(fighter.group.rotation.y));
+}
 
 function startStep(k) {
   stepIdx = k;
   stepT = 0;
+  /* stand at this punch's anchor so the body keeps its forward progress
+   * instead of snapping back to the clip origin */
+  fighter.group.position.copy(plan[k].anchorVec);
   play(fighter, plan[k].clip, { fade: 0.12, ts: SPEED });
+  setTimeout(playWhoosh, Math.max(0, plan[k].realDur * 450));
 }
 
 function advanceCombo(dt) {
@@ -287,6 +393,8 @@ function advanceCombo(dt) {
     if (stepIdx === plan.length - 1) {
       phase = 'settle';
       settleT = 0;
+      /* keep the fighter at his final forward position while he idles */
+      fighter.group.position.copy(finalAnchorVec);
       fighter.mixer.stopAllAction();
       play(fighter, fighter.actions.idle ? 'idle' : 'guard', { fade: 0.3, loop: true });
     } else {
@@ -329,8 +437,16 @@ function resetShow() {
   controls.enabled = false;
   fighter.group.position.set(0, 0, 0);
   fighter.group.rotation.y = -Math.PI / 2 + 0.35;
+  /* HARD cut into guard (no fade): the skeleton is holding whatever pose the
+   * last sampling pass left behind (e.g. leadhook mid-recovery) — fading in
+   * from that reads as a whole-body tumble during the first ~0.15s. */
   fighter.mixer.stopAllAction();
-  play(fighter, 'guard', { fade: 0.15, loop: true });
+  const g = fighter.actions.guard || Object.values(fighter.actions)[0];
+  g.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
+  g.setLoop(THREE.LoopRepeat, Infinity);
+  g.play();
+  fighter.mixer.setTime(0.2);
+  fighter.mixer.update(0);
   applyShowTop();
   resize();
 }
@@ -361,15 +477,17 @@ function advance(dt) {
   }
 }
 
-/* ---------- camera (static framing, portrait aware) ---------- */
+/* ---------- camera (follows the fighter's forward advance, portrait aware) ---------- */
 const _want = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
+let camFollowX = 0;        // smoothed fighter progress
 function computeCamera() {
   const aspect = camera.aspect || 1;
   const tanH = Math.tan(camera.fov * Math.PI / 360);
   /* fit a 2.4m-tall / 2.6m-wide action bubble, whichever needs more distance */
   const z = Math.max(3.6, 2.4 / (2 * tanH), 2.6 / (2 * tanH * aspect));
-  _want.tgt.set(0, 1.02, 0);
-  _want.pos.set(0.55, 1.32, z);
+  const mid = camFollowX * 0.55;
+  _want.tgt.set(mid, 1.02, 0);
+  _want.pos.set(0.55 + mid, 1.32, z);
 }
 function updateCamera(dt) {
   if (controls.enabled) {
@@ -377,6 +495,11 @@ function updateCamera(dt) {
     headFill.position.copy(camera.position).sub(controls.target).setLength(6).add(controls.target);
     headFill.target.position.copy(controls.target);
     return;
+  }
+  if (phase === 'combo' || phase === 'settle') {
+    camFollowX += (fighter.group.position.x - camFollowX) * (1 - Math.exp(-dt * 2.2));
+  } else if (phase === 'intro') {
+    camFollowX = 0;
   }
   computeCamera();
   camera.position.copy(_want.pos);
@@ -429,6 +552,15 @@ document.addEventListener('visibilitychange', () => {
 
 function build(gltf) {
   buildFighter(gltf);
+  /* the jab clip opens with a large torso wind-up rotation — trim it so the
+   * punch fires fast and the first second reads as a jab, not a turn */
+  const jabAct = fighter.actions.jab;
+  if (jabAct) {
+    const src = jabAct.getClip();
+    if (src.duration > JAB_TRIM + 0.4) {
+      fighter.actions.jab = fighter.mixer.clipAction(trimClipStart(src, JAB_TRIM));
+    }
+  }
   probePlan();
   loadingEl.classList.add('hidden');
   resetShow();
@@ -447,7 +579,7 @@ function build(gltf) {
       stopLoop();
       const dt = 1 / 30;
       let guard = 0;
-      while (showT < target - 1e-6 && guard++ < 3000) advance(dt);
+      while (showT < target - 1e-6 && guard++ < 3000) { advance(dt); updateCamera(dt); }
       updateCamera(1 / 30);
       renderer.render(scene, camera);
     },
