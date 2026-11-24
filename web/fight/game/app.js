@@ -810,6 +810,22 @@ class Fighter {
     const sole = lowestSkinnedPoint(this.model);
     this.model.position.y -= sole - 0.003;
     this.model.updateMatrixWorld(true);
+
+    // These sculpt rigs stand via the Armature node's rotation, which leaves
+    // the hips origin (and the whole stance with it) ~1.1m ahead of the model
+    // origin in the punch direction. Without recentring, the male fighter
+    // spawns floating in front of his root - off the ring line and on top of
+    // his opponent - while the female rig happens to be centred. Put the
+    // feet midpoint back at the root origin.
+    const _fw = new THREE.Vector3();
+    const fl = this.bones.LeftFoot, fr = this.bones.RightFoot;
+    if (fl && fr) {
+      const cx = (fl.getWorldPosition(_fw).x + fr.getWorldPosition(_fw).x) / 2;
+      const cz = (fl.getWorldPosition(_fw).z + fr.getWorldPosition(_fw).z) / 2;
+      this.model.position.x -= cx;
+      this.model.position.z -= cz;
+      this.model.updateMatrixWorld(true);
+    }
     this.dbg = { rawH: +h.toFixed(3), scale: +s.toFixed(3), sole: +sole.toFixed(3) };
     this.root.add(this.model);
     this.root.position.set(x, 0, 0);
