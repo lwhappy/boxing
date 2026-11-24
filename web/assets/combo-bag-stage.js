@@ -559,6 +559,20 @@ function build(gltf) {
   buildFighter(gltf);
   buildComboClip(gltf);
   probeWhooshes();
+  /* Auto tail cut (when the page doesn't pin trimEnd): the composed clips
+   * do a recovery shuffle after the final punch which reads as a stutter —
+   * end on the last punch's follow-through instead. */
+  if (typeof CFG.trimEnd !== 'number' && whooshTimes.length) {
+    const cut = whooshTimes[whooshTimes.length - 1] + 0.3;
+    if (comboClip.duration - cut > 0.15) {
+      comboClip = trimClipEnd(comboClip, cut);
+      const act = fighter.mixer.clipAction(comboClip);
+      act.enabled = true;
+      fighter.actions.combo = act;
+      whooshTimes = whooshTimes.filter((t) => t <= cut);
+      console.log('[combo-air] auto tail cut at', cut.toFixed(2) + 's');
+    }
+  }
   loadingEl.classList.add('hidden');
   resetShow();
   startLoop();

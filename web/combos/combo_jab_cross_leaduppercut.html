@@ -35,6 +35,81 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
+<style>
+  /* cinematic combo show: the stage is a TRANSPARENT fixed overlay centered
+   * on screen, anchored BELOW the sticky site header + breadcrumb row
+   * (--show-top measured in JS) so those bars stay visible + clickable.
+   * The fighter throws the combo in the air over the page background; when
+   * the show ends the stage docks bottom-left like the moves pages. */
+  .jab-stage.jab-live {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    top: var(--show-top, 0px);
+    width: auto; height: auto;
+    max-width: none; aspect-ratio: auto; min-height: 0;
+    border: none; border-radius: 0;
+    background: transparent; box-shadow: none; z-index: 40; margin: 0;
+  }
+  .jab-stage.jab-live::before { display: none; }
+  .jab-stage .jab-canvas-box { position: absolute; inset: 0; }
+  .jab-stage.jab-docked { position: fixed; left: 0; top: auto; bottom: 0; z-index: 30;
+    overflow: hidden;
+    width: min(320px, 44vw); max-width: 320px; min-height: 0;
+    aspect-ratio: auto;
+    padding-bottom: 44px; border-radius: 0;
+    border: none; background: transparent; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    margin: 0; }
+  .jab-stage.jab-docked .jab-canvas-box { position: relative; inset: auto;
+    width: 100%; aspect-ratio: 16 / 9;
+    margin-left: -36%; }
+  .jab-stage.jab-docked::before { display: none; }
+  .jab-stage canvas { pointer-events: auto; touch-action: pan-y; }
+  .jab-stage .hero-ui { pointer-events: none; }
+  .jab-replay { display: none; }
+  .jab-stage.jab-docked .jab-replay {
+    display: inline-flex; align-items: center; gap: 5px;
+    position: absolute; right: auto; top: auto; bottom: 8px;
+    left: 14%; transform: translateX(-50%); z-index: 6;
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #fff;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: rgba(16, 19, 25, .55);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-stage.jab-docked .jab-replay:hover { background: rgba(16, 19, 25, .75); border-color: rgba(255, 122, 61, .7); }
+  .jab-actions {
+    display: none; position: absolute; left: 50%; bottom: 36px;
+    transform: translateX(-50%); gap: 10px; z-index: 6;
+  }
+  .jab-stage.jab-paused .jab-actions { display: flex; }
+  .jab-action {
+    appearance: none; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 700; letter-spacing: .05em; color: #fff;
+    padding: 7px 18px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .32);
+    background: rgba(16, 19, 25, .6);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .jab-action:hover { background: rgba(16, 19, 25, .82); border-color: rgba(255, 122, 61, .7); }
+  .jab-action-close { border-color: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .85); }
+  @media (max-width: 620px) {
+    .jab-stage.jab-docked { width: min(260px, 62vw); padding-bottom: 40px; }
+    .jab-stage.jab-docked .jab-replay { font-size: 10px; padding: 4px 8px; gap: 4px;
+      left: calc(14% + 3px); }
+  }
+  .hero-grid.move-hero { grid-template-columns: 1fr; gap: 30px; }
+  .move-hero .stage:not(.jab-live):not(.jab-docked) { position: relative; top: auto; }
+  .move-hero .hero-copy > p { max-width: 64ch; }
+  .move-hero .move-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 40px; margin-top: 30px; }
+  .move-hero .move-notes p { max-width: none; }
+  .move-hero .pager { grid-column: 1 / -1; }
+  @media (max-width: 980px) {
+    .move-hero .move-notes { grid-template-columns: 1fr; }
+  }
+</style>
 <script>
 window.PAGE = { section: 'combos', depth: 1, breadcrumb: [{ label: 'Jab-Cross-Lead Uppercut' }] };
 </script>
@@ -82,13 +157,20 @@ window.PAGE = { section: 'combos', depth: 1, breadcrumb: [{ label: 'Jab-Cross-Le
   <section class="hero">
     <div class="hero-grid move-hero">
 
-      <!-- Left: 3D stage (auto-plays the combo, Replay + slow-mo buttons) -->
-      <div class="stage hero-stage" aria-label="3D demo of the jab-cross-lead uppercut combo">
-        <canvas id="stage-canvas"></canvas>
-        <div class="stage-bar" id="stage-bar" role="toolbar" aria-label="Replay the combo" hidden></div>
+      <!-- Left: 3D stage (transparent fullscreen combo show on load, then
+           docks bottom-left like the moves pages) -->
+      <div class="stage hero-stage jab-stage jab-live" id="jab-stage" aria-label="3D demo of the jab-cross-lead uppercut combo">
+        <div class="jab-canvas-box">
+          <canvas id="stage-canvas"></canvas>
+        </div>
+        <button type="button" class="jab-replay" id="jab-replay" hidden>↻ Replay</button>
+        <div class="jab-actions" id="jab-actions">
+          <button type="button" class="jab-action" id="jab-replay-big">↻ Replay</button>
+          <button type="button" class="jab-action jab-action-close" id="jab-close">✕ Close</button>
+        </div>
         <div class="stage-loading" id="stage-loading">
           <div class="ring"></div>
-          <span id="stage-loading-text">Loading combo model…</span>
+          <span id="stage-loading-text">Loading 3D model…</span>
         </div>
         <div class="stage-error" id="stage-error" hidden></div>
       </div>
@@ -139,10 +221,12 @@ window.PAGE = { section: 'combos', depth: 1, breadcrumb: [{ label: 'Jab-Cross-Le
   <span><a href="../index.html">Home</a> · <a href="../moves/">Moves</a> · <a href="../combos/">Combos</a> · <a href="../training/">Training</a> · <a href="../guides/">Guides</a> · <a href="../contact/">Contact</a> · <a href="../about/">About</a> · <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></span>
 </footer>
 
-<!-- Combo stage: loads a single combo GLB and auto-plays it -->
+<!-- Combo stage: plays one pre-composed combo clip fullscreen, then docks -->
 <script>
-window.COMBO = {
-  clip: 'combo_jab_cross_leaduppercut'
+window.COMBO_AIR = {
+  glb: '../media/glb/man-combos.glb?v=1',
+  clip: 'combo_jab_cross_leaduppercut',
+  trimStart: 1.5,
 };
 </script>
 <script type="importmap">
@@ -153,6 +237,6 @@ window.COMBO = {
   }
 }
 </script>
-<script type="module" src="../assets/combo-stage.js?v=17"></script>
+<script type="module" src="../assets/combo-bag-stage.js?v=15"></script>
 </body>
 </html>
