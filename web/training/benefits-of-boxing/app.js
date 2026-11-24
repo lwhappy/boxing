@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const canvas = document.getElementById('bb-canvas');
 const stageEl = document.getElementById('bb-stage');
@@ -46,6 +47,12 @@ controls.maxDistance = 12;
 controls.target.set(0, 0.95, 0);
 
 scene.add(new THREE.HemisphereLight(0xdcebff, 0x4a4640, 2.9));
+// studio IBL (same recipe as /fight/game/) — image-based lighting makes the
+// fighters read naturally bright; plain directional rig leaves them flat
+try {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+} catch (e) { /* IBL optional */ }
 const keyLight = new THREE.DirectionalLight(0xffe8d2, 4.2);
 keyLight.position.set(2.2, 3.2, 2.6);
 keyLight.castShadow = true;
