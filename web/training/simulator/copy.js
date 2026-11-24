@@ -1,6 +1,6 @@
 /**
  * Heavy-bag lab — copy deck.
- * Every entry maps to one animation clip in media/glb/boxer-man.glb.
+ * Every entry maps to one animation clip in media/glb/sim-man.glb.
  * `hit` is the hand that lands; the impact frame is measured at runtime.
  * `pos` / `posM` are the node positions (desktop / phone) — deliberately irregular.
  */

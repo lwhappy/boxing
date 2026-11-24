@@ -625,18 +625,49 @@ async function loadFighter() {
   if (loaderEl) loaderEl.classList.add('pending');
   const gltf = await new Promise((res, rej) => {
     new GLTFLoader().load(
-      '../../media/glb/boxer-man.glb?v=7',
+      '../../media/glb/sim-man.glb?v=1',
       res,
       (e) => { if (e && e.lengthComputable && e.total) loadProgress(e.loaded / e.total); },
       rej
     );
   });
   model = gltf.scene;
-  const box = new THREE.Box3().setFromObject(model);
-  const h = box.max.y - box.min.y;
-  const s = 1.78 / h;
+  /* this sculpt family ships bind-pose/normalize traps (the combo-page file
+     even lies flat), so normalize on an ANIMATED pose using skinned vertices:
+     play the guard clip, measure the deformed mesh's real sole→crown height,
+     scale to 1.78 m and drop it on the ground. */
+  const skinnedBounds = () => {
+    let lo = Infinity, hi = -Infinity;
+    const tv = new THREE.Vector3();
+    model.updateMatrixWorld(true);
+    model.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const pos = o.geometry.attributes.position;
+      const step = Math.max(1, Math.floor(pos.count / 3000));
+      for (let i = 0; i < pos.count; i += step) {
+        tv.fromBufferAttribute(pos, i);
+        if (o.isSkinnedMesh) o.applyBoneTransform(i, tv);
+        tv.applyMatrix4(o.matrixWorld);
+        if (tv.y < lo) lo = tv.y;
+        if (tv.y > hi) hi = tv.y;
+      }
+    });
+    return { lo, hi };
+  };
+  mixer = new THREE.AnimationMixer(model);
+  for (const c of gltf.animations) { rawClips[c.name] = c; clips[c.name] = c; }
+  const refAct = mixer.clipAction(rawClips.guard || gltf.animations[0]);
+  refAct.reset().setEffectiveWeight(1).play();
+  mixer.setTime((rawClips.guard ? rawClips.guard.duration : 2) * 0.05);
+  mixer.update(0);
+  let b = skinnedBounds();
+  const s = 1.78 / (b.hi - b.lo);
   model.scale.setScalar(s);
-  model.position.y = -box.min.y * s;
+  mixer.update(0);
+  b = skinnedBounds();
+  model.position.y -= b.lo;
+  model.updateMatrixWorld(true);
+  refAct.stop();
   model.traverse((o) => {
     if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -662,13 +693,9 @@ async function loadFighter() {
   });
   rig = new THREE.Group();
   rig.add(model);
+  /* sim-man.glb stands upright and its clips punch +Z natively — no yaw
+     needed (unlike the combo-page sculpt, whose bind pose lies flat) */
   scene.add(rig);
-
-  mixer = new THREE.AnimationMixer(model);
-  /* Clips are used as authored first; the long combos carry real root travel
-     (combo2-elbow walks about two metres forward) and get theirs rescaled in
-     scaleTravel() once we know how far the bag actually is. */
-  for (const c of gltf.animations) { rawClips[c.name] = c; clips[c.name] = c; }
 
   const bone = (n) => model.getObjectByName('mixamorig:' + n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName(n);
   const hands = { LeftHand: bone('LeftHand'), RightHand: bone('RightHand') };
