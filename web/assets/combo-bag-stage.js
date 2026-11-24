@@ -408,7 +408,11 @@ function dock() {
   hostEl.classList.remove('jab-live', 'jab-paused');
   hostEl.classList.add('jab-docked');
   replayBtn.hidden = false;
+  /* the widget frames the ORIGIN — bring the fighter back home or he stands
+   * outside the small canvas (invisible) after his forward march */
+  fighter.group.position.set(0, 0, 0);
   fighter.group.rotation.y = Math.PI * 0.375;
+  camFollowX = 0;
   fighter.mixer.stopAllAction();
   play(fighter, fighter.actions.idle ? 'idle' : 'guard', { fade: 0.3, loop: true });
   resize();
@@ -469,7 +473,9 @@ function advance(dt) {
       phase = 'paused';
       hostEl.classList.add('jab-paused');
       controls.enabled = true;
-      controls.target.set(0, 1.0, 0);
+      /* hand over to orbit at the same framing the follow camera ended on —
+       * otherwise the fighter (who marched forward) drops out of frame */
+      controls.target.set(camFollowX * 0.55, 1.0, 0);
       controls.update();
     }
   } else if (phase === 'docked' || phase === 'paused') {
