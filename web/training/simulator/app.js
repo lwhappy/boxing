@@ -696,6 +696,11 @@ async function loadFighter() {
   /* sim-man.glb stands upright and its clips punch +Z natively — no yaw
      needed (unlike the combo-page sculpt, whose bind pose lies flat) */
   scene.add(rig);
+  /* the clips carry real root travel (the elbow combo walks ~2m forward), but
+     the skinned mesh's bounding sphere is computed from the BIND pose — with
+     hips travel the fighter leaves that sphere and gets frustum-culled
+     (visibly "vanishing" mid-combo). Never cull the fighter. */
+  model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
 
   const bone = (n) => model.getObjectByName('mixamorig:' + n) || model.getObjectByName('mixamorig' + n) || model.getObjectByName(n);
   const hands = { LeftHand: bone('LeftHand'), RightHand: bone('RightHand') };
