@@ -21,6 +21,7 @@ const CFG = window.COMBO_AIR || {};
 const GLB_URL = CFG.glb || '../media/glb/man-combos.glb?v=1';
 const CLIP_NAME = CFG.clip || 'combo_jab_cross_hook';
 const TRIM_START = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.5;  // cut pre-punch guard
+const TRIM_END = typeof CFG.trimEnd === 'number' ? CFG.trimEnd : 0;          // cut post-combo recovery shuffle
 const SPEED = 1.5;           // global playback speed-up ("快一点")
 const SETTLE_T = 1.2;        // hold on the last frame before the paused overlay
 
@@ -300,9 +301,35 @@ function trimClipStart(sourceClip, startSec) {
 
 let comboClip = null;
 
+/* Trim everything AFTER `endSec` off a clip (keys beyond the end are simply
+ * dropped; the interpolator clamps on the last kept key). Used to cut the
+ * recovery shuffle the composed clip does after the final punch — it reads
+ * as a stutter-step at 1.5x. */
+function trimClipEnd(sourceClip, endSec) {
+  const newTracks = [];
+  for (const track of sourceClip.tracks) {
+    const times = track.times;
+    const values = track.values;
+    const itemSize = track.ValueItemSize || values.length / times.length;
+    let lastIdx = -1;
+    for (let i = 0; i < times.length; i++) {
+      if (times[i] <= endSec) lastIdx = i;
+    }
+    if (lastIdx < 0) continue;
+    const count = lastIdx + 1;
+    const newTimes = new Float32Array(count);
+    const newValues = new values.constructor(count * itemSize);
+    newTimes.set(times.subarray(0, count));
+    newValues.set(values.subarray(0, count * itemSize));
+    newTracks.push(new track.constructor(track.name, newTimes, newValues, track.getInterpolation()));
+  }
+  return new THREE.AnimationClip(sourceClip.name + '_cut', Math.min(endSec, sourceClip.duration), newTracks);
+}
+
 function buildComboClip(gltf) {
   let clip = THREE.AnimationClip.findByName(gltf.animations, CLIP_NAME) || gltf.animations[0];
   if (TRIM_START > 0 && clip.duration > TRIM_START + 0.5) clip = trimClipStart(clip, TRIM_START);
+  if (TRIM_END > 0 && clip.duration > TRIM_END) clip = trimClipEnd(clip, TRIM_END);
   comboClip = clip;
   const act = fighter.mixer.clipAction(clip);
   act.enabled = true;
@@ -340,14 +367,19 @@ function probeWhooshes() {
   for (let i = 2; i < N - 1; i++) {
     for (let h = 0; h < 2; h++) {
       const v = hands[i][h];
-      if (v > 0.55 * maxV && v > hands[i - 1][h] && v >= hands[i + 1][h]) raw.push((dur * i) / N);
+      if (v > 0.55 * maxV && v > hands[i - 1][h] && v >= hands[i + 1][h]) {
+        raw.push({ t: (dur * i) / N, v });
+      }
     }
   }
-  raw.sort((a, b) => a - b);
+  /* one whoosh per punch: keep the STRONGEST peak in every 0.45s window
+   * (raw local maxima also fire on the arm coil between punches) */
+  raw.sort((a, b) => b.v - a.v);
   whooshTimes = [];
-  for (const t of raw) {
-    if (!whooshTimes.length || t - whooshTimes[whooshTimes.length - 1] > 0.3) whooshTimes.push(t);
+  for (const p of raw) {
+    if (whooshTimes.every((q) => Math.abs(q - p.t) > 0.45)) whooshTimes.push(p.t);
   }
+  whooshTimes.sort((a, b) => a - b);
   console.log('[combo-air] whooshes at', whooshTimes.map((t) => t.toFixed(2)).join(', '));
 }
 
