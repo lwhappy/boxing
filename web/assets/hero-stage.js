@@ -1,6 +1,6 @@
 /* SilentJab — homepage hero tutorial (replaces the old switcher on the home page only)
  *
- * 模型：media/glb/man-hero.glb（man.fbx + punch.zip 的四个动作）
+ * 模型：media/glb/hero-man.glb（moves 同款白模男 sculpt + man-hero.glb 的四段动作 retarget 烘焙）
  * 流程：jab → cross → right hook → left uppercut 依次自动播放；
  *       每一拳在「打到最远的一帧」冻结，然后依次从 左拳 → 右拳 → 腰 → 左腿 → 右腿
  *       拉出折线标注英文要点，全部显示完停留 2 秒，再播下一个动作。
@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const GLB_URL = new URL('../media/glb/man-hero.glb?v=1', import.meta.url).href;
+const GLB_URL = new URL('../media/glb/hero-man.glb?v=1', import.meta.url).href;
 
 /* 每条动作五个标注：左拳 → 右拳 → 腰 → 左腿 → 右腿（顺序固定，文案按动作换） */
 const ACTIONS = [
@@ -299,8 +299,9 @@ function boneByName(root, key) {
 }
 
 function groundAndFaceLeft(root) {
-  // 面向屏幕左侧：绕 Y 转 -90°，出拳方向朝 -X
-  root.rotation.y = -Math.PI / 2;
+  // 面向屏幕左侧、胸口 3/4 朝镜头（sculpt 动画局部朝前是 +Z，
+  // -PI/2 只给侧面/背面视角，加 0.55 让鼻尖指向 (-0.85, +0.53)）
+  root.rotation.y = Math.PI / 2 + 0.55;
   root.updateMatrixWorld(true);
   // 用蒙皮顶点最低点（鞋底）落地
   let low = Infinity;
@@ -329,7 +330,13 @@ function findImpact(clipName, handBone, action, mode) {
   action.reset();
   action.play();
   mixer.setTime(0);
-  const score = mode === 'apex' ? (p) => -p.y : (p) => p.x;
+  /* reach 改为「拳头离髋部最远」——与模型朝向无关（旧版按世界 -X 探测，
+     换 sculpt 男模后出拳方向是 +X，会取到收拳帧） */
+  const hips = bones.Hips;
+  const _hv = new THREE.Vector3();
+  const score = mode === 'apex' ? (p) => -p.y
+    : hips ? (p) => { hips.getWorldPosition(_hv); return -p.distanceToSquared(_hv); }
+    : (p) => p.x;
   let best = { t: 0, s: Infinity };
   const sample = (t) => {
     mixer.setTime(t);
