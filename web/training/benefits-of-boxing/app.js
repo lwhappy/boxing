@@ -784,7 +784,7 @@ function resetShow() {
     loadingText.textContent = 'Loading the kickboxer…';
     await woman.load('./models/woman.glb', 'woman');
     loadingText.textContent = 'Loading the partner…';
-    await man.load('./models/man.glb', 'man');
+    await man.load('./models/man.glb?v=2', 'man');
     loadingEl.hidden = true;
     resetShow();
     await probeAnchors();
