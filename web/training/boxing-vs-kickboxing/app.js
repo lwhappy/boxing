@@ -742,6 +742,18 @@ function tick() {
     await man.load('./models/boxer-man.glb?v=2', 'man');
     loadingText.textContent = 'Loading the kickboxer…';
     await woman.load('./models/kick-woman.glb', 'woman');
+    // The woman's white full-rough material reads darker than the man's under
+    // the shared rig lights — lift her with a small flat emissive so both
+    // fighters read at the same brightness.
+    woman.group.traverse((o) => {
+      if (!(o.isMesh || o.isSkinnedMesh) || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m.emissive) continue;
+        m.emissive.setHex(0x2e2e33);
+        m.needsUpdate = true;
+      }
+    });
     for (const f of [man, woman]) {
       for (const a of Object.values(f.actions)) a.setEffectiveTimeScale(TS);
     }
