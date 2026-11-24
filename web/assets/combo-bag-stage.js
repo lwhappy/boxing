@@ -85,50 +85,78 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 gymGroup.add(floor);
 
-const beam = new THREE.Mesh(
-  new THREE.BoxGeometry(5.2, 0.12, 0.3),
-  new THREE.MeshPhongMaterial({ color: 0x151820 }));
-beam.position.set(0, 2.66, 0);
-gymGroup.add(beam);
+/* ---------- heavy bag — same design as /training/simulator/ ---------- */
+const steelMat = new THREE.MeshPhongMaterial({ color: 0x2e3740, shininess: 70, specular: 0x555e6a });
+const leatherMat = new THREE.MeshPhongMaterial({ color: 0x4a342a, shininess: 34, specular: 0x2b2b28 });
+const seamMat = new THREE.MeshPhongMaterial({ color: 0x0e0908, shininess: 8 });
+const strapMat = new THREE.MeshPhongMaterial({ color: 0x120e0d, shininess: 12 });
 
-const PIVOT_Y = 2.6;
-const CHAIN_L = 0.55;
-const BAG_R = 0.21;
-const BAG_HALF = 0.735;      // capsule: length 1.05 + radius 0.21, / 2
-const BAG_CENTER_LC = CHAIN_L + BAG_HALF;   // pivot -> bag centre distance
-const pivot = new THREE.Group();
-pivot.position.set(0, PIVOT_Y, 0);
-gymGroup.add(pivot);
+const BAG_R = 0.27;
+const BAG_BOTTOM = 0.42;
+const BAG_TOP = 1.62;
+const BAG_CENTER_H = (BAG_BOTTOM + BAG_TOP) / 2;   // base joint -> bag centre
 
-const chain = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.02, 0.02, CHAIN_L, 8),
-  new THREE.MeshPhongMaterial({ color: 0x3a3f4a, shininess: 40 }));
-chain.position.y = -CHAIN_L / 2;
-pivot.add(chain);
-
-const bagGroup = new THREE.Group();
-bagGroup.position.y = -CHAIN_L;
-pivot.add(bagGroup);
-
-const bagMat = new THREE.MeshPhongMaterial({ color: 0x8a2a22, shininess: 22, specular: 0x2a2a2a });
-const bagMesh = new THREE.Mesh(new THREE.CapsuleGeometry(BAG_R, 1.05, 6, 18), bagMat);
-bagMesh.position.y = -BAG_HALF;
-bagGroup.add(bagMesh);
-const strapMat = new THREE.MeshPhongMaterial({ color: 0x14161c });
-for (const sy of [0.42, -0.42]) {
-  const strap = new THREE.Mesh(new THREE.TorusGeometry(BAG_R + 0.005, 0.02, 8, 24), strapMat);
-  strap.rotation.x = Math.PI / 2;
-  strap.position.y = sy;
-  bagMesh.add(strap);
+const bagRoot = new THREE.Group();     // slides along the floor, pushed by hits
+gymGroup.add(bagRoot);
+const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.1, 40), steelMat);
+baseMesh.position.y = 0.05;
+bagRoot.add(baseMesh);
+for (let i = 0; i < 6; i++) {
+  const a = (i / 6) * Math.PI * 2;
+  const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.014, 8), steelMat);
+  bolt.position.set(Math.cos(a) * 0.29, 0.104, Math.sin(a) * 0.29);
+  bagRoot.add(bolt);
 }
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.12, 0.24, 20), steelMat);
+neck.position.y = 0.18;
+bagRoot.add(neck);
 
-/* bag pendulum state: angle th (positive = swung toward +X), ang vel om */
-const bag = { th: 0, om: 0, squash: 0 };
+const bagPivot = new THREE.Group();    // tilts around the base joint
+bagPivot.position.y = BAG_BOTTOM;
+bagRoot.add(bagPivot);
+const bagY = (y) => y - BAG_BOTTOM;
+const bodyH = BAG_TOP - BAG_BOTTOM;
+const bagMesh = new THREE.Mesh(new THREE.CylinderGeometry(BAG_R * 0.95, BAG_R, bodyH, 48, 1, false), leatherMat);
+bagMesh.position.y = bagY(BAG_BOTTOM + bodyH / 2);
+bagPivot.add(bagMesh);
+const dome = new THREE.Mesh(new THREE.SphereGeometry(BAG_R * 0.95, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), leatherMat);
+dome.position.y = bagY(BAG_TOP); dome.scale.y = 0.42; bagPivot.add(dome);
+const skirt = new THREE.Mesh(new THREE.SphereGeometry(BAG_R, 40, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), leatherMat);
+skirt.position.y = bagY(BAG_BOTTOM); skirt.scale.y = 0.45; bagPivot.add(skirt);
+for (const y of [0.62, 0.98, 1.34, 1.56]) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(BAG_R * 0.995, 0.0045, 6, 64), seamMat);
+  ring.rotation.x = Math.PI / 2; ring.position.y = bagY(y); bagPivot.add(ring);
+}
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2;
+  const strap = new THREE.Mesh(new THREE.BoxGeometry(0.035, bodyH * 0.99, 0.012), strapMat);
+  strap.position.set(Math.cos(a) * BAG_R * 0.99, bagY(BAG_BOTTOM + bodyH / 2), Math.sin(a) * BAG_R * 0.99);
+  strap.rotation.y = -a;
+  bagPivot.add(strap);
+}
+const collar = new THREE.Group();
+const collarRing = new THREE.Mesh(new THREE.TorusGeometry(BAG_R * 1.06, 0.026, 10, 56), steelMat);
+collarRing.rotation.x = Math.PI / 2;
+const collarLip = new THREE.Mesh(new THREE.CylinderGeometry(BAG_R * 1.06, BAG_R * 1.06, 0.045, 48, 1, true), steelMat);
+collarLip.position.y = -0.022;
+const collarPlate = new THREE.Mesh(new THREE.CircleGeometry(BAG_R * 1.04, 48), leatherMat);
+collarPlate.rotation.x = -Math.PI / 2; collarPlate.position.y = -0.03;
+collar.add(collarRing, collarLip, collarPlate);
+collar.position.y = bagY(BAG_TOP + 0.004);
+bagPivot.add(collar);
+
+/* bag state: tilt around the base joint + slide along the floor */
+const bag = { th: 0, om: 0, vx: 0, x: 0, squash: 0 };
 function bagStep(dt) {
-  bag.om += (-9.8 / BAG_CENTER_LC) * Math.sin(bag.th) * dt;
-  bag.om *= Math.exp(-dt * 0.95);
+  bag.om += (-9.8 / 0.9) * Math.sin(bag.th) * dt;
+  bag.om *= Math.exp(-dt * 1.35);
   bag.th += bag.om * dt;
-  pivot.rotation.z = bag.th;
+  if (bag.th > 0.5) { bag.th = 0.5; bag.om = Math.min(bag.om, 0); }
+  if (bag.th < -0.5) { bag.th = -0.5; bag.om = Math.max(bag.om, 0); }
+  bagPivot.rotation.z = bag.th;
+  bag.vx *= Math.exp(-dt * 1.9);
+  bag.x += bag.vx * dt;
+  bagRoot.position.x = bag.x;
   /* hit squash relaxes back to 1 */
   if (bag.squash > 0) {
     bag.squash = Math.max(0, bag.squash - dt * 4.5);
@@ -136,10 +164,11 @@ function bagStep(dt) {
     bagMesh.scale.set(1 + 0.10 * bag.squash, s, 1 + 0.10 * bag.squash);
   }
 }
-function bagAxisX() { return Math.sin(bag.th) * BAG_CENTER_LC; }   // world x of bag centre
+function bagAxisX() { return bag.x + Math.sin(bag.th) * BAG_CENTER_H; }   // world x of bag centre
 
 function hitBag(power) {
-  bag.om -= power;            // push the bag away (-X)
+  bag.om -= power * 0.85;             // rock the bag back
+  bag.vx -= 0.7 + power * 0.35;       // push it away (-X): the march right -> left
   bag.squash = 1;
 }
 
@@ -486,7 +515,7 @@ const STEPS = [
 ];
 /* the fighter stands slightly toward the camera so the bag never occludes
  * him — punches go in at a slight angle, like real bag work */
-const FIGHTER_Z = 0.72;
+const FIGHTER_Z = 0.55;
 const plan = [];          // per step: dur/peak (real seconds), reach
 let comboDur = 0;
 
@@ -496,20 +525,20 @@ function probePlan() {
     const act = fighter.actions[st.clip];
     const dur = act.getClip().duration;
     act.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    let best = { t: 0, x: Infinity };
+    let best = { t: 0, x: -Infinity };
     for (let i = 0; i <= 64; i++) {
       const t = (dur * i) / 64;
       fighter.mixer.setTime(t);
       fighter.group.updateMatrixWorld(true);
       fighter.bones[st.fist].getWorldPosition(_sv);
-      const d = _sv.x * fwd.x + _sv.z * fwd.z;
-      if (d < best.x) best = { t, x: d };
+      const d = _sv.x * fwd.x + _sv.z * fwd.z;   // forward extension (bigger = further)
+      if (d > best.x) best = { t, x: d };
     }
     fighter.mixer.stopAllAction();
     plan.push({
       ...st,
       dur,
-      reach: -best.x,                              // fist forward reach (m)
+      reach: best.x,                               // fist forward reach (m)
       peakClip: best.t,                            // clip time of full extension
       peakReal: (best.t * SPEED) || 0.001,
       realDur: (st.cut * dur) / SPEED,
@@ -533,14 +562,15 @@ let lastHitT = -1;
 
 function predictedAxis() {
   const dtPeak = Math.max(0, plan[Math.max(0, stepIdx)].peakReal - stepT);
-  return bagAxisX() + bag.om * BAG_CENTER_LC * dtPeak;   // small-angle
+  return bagAxisX() + (bag.vx + bag.om * BAG_CENTER_H) * dtPeak;   // linear lead
 }
 function standoffX(step, axisAtPeak) {
   /* x such that the 3D distance fighter->bag centre equals reach-0.06 at
-   * full extension (fist dents the surface by ~6cm) */
+   * full extension (fist dents the surface by ~6cm); never closer than a
+   * clear lateral gap so the fighter is never hidden behind the bag */
   const dNeed = Math.max(0.4, step.reach - 0.06);
   const dx = Math.sqrt(Math.max(0.01, dNeed * dNeed - FIGHTER_Z * FIGHTER_Z));
-  return axisAtPeak + dx;
+  return axisAtPeak + Math.max(dx, BAG_R + 0.36);
 }
 function faceYaw(fromX, toAxis) {
   const dx = toAxis - fromX;
@@ -589,7 +619,7 @@ function tryContact(st) {
   bagMesh.updateMatrixWorld(true);
   const local = bagMesh.worldToLocal(p.clone());
   const dist = Math.hypot(local.x, local.z);
-  if (dist < BAG_R + 0.16 && Math.abs(local.y) < 0.8) {
+  if (dist < BAG_R + 0.20 && Math.abs(local.y) < 0.75) {
     const dir = new THREE.Vector3(local.x, 0, local.z).normalize();
     dir.applyQuaternion(bagMesh.getWorldQuaternion(new THREE.Quaternion()));
     fireHit(st, p, dir);
@@ -665,8 +695,9 @@ function resetShow() {
   stepT = 0;
   settleT = 0;
   lastHitT = -1;
-  bag.th = 0; bag.om = 0; bag.squash = 0;
-  pivot.rotation.z = 0;
+  bag.th = 0; bag.om = 0; bag.vx = 0; bag.x = 0; bag.squash = 0;
+  bagRoot.position.x = 0;
+  bagPivot.rotation.z = 0;
   bagMesh.scale.setScalar(1);
   for (const f of flashes) { f.sp.visible = false; f.t = 1e9; }
   for (const s of sparks) { s.sp.visible = false; s.t = 1e9; }
@@ -683,7 +714,7 @@ function resetShow() {
   }
   controls.enabled = false;
   stepIdx = 0; stepT = 0;
-  fighterX = standoffX(plan[0], 0) + 0.55;
+  fighterX = standoffX(plan[0], 0) + 1.15;   // enters well to the right
   fighter.group.position.set(fighterX, 0, FIGHTER_Z);
   fighter.group.rotation.y = faceYaw(fighterX, 0);
   stepIdx = -1;

@@ -36,20 +36,16 @@
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
 <style>
-  /* cinematic heavy-bag combo: the stage goes fullscreen (transparent, fixed)
-   * while the show plays, then docks back into the article flow as a small
-   * borderless canvas — same form as the moves pages */
+  /* cinematic heavy-bag combo: while the show plays the stage is a BIG
+   * in-flow block at the top of the article (never a fixed overlay) — every
+   * word of copy below stays fully visible and clickable. When it ends the
+   * stage docks bottom-left like the moves pages. */
   .jab-stage.jab-live {
-    /* fullscreen show, but anchored BELOW the sticky site header + breadcrumb
-     * row (--show-top measured in JS) so those bars stay visible + clickable */
-    position: fixed; left: 0; right: 0; bottom: 0;
-    top: var(--show-top, 0px);
-    width: auto; height: auto;
+    position: relative; left: auto; right: auto; top: auto; bottom: auto;
+    width: 100%; height: clamp(400px, 60vh, 640px);
     max-width: none; aspect-ratio: auto; min-height: 0;
     border: none; border-radius: 0;
-    /* dim the page behind so the show reads cleanly over it */
-    background: rgba(9, 12, 16, .58);
-    box-shadow: none; z-index: 40; margin: 0;
+    background: transparent; box-shadow: none; z-index: auto; margin: 0;
   }
   .jab-stage.jab-live::before { display: none; }
   .jab-stage .jab-canvas-box { position: absolute; inset: 0; }
@@ -238,6 +234,6 @@ window.COMBO_BAG = {
   }
 }
 </script>
-<script type="module" src="../assets/combo-bag-stage.js?v=1"></script>
+<script type="module" src="../assets/combo-bag-stage.js?v=2"></script>
 </body>
 </html>
