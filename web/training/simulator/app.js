@@ -578,7 +578,12 @@ const MEASURE = {};
 const state = {
   id: null, action: null, impact: 0, hit: false,
   hits: [], nextHit: 0, path: [],
-  move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3()
+  move: new THREE.Vector3(), from: new THREE.Vector3(), cur: new THREE.Vector3(),
+  /* monotonic seconds since play() — footwork MUST use this, not action.time:
+     loop clips (guard) wrap their action.time every cycle, which would reset
+     the walk-back easing and make the fighter visibly re-walk to the last
+     move's staged position each ~5s loop */
+  tSince: 0
 };
 
 /* ------------------------------------------------------------- loading fx */
@@ -1157,6 +1162,7 @@ function play(id, { silent = false, panel: showPanelToo = true } = {}) {
 
   state.id = id;
   state.action = act;
+  state.tSince = 0;
   state.hit = false;
   state.hits = mv.hit ? MEASURE[id].hits : [];
   state.nextHit = 0;
@@ -1223,7 +1229,7 @@ function frameStage(o = {}, snap = true) {
   camBase.D = o.D ?? (m ? 5.6 : 3.75);
   camBase.H = o.H ?? (m ? 1.78 : 1.82);
   camBase.aimY = o.aimY ?? (m ? 1.06 : 1.04);
-  camBase.pan = o.pan ?? (m ? 0.1 : -0.62);
+  camBase.pan = o.pan ?? (m ? -0.35 : -0.62);
   camSolve();
   if (!snap) return;
   camPos.copy(camTarget.pos);
@@ -1322,6 +1328,7 @@ let t0 = 0;
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   t0 += dt;
+  state.tSince += dt;
 
   const mv = state.id ? MOVE_BY_ID[state.id] : null;
   const upper = !!mv && /uppercut/.test(mv.id) && !!MEASURE[mv.id];
@@ -1330,7 +1337,7 @@ function tick() {
 
   // ---- footwork: ease into the punch's own stance, ease back out afterwards
   if (mv) {
-    const t = state.action ? state.action.time : 0;
+    const t = state.tSince;   // monotonic — loop clips wrap action.time, this must not
     if (state.path.length > 1) {
       /* a combination: walk the beat-by-beat path so every strike of the
          sequence arrives at the exact distance it was measured at */
@@ -1592,6 +1599,7 @@ window.__sim = {
     act.setEffectiveWeight(1); act.setEffectiveTimeScale(1);
     act.play(); act.time = m.impact;
     state.action = act; state.hit = true;
+    state.tSince = m.impact;
     state.hits = m.hits; state.nextHit = 1;
     mixer.update(0); model.updateMatrixWorld(true);
     mixer.timeScale = 0;
