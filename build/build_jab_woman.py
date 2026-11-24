@@ -40,12 +40,28 @@ if "--move-donor" in argv:
 # their usual donors; the game donor produces upright clips like the FBX
 # donors (its armature ships X+90°-rotated), so conventions stay consistent.
 GAME_MOVE = None
+GAME_NAMES = None
 if "--game-move" in argv:
     GAME_MOVE = argv[argv.index("--game-move") + 1]
+if "--game-names" in argv:
+    GAME_NAMES = argv[argv.index("--game-names") + 1]
     if "--move-name" in argv:
         MOVE_NAME = argv[argv.index("--move-name") + 1]
     else:
         MOVE_NAME = GAME_MOVE.replace("-", "")
+
+# --donor-glb <path>: bake a move from an ARBITRARY glTF donor file (e.g. the
+# old red-corner combo GLBs — full jab-cross-hook sequences with footwork).
+# Same retarget as --game-move, just a different donor file; the action is
+# matched by base name of --move-name, falling back to the donor's largest
+# action. Output keeps guard/idle from the usual donors.
+DONOR_GLB = None
+if "--donor-glb" in argv:
+    DONOR_GLB = argv[argv.index("--donor-glb") + 1]
+    if "--move-name" in argv:
+        MOVE_NAME = argv[argv.index("--move-name") + 1]
+    else:
+        MOVE_NAME = os.path.splitext(os.path.basename(DONOR_GLB))[0]
 
 # synthesize the OPPOSITE-side variant of a move from its donor FBX (e.g. a
 # lead hook from the rear-hook donor): the upper body (arms, spine, head and
@@ -74,7 +90,7 @@ DONOR_GAME = os.path.join(ROOT, "web/media/glb/boxer-woman.glb")
 DONOR_IDLE = os.path.join(ROOT, "build/donor_idle4.fbx")
 DONOR_GUARD = os.path.join(ROOT, "build/donor_guard.fbx")
 OUT = os.path.join(ROOT, "web/media/glb/jab-man.glb")
-if MOVE_DONOR or GAME_MOVE:
+if MOVE_DONOR or GAME_MOVE or DONOR_GLB:
     OUT = argv[argv.index("--out") + 1]   # after the default OUT above
 MAXTEX = 2048
 FPS = 30.0
@@ -178,7 +194,12 @@ if WITH_CLIPS:
     rig_move = None
     if MOVE_DONOR:
         rig_move = import_fbx_donor(MOVE_DONOR)
-    if MOVE_DONOR or GAME_MOVE:
+    if DONOR_GLB:
+        bpy.ops.import_scene.gltf(filepath=DONOR_GLB)
+        rig_move = next(o for o in bpy.data.objects
+                        if o.type == "ARMATURE" and o not in known)
+        known.add(rig_move)
+    if MOVE_DONOR or GAME_MOVE or DONOR_GLB:
         # glTF idle donor LAST — see the convention note in the MOVE_DONOR
         # branch above (importing glTF before FBX flips the FBX bake)
         bpy.ops.import_scene.gltf(filepath=DONOR_GAME)
@@ -204,7 +225,7 @@ if WITH_CLIPS:
         acts_guard = rig_actions(rig_guard)
         print(f"  donor guard clips: {sorted(acts_guard)}")
         CLIPS.append((rig_guard, acts_guard, "Layer0", "guard"))
-    if MOVE_DONOR or GAME_MOVE:
+    if MOVE_DONOR or GAME_MOVE or DONOR_GLB:
         # the jab page's docked idle, straight from the glTF donor — baked
         # BEFORE the move clip so --mirror-upper can blend its first frames
         # into the idle pose (the mirror needs the idle pose as reference)
@@ -216,10 +237,28 @@ if WITH_CLIPS:
         print(f"  donor move clips: {sorted(acts_move)}")
         CLIPS.append((rig_move, acts_move, "Layer0", MOVE_NAME))
     elif GAME_MOVE:
-        src = GAME_MOVE if GAME_MOVE in acts_game else next(
-            (k for k in acts_game if k.split(".")[0] == GAME_MOVE), None)
-        assert src, f"game action {GAME_MOVE} not found in {sorted(acts_game)}"
-        CLIPS.append((rig_game, acts_game, src, MOVE_NAME))
+        # comma-separated lists bake SEVERAL moves from the same game donor
+        # (all clips share one convention — mixing GLB files with different
+        # donor conventions makes clips from the other file play lying down):
+        #   --game-move jab,cross,lead-hook --game-names jab,cross,leadhook
+        moves = GAME_MOVE.split(",")
+        names = (GAME_NAMES.split(",") if GAME_NAMES
+                 else [m.replace("-", "") for m in moves])
+        assert len(names) == len(moves), "game-names must match game-move"
+        for src_base, out_n in zip(moves, names):
+            src = src_base if src_base in acts_game else next(
+                (k for k in acts_game if k.split(".")[0] == src_base), None)
+            assert src, f"game action {src_base} not found in {sorted(acts_game)}"
+            CLIPS.append((rig_game, acts_game, src, out_n))
+    elif DONOR_GLB:
+        acts_move = rig_actions(rig_move)
+        print(f"  donor glb clips: {sorted(acts_move)}")
+        src = next((k for k in acts_move if k.split(".")[0] == MOVE_NAME), None)
+        if src is None:
+            # fall back to the donor's largest action (most fcurves)
+            src = max(acts_move, key=lambda k: len(fcurves(acts_move[k])))
+        print(f"  using donor action: {src} -> {MOVE_NAME}")
+        CLIPS.append((rig_move, acts_move, src, MOVE_NAME))
     else:
         acts_moves = rig_actions(rig_moves)
         acts_game2 = rig_actions(rig_game)
@@ -313,6 +352,14 @@ if WITH_CLIPS:
         ad_d.action = act
 
         fr0, fr1 = int(act.frame_range[0]), int(act.frame_range[1])
+        # hips reference: the donor's pose at the action's FIRST frame, not its
+        # rest. Some donors (the old red-corner combo GLBs) author hips
+        # translation on a baseline far from their rest pose — measuring the
+        # offset from the rest would carry that whole baseline into the baked
+        # track. Offsets from the action's own start cancel it.
+        bpy.context.scene.frame_set(fr0)
+        bpy.context.view_layer.update()
+        hips_ref_d = hips_d.matrix.copy()
         ad_n.action = None
         # donor actions can share the output name (boxer-woman.glb ships
         # 'guard' and 'idle') — Blender would then name the baked action
@@ -372,12 +419,13 @@ if WITH_CLIPS:
                 # world matrix expressed in the sculpt's armature frame
                 desired = M_map @ dbm
                 if b.name == "mixamorig:Hips":
-                    # rescale the hips motion onto the sculpt skeleton
-                    rest_d = hips_rest_d.to_translation()
+                    # rescale the hips motion onto the sculpt skeleton,
+                    # relative to the action's own first-frame baseline
+                    ref_d = hips_ref_d.to_translation()
                     if mirror_this:
-                        rest_d = (M_mir @ hips_rest_d).to_translation()
-                    rest_mapped = (M_map @ Matrix.Translation(rest_d)).to_translation()
-                    off = desired.to_translation() - rest_mapped
+                        ref_d = (M_mir @ hips_ref_d).to_translation()
+                    ref_mapped = (M_map @ Matrix.Translation(ref_d)).to_translation()
+                    off = desired.to_translation() - ref_mapped
                     desired.translation = hips_rest.to_translation() + off * k
                 # blend the wind-up into the baked idle pose: frame 0 starts
                 # exactly on the idle the docked widget plays, so Replay from
@@ -431,7 +479,12 @@ if WITH_CLIPS:
     # keep only the retargeted actions (donor actions are still in the
     # file and would all be exported in ACTIONS mode)
     keep = {"guard", "jab", "jab-fight", "idle"}
-    if MOVE_NAME:
+    if GAME_MOVE:
+        moves = GAME_MOVE.split(",")
+        names = (GAME_NAMES.split(",") if GAME_NAMES
+                 else [m.replace("-", "") for m in moves])
+        keep = {"guard", "idle", *names}
+    elif MOVE_NAME:
         keep = {"guard", "idle", MOVE_NAME}
     for a in list(bpy.data.actions):
         if a.name not in keep:
