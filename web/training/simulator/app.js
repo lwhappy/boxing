@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MOVES, MOVE_BY_ID } from './copy.js?v=21';
+import { MOVES, MOVE_BY_ID } from './copy.js?v=22';
 
 /* ------------------------------------------------------------------ utils */
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
