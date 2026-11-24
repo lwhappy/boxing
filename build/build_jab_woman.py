@@ -63,6 +63,13 @@ if "--donor-glb" in argv:
     else:
         MOVE_NAME = os.path.splitext(os.path.basename(DONOR_GLB))[0]
 
+# --donor-clips "a,b,c": bake SEVERAL clips from one glTF donor in a single
+# run (all onto the same sculpt rig, names kept as-is) — e.g. all composed
+# combo sequences from man-combos.glb into one shared combos-man.glb.
+DONOR_CLIPS = None
+if "--donor-clips" in argv:
+    DONOR_CLIPS = [c.strip() for c in argv[argv.index("--donor-clips") + 1].split(",") if c.strip()]
+
 # synthesize the OPPOSITE-side variant of a move from its donor FBX (e.g. a
 # lead hook from the rear-hook donor): the upper body (arms, spine, head and
 # the hips' rotation + weight shift) is mirrored across the character's
@@ -221,11 +228,11 @@ if WITH_CLIPS:
     ad_n = rig_n.animation_data_create()
 
     CLIPS = []
-    if rig_guard is not None:
+    if rig_guard is not None and not DONOR_CLIPS:
         acts_guard = rig_actions(rig_guard)
         print(f"  donor guard clips: {sorted(acts_guard)}")
         CLIPS.append((rig_guard, acts_guard, "Layer0", "guard"))
-    if MOVE_DONOR or GAME_MOVE or DONOR_GLB:
+    if (MOVE_DONOR or GAME_MOVE or DONOR_GLB) and not DONOR_CLIPS:
         # the jab page's docked idle, straight from the glTF donor — baked
         # BEFORE the move clip so --mirror-upper can blend its first frames
         # into the idle pose (the mirror needs the idle pose as reference)
@@ -253,12 +260,19 @@ if WITH_CLIPS:
     elif DONOR_GLB:
         acts_move = rig_actions(rig_move)
         print(f"  donor glb clips: {sorted(acts_move)}")
-        src = next((k for k in acts_move if k.split(".")[0] == MOVE_NAME), None)
-        if src is None:
-            # fall back to the donor's largest action (most fcurves)
-            src = max(acts_move, key=lambda k: len(fcurves(acts_move[k])))
-        print(f"  using donor action: {src} -> {MOVE_NAME}")
-        CLIPS.append((rig_move, acts_move, src, MOVE_NAME))
+        if DONOR_CLIPS:
+            for cname in DONOR_CLIPS:
+                src = next((k for k in acts_move if k.split(".")[0] == cname), None)
+                assert src, f"donor clip {cname} not found in {sorted(acts_move)}"
+                print(f"  using donor action: {src} -> {cname}")
+                CLIPS.append((rig_move, acts_move, src, cname))
+        else:
+            src = next((k for k in acts_move if k.split(".")[0] == MOVE_NAME), None)
+            if src is None:
+                # fall back to the donor's largest action (most fcurves)
+                src = max(acts_move, key=lambda k: len(fcurves(acts_move[k])))
+            print(f"  using donor action: {src} -> {MOVE_NAME}")
+            CLIPS.append((rig_move, acts_move, src, MOVE_NAME))
     else:
         acts_moves = rig_actions(rig_moves)
         acts_game2 = rig_actions(rig_game)
@@ -266,7 +280,7 @@ if WITH_CLIPS:
         print(f"  donor game clips: {sorted(acts_game2)}")
         CLIPS.append((rig_moves, acts_moves, "jab", "jab"))
         CLIPS.append((rig_game, acts_game2, "jab", "jab-fight"))
-    if rig_idle is not None and not MOVE_DONOR and not GAME_MOVE:
+    if rig_idle is not None and not MOVE_DONOR and not GAME_MOVE and not DONOR_CLIPS:
         acts_idle = rig_actions(rig_idle)
         print(f"  donor idle clips: {sorted(acts_idle)}")
         CLIPS.append((rig_idle, acts_idle, "Layer0", "idle"))
@@ -484,6 +498,8 @@ if WITH_CLIPS:
         names = (GAME_NAMES.split(",") if GAME_NAMES
                  else [m.replace("-", "") for m in moves])
         keep = {"guard", "idle", *names}
+    elif DONOR_CLIPS:
+        keep = set(DONOR_CLIPS)
     elif MOVE_NAME:
         keep = {"guard", "idle", MOVE_NAME}
     for a in list(bpy.data.actions):

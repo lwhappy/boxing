@@ -18,7 +18,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const CFG = window.COMBO_AIR || {};
-const GLB_URL = CFG.glb || '../media/glb/man-combos.glb?v=1';
+const GLB_URL = CFG.glb || '../media/glb/combos-man.glb?v=1';
 const CLIP_NAME = CFG.clip || 'combo_jab_cross_hook';
 const TRIM_START = typeof CFG.trimStart === 'number' ? CFG.trimStart : 1.5;  // cut pre-punch guard
 const TRIM_END = typeof CFG.trimEnd === 'number' ? CFG.trimEnd : 0;          // cut post-combo recovery shuffle
@@ -229,7 +229,7 @@ function buildFighter(gltf) {
   /* 3/4 view: this rig punches toward -Z, so +PI/2+0.35 turns the punch
    * direction to screen-left with the chest angled toward the camera
    * (world punch dir ≈ (-0.94, 0, +0.34) — same as the old combo3-man) */
-  fighter.group.rotation.y = Math.PI / 2 + 0.35;
+  fighter.group.rotation.y = Math.PI / 2 - 0.35;   /* sculpt clips (combos-man) face +X: PI/2-0.35 = front 3/4, chest to camera */
   root.updateMatrixWorld(true);
   for (const n of ['LeftHand', 'RightHand', 'Hips']) fighter.bones[n] = boneByName(root, n);
   fighter.mixer = new THREE.AnimationMixer(root);
@@ -402,7 +402,7 @@ function resetShow() {
   replayBtn.hidden = true;
   camera.position.set(0.55, 1.35, 4.4);
   controls.enabled = false;
-  fighter.group.rotation.y = Math.PI / 2 + 0.35;
+  fighter.group.rotation.y = Math.PI / 2 - 0.35;   /* sculpt clips (combos-man) face +X: PI/2-0.35 = front 3/4, chest to camera */
   fighter.group.position.set(0, 0, 0);
   /* HARD cut into the first frame of the clip — never fade (see bind-pose
    * note in buildFighter). */
