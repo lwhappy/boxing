@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="../../assets/img/glove-512.png" />
+<title>Fight Techniques — How Boxing and Kickboxing Moves Work Together | SilentJab</title>
+<meta name="description" content="What is a fight technique? Watch an animated four-chapter bout that chains boxing punches, kickboxing kicks, knees and elbows into one complete fighting system — jab, cross, hook, roundhouse kick, flying kick, knee, elbow and the hands-to-kick knockout combo." />
+<meta name="keywords" content="fight techniques, fighting techniques, boxing and kickboxing combined, mixed fighting techniques, striking techniques, jab cross hook combo, roundhouse kick, flying kick, knee strike, elbow strike, how to combine boxing and kickboxing, MMA striking basics, complete striking system" />
+<link rel="canonical" href="https://silentjab.com/training/fight-techniques/" />
+<meta property="og:url" content="https://silentjab.com/training/fight-techniques/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Fight Techniques — How Boxing and Kickboxing Moves Work Together" />
+<meta property="og:description" content="An animated four-chapter bout: boxing flurries, kickboxing range control, the knee-and-elbow clinch, and the hands-to-head-kick finish that defines a complete fight technique." />
+<meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Fight Techniques — How Boxing and Kickboxing Moves Work Together",
+  "description": "An animated four-chapter bout showing how boxing punches and kickboxing kicks, knees and elbows chain into one complete fighting system.",
+  "keywords": "fight techniques, fighting techniques, boxing and kickboxing combined, striking techniques, roundhouse kick, knee strike, elbow strike, knockout combination",
+  "inLanguage": "en",
+  "image": "https://silentjab.com/assets/img/og-cover.jpg",
+  "author": { "@type": "Organization", "name": "SilentJab" },
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab", "url": "https://silentjab.com/" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Training", "item": "https://silentjab.com/training/" },
+      { "@type": "ListItem", "position": 3, "name": "Fight Techniques", "item": "https://silentjab.com/training/fight-techniques/" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="../../assets/home.css?v=11" />
+<link rel="stylesheet" href="../../assets/fight.css?v=9" />
+<script>
+window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training', href: '../' }, { label: 'Fight Techniques' }] };
+</script>
+<script src="../../assets/site-config.js"></script>
+<script src="../../assets/site-head.js"></script>
+<!-- Google AdSense -->
+<meta name="google-adsense-account" content="ca-pub-8470399807799168" />
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
+<style>
+  /* ---- page-local: name tags + KO overlay + chapter captions ---- */
+  .ft-stage{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;
+    max-width:none;aspect-ratio:auto;border:none;border-radius:0;
+    background:transparent;box-shadow:none;z-index:10}
+  .ft-stage::before{display:none}
+  .ft-stage.ft-docked{position:relative;inset:auto;width:100%;height:auto;
+    max-width:480px;aspect-ratio:16/7;z-index:auto;margin:0 auto}
+  .ft-stage canvas{pointer-events:none}
+  .ft-stage .fight-orbit-hint{display:none}
+  .ft-replay{display:none}
+  .ft-stage.ft-docked .ft-replay{
+    display:inline-flex;align-items:center;gap:6px;
+    position:absolute;right:10px;bottom:10px;z-index:6;
+    appearance:none;cursor:pointer;font:inherit;
+    font-size:12px;font-weight:700;letter-spacing:.04em;color:#fff;
+    padding:6px 13px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.28);
+    background:rgba(16,19,25,.55);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    transition:background .15s ease,border-color .15s ease}
+  .ft-stage.ft-docked .ft-replay:hover{background:rgba(16,19,25,.75);border-color:rgba(255,90,106,.7)}
+  .name-tag{position:absolute;transform:translate(-50%,-100%);padding:4px 10px;border-radius:999px;
+    font-size:12px;font-weight:700;letter-spacing:.08em;white-space:nowrap;pointer-events:none;
+    box-shadow:0 2px 10px rgba(20,30,45,.18)}
+  .name-tag.boxing{background:#1d4ed8;color:#fff}
+  .name-tag.kickboxing{background:#c2410c;color:#fff}
+  /* chapter caption — the show tells the article's story in four acts */
+  .ft-chap{position:absolute;left:50%;top:18%;transform:translate(-50%,0);z-index:5;
+    pointer-events:none;text-align:center;display:none;
+    padding:7px 18px;border-radius:999px;
+    font-size:13px;font-weight:800;letter-spacing:.14em;color:#fff;white-space:nowrap;
+    background:rgba(14,17,23,.55);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.22);
+    text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .ft-chap small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;opacity:.75;margin-top:2px}
+  @media (max-width:560px){ .ft-chap{font-size:11px;padding:6px 12px;top:14%} }
+  .ko-slam{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
+    opacity:0;transition:opacity .4s ease}
+  .ko-slam.on{opacity:1}
+  .ko-slam span{font-size:clamp(90px,24vw,220px);font-weight:900;letter-spacing:.06em;color:#e23b3b;
+    text-shadow:0 6px 0 rgba(120,20,20,.25),0 12px 40px rgba(226,59,59,.35);
+    animation:ko-pop .45s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes ko-pop{from{transform:scale(2.6);opacity:0}to{transform:scale(1);opacity:1}}
+</style>
+<link rel="stylesheet" href="../../assets/base.css?v=2" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="../../index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <img src="../../assets/img/glove.png" srcset="../../assets/img/glove.png 1x, ../../assets/img/glove@2x.png 2x, ../../assets/img/glove@3x.png 3x" alt="" width="30" height="20">
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="../../moves/" data-section="moves">Moves</a>
+      <a href="../../combos/" data-section="combos">Combos</a>
+      <a href="../" data-section="training">Training</a>
+      <a href="../../fight/" data-section="fight">Fight</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="wrap">
+    <ol>
+      <li><a href="../../index.html">Home</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><a href="../">Training</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><span aria-current="page">Fight Techniques</span></li>
+    </ol>
+  </div>
+</nav>
+<script src="../../assets/site-nav.js"></script>
+
+<main class="fight-main">
+  <p class="fight-message" id="fight-message" hidden></p>
+
+  <div class="fight-stage ft-stage" aria-label="Fight techniques animated showcase bout">
+    <canvas id="ft-canvas"></canvas>
+
+    <div class="name-tag boxing" id="tag-boxing">BOXING</div>
+    <div class="name-tag kickboxing" id="tag-kickboxing">KICKBOXING</div>
+    <div class="ft-chap" id="ft-chap"></div>
+    <div class="ko-slam" id="ko" aria-hidden="true"><span>KO</span></div>
+
+    <div class="fight-orbit-hint" aria-hidden="true">Drag to rotate · Scroll to zoom</div>
+    <button type="button" class="ft-replay" id="ft-replay" hidden>↻ Replay</button>
+
+    <div class="fight-loading" id="ft-loading">
+      <div class="ring"></div>
+      <span id="ft-loading-text">Loading the fighters…</span>
+    </div>
+    <div class="fight-error" id="ft-error" hidden></div>
+  </div>
+
+  <!-- ============ SEO / reader copy ============ -->
+  <section class="fight-note">
+    <h1>Fight Techniques — How Boxing and Kickboxing Moves Work Together</h1>
+    <p>
+      A real fight is never <em>boxing or kickboxing</em> — it is a conversation
+      fought at three distances, and the winner is whoever speaks all three
+      languages. The animated bout above plays that whole story in four
+      chapters: the boxer's hands, the kickboxer's legs, the knee-and-elbow
+      clinch, and the finish that chains them all together. That chain is what
+      coaches actually mean by <strong>fight technique</strong>.
+    </p>
+
+    <h2>Chapter 1 · Boxing — the flurry that forces a shell</h2>
+    <p>
+      Everything starts with hands because hands are the fastest weapons you
+      own. The boxer opens with a <strong>jab</strong> — the measuring stick
+      that finds the range — then loads the <strong>cross</strong> behind it,
+      and finishes with a <strong>lead hook</strong> coming around the guard
+      instead of through it. Watch the kickboxer's answer in the bout above:
+      each punch forces her gloves higher and her weight further back until
+      she is shelling up and surrendering ground. That is what a boxing flurry
+      is <em>for</em> — not one big shot, but a chain of fast, honest threats
+      that pins the opponent's arms exactly where you want them.
+    </p>
+
+    <h2>Chapter 2 · Kickboxing — kicks own long range</h2>
+    <p>
+      A kick lands a full metre further out than the longest punch, and the
+      kickboxer cashes that in the moment the flurry ends. Her
+      <strong>roundhouse kick</strong> cracks into the boxer's raised gloves
+      and drives him back a step; her <strong>flying kick</strong> then covers
+      even more ground in one leap. Notice what the show makes obvious:
+      blocking a kick still costs distance. Every kick she lands from the
+      outside is damage he absorbs before his next punch can even reach —
+      that is the kickboxer's side of fight technique: tax the opponent for
+      every step they take into your range.
+    </p>
+
+    <h2>Chapter 3 · The clinch — knees and elbows decide it</h2>
+    <p>
+      When the distance dies, the long weapons stop working — and the shortest
+      ones take over. The boxer steps in and lands a <strong>short elbow</strong>
+      on the chin; the kickboxer answers with a <strong>knee</strong> driven
+      into the body. Knees and elbows are the clinch's currency: no wind-up,
+      no telegraph, just the tightest arcs in fighting. In MMA and Muay Thai
+      this exchange is where fights quietly turn — the fighter who controls
+      the inside position scores with knees and elbows while the other one
+      eats them.
+    </p>
+
+    <h2>Chapter 4 · The finish — chaining hands into kicks</h2>
+    <p>
+      Now put all three chapters into one sequence, the way a complete
+      striker does. The kickboxer opens with a <strong>jab–cross</strong> of
+      her own — kickboxers need boxing too. The boxer counters with his
+      flurry, lifts her guard with an <strong>uppercut</strong> that rocks
+      her… and that is exactly when she throws the
+      <strong>head kick</strong>. The punch did the damage; the kick collected
+      it. A lowered guard after an uppercut lasts half a second — the
+      head kick arrives precisely inside that window. Hands set up kicks,
+      kicks finish what hands start: that sentence is the whole of fight
+      technique.
+    </p>
+
+    <h2>What the showcase teaches</h2>
+    <ul>
+      <li><strong>Range is a weapon.</strong> Punches own the close line,
+        kicks own the long line, knees and elbows own the clinch — know which
+        tool belongs to which distance.</li>
+      <li><strong>Every attack forces a defence.</strong> Flurries shell the
+        guard up, blocked kicks cost ground, rocked heads drop their hands —
+        fight technique means attacking the <em>reaction</em>, not just the
+        body.</li>
+      <li><strong>Chains beat single shots.</strong> The finish came from
+        three weapons strung together in four seconds — jab, uppercut, head
+        kick — none of them decisive alone.</li>
+      <li><strong>Train both halves.</strong> The boxer lost to the tool he
+        never drilled. Cross-training is not optional in modern striking —
+        it is the technique.</li>
+    </ul>
+
+    <p>
+      Drill the tools from the showcase yourself: the
+      <a href="../../moves/jab.html">jab</a>, the
+      <a href="../../moves/cross.html">cross</a>, the
+      <a href="../../moves/leadhook.html">lead hook</a> and the
+      <a href="../../moves/rearuppercut.html">rear uppercut</a> on their move
+      pages, the heavy-bag <a href="../simulator/">simulator lab</a> for knees,
+      elbows and kicks, the
+      <a href="../boxing-vs-kickboxing/">boxing vs kickboxing range battle</a>
+      for the pure style matchup, and the
+      <a href="../../combos/">combination pages</a> to chain it all together.
+    </p>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — boxing simulator &amp; technique reference for striking sports.</span>
+  <span><a href="../../index.html">Home</a> · <a href="../../moves/">Moves</a> · <a href="../../combos/">Combos</a> · <a href="../">Training</a> · <a href="../../guides/">Guides</a> · <a href="../../contact/">Contact</a> · <a href="../../about/">About</a> · <a href="../../privacy/">Privacy</a> · <a href="../../terms/">Terms</a></span>
+</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../vendor/three/three.module.min.js",
+    "three/addons/": "../../vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./app.js?v=16"></script>
+</body>
+</html>
