@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const canvas = document.getElementById('bvk-canvas');
 const stageEl = canvas.parentElement;
@@ -46,6 +47,12 @@ controls.target.set(-0.2, 1.0, 0);
 controls.update();
 
 scene.add(new THREE.HemisphereLight(0xdcebff, 0x4a4640, 2.9));
+// studio IBL (same recipe as /fight/game/) — image-based lighting makes the
+// fighters read naturally bright; plain directional rig left the woman flat
+try {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+} catch (e) { /* IBL optional */ }
 const keyLight = new THREE.DirectionalLight(0xffe8d2, 4.2);
 keyLight.position.set(2.2, 3.2, 2.6);
 keyLight.castShadow = true;
@@ -742,18 +749,6 @@ function tick() {
     await man.load('./models/boxer-man.glb?v=2', 'man');
     loadingText.textContent = 'Loading the kickboxer…';
     await woman.load('./models/kick-woman.glb', 'woman');
-    // The woman's white full-rough material reads darker than the man's under
-    // the shared rig lights — lift her with a small flat emissive so both
-    // fighters read at the same brightness.
-    woman.group.traverse((o) => {
-      if (!(o.isMesh || o.isSkinnedMesh) || !o.material) return;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      for (const m of mats) {
-        if (!m.emissive) continue;
-        m.emissive.setHex(0x55555c);
-        m.needsUpdate = true;
-      }
-    });
     for (const f of [man, woman]) {
       for (const a of Object.values(f.actions)) a.setEffectiveTimeScale(TS);
     }
