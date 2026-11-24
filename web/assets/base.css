@@ -1,0 +1,37 @@
+/* ============================================================
+   base.css — global interaction defaults
+   Loaded as the LAST stylesheet in <head> on every page, so a
+   page-level rule or inline <style> can't bring the browser's
+   default click/tap artefacts back.
+   ============================================================ */
+
+/* 1. Kill the grey/blue box the browser paints over a tapped link
+      or button (iOS Safari, Android Chrome) — the "shadow" that
+      flashes for a frame on every tap. */
+html,
+body,
+a,
+button,
+input,
+select,
+textarea,
+summary,
+label,
+[role="button"],
+[tabindex] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 2. No focus ring left behind by a mouse click or a finger tap.
+      Keyboard users still get one through :focus-visible, and the
+      site's own :focus-visible styles keep working untouched. */
+a:focus:not(:focus-visible),
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible),
+summary:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none;
+}
