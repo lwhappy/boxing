@@ -1198,7 +1198,7 @@ const lookCur = new THREE.Vector3();
 const camPos = new THREE.Vector3();
 
 /* the framing the page ships with; the mouse only adds an offset on top of it */
-const camBase = { theta: 52 * Math.PI / 180, D: 3.75, H: 1.82, aimY: 1.04, pan: -0.16 };
+const camBase = { theta: 52 * Math.PI / 180, D: 3.75, H: 1.82, aimY: 1.04, pan: -0.62 };
 const orbit = { az: 0, el: 0, zoom: 1 };
 
 function camSolve() {
@@ -1218,7 +1218,7 @@ function frameStage(o = {}, snap = true) {
   camBase.D = o.D ?? (m ? 5.6 : 3.75);
   camBase.H = o.H ?? (m ? 1.78 : 1.82);
   camBase.aimY = o.aimY ?? (m ? 1.06 : 1.04);
-  camBase.pan = o.pan ?? (m ? 0.1 : -0.16);
+  camBase.pan = o.pan ?? (m ? 0.1 : -0.62);
   camSolve();
   if (!snap) return;
   camPos.copy(camTarget.pos);
