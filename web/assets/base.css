@@ -22,16 +22,19 @@ label,
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 2. No focus ring left behind by a mouse click or a finger tap.
-      Keyboard users still get one through :focus-visible, and the
-      site's own :focus-visible styles keep working untouched. */
-a:focus:not(:focus-visible),
-button:focus:not(:focus-visible),
-input:focus:not(:focus-visible),
-select:focus:not(:focus-visible),
-textarea:focus:not(:focus-visible),
-summary:focus:not(:focus-visible),
-[role="button"]:focus:not(:focus-visible),
-[tabindex]:focus:not(:focus-visible) {
-  outline: none;
+/* 2. No focus ring left behind by a finger tap. Touch devices only, so
+      desktop behaviour is untouched; keyboard users on every device still
+      get a ring through :focus-visible, and the site's own :focus-visible
+      styles keep working. */
+@media (hover: none), (pointer: coarse) {
+  a:focus:not(:focus-visible),
+  button:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  select:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible),
+  summary:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible),
+  [tabindex]:focus:not(:focus-visible) {
+    outline: none;
+  }
 }
