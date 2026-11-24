@@ -5,8 +5,8 @@
  * The boxer (European male sculpt, fight-man.glb) opens with a boxing flurry,
  * the kickboxer (woman-all.glb: boxer-woman's full 29-clip library merged
  * with kick-woman's roundhouse / flying kick / knock-out) answers with kicks,
- * she owns the clinch with elbow and knee, and the finish chains hands into
- * a head kick — the "complete striker" story the article tells.
+ * he steps into the pocket with hooks and an uppercut, and the finish chains
+ * her hands into a head kick — the "complete striker" story the article tells.
  *
  * The two rigs ship on different pipelines: the sculpt stands upright in clip
  * space (+Y up), the merged woman's clips are Z-up (Mixamo/Blender export, the
@@ -30,7 +30,6 @@ const tagBoxing = document.getElementById('tag-boxing');
 const tagKick = document.getElementById('tag-kickboxing');
 const moveBoxing = document.getElementById('move-boxing');
 const moveKick = document.getElementById('move-kickboxing');
-const chapEl = document.getElementById('ft-chap');
 
 /* ---------- renderer / scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -296,8 +295,8 @@ class Fighter {
 const man = new Fighter(+1, false);   // BOXING (sculpt, upright clips), left
 const woman = new Fighter(-1, false); // KICKBOXING (woman-all.glb, upright clips)
 
-/* fight positions */
-const HOME = { m: -0.85, w: 0.45 };
+/* fight positions — wider stance so the exchanges read from a distance */
+const HOME = { m: -0.72, w: 0.62 };
 let edgeX = 1.3;
 const homeOut = () => ({ m: -edgeX, w: edgeX * 0.92 });
 man.group.position.set(homeOut().m, 0, 0);
@@ -332,18 +331,17 @@ const CLIP_DUR = {
  * dx = residual x-correction applied to the attacker just before contact).
  * All values measured with build/cdp_ft_contact.mjs bone probes. */
 const HITS = {
-  jab_g:      { frac: 0.371, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0, fx: 'punch', snd: 'punch' },
-  cross_g:    { frac: 0.332, atkBone: 'RightHand',    defBone: 'RightHand', dx: 0, fx: 'punch', snd: 'punch' },
-  hook_g:     { frac: 0.645, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0, fx: 'punch', snd: 'punch' },
-  mjab2_g:    { frac: 0.119, atkBone: 'LeftHand',    defBone: 'LeftHand', dx: 0, fx: 'punch', snd: 'punch' },
-  mcross2_g:  { frac: 0.28,  atkBone: 'RightHand',   defBone: 'RightHand', dx: 0, fx: 'punch', snd: 'punch' },
-  wjab_g:     { frac: 0.505, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0.10, fx: 'punch', snd: 'punch' },
-  wcross_g:   { frac: 0.83,  atkBone: 'RightHand',   defBone: 'LeftHand', dx: 0.15, fx: 'punch', snd: 'punch' },
-  rkick_g:    { frac: 0.363, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0, fx: 'block', snd: 'kick' },
-  flying_g:   { frac: 0.31,  atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.40, fx: 'block', snd: 'kick' },
-  elbow_head: { frac: 0.348, atkBone: 'RightForeArm', defBone: 'Head',     dx: 0,    fx: 'punch', snd: 'punch', react: 'hit-head' },
-  knee_body:  { frac: 0.40,  atkBone: 'RightLeg',     defBone: 'Spine',    dx: 0, fx: 'punch', snd: 'punch', react: 'hit-body' },
-  uppercut_rock: { frac: 0.323, atkBone: 'LeftHand',   defBone: 'Head',     dx: 0, fx: 'punch', snd: 'punch', react: 'hit-uppercut' },
+  jab_g:      { frac: 0.407, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0.12, fx: 'punch', snd: 'punch' },
+  cross_g:    { frac: 0.34, atkBone: 'RightHand',    defBone: 'LeftHand', dx: 0.14, fx: 'punch', snd: 'punch' },
+  hook_g:     { frac: 0.44, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0.1, fx: 'punch', snd: 'punch' },
+  mjab2_g:    { frac: 0.14, atkBone: 'LeftHand',    defBone: 'LeftHand', dx: 0.2, fx: 'punch', snd: 'punch' },
+  mcross2_g:  { frac: 0.34, atkBone: 'RightHand',   defBone: 'LeftHand', dx: 0.08, fx: 'punch', snd: 'punch' },
+  rhook_g:    { frac: 0.522, atkBone: 'RightHand',    defBone: 'LeftHand', dx: 0.26, fx: 'punch', snd: 'punch' },
+  wjab_g:     { frac: 0.144, atkBone: 'LeftHand',     defBone: 'LeftHand', dx: 0.14, fx: 'punch', snd: 'punch' },
+  wcross_g:   { frac: 0.248, atkBone: 'RightHand',   defBone: 'LeftHand', dx: 0.18, fx: 'punch', snd: 'punch' },
+  rkick_g:    { frac: 0.42, atkBone: 'RightToeBase', defBone: 'LeftHand', dx: 0, fx: 'block', snd: 'kick' },
+  flying_g:   { frac: 0.398,  atkBone: 'LeftToeBase',  defBone: 'LeftHand', dx: 0.46, fx: 'block', snd: 'kick' },
+  uppercut_rock: { frac: 0.314, atkBone: 'LeftHand',   defBone: 'Head',     dx: 0.24, fx: 'punch', snd: 'punch', react: 'hit-uppercut' },
   headkick_ko: { frac: 0.431, atkBone: 'RightToeBase', defBone: 'Head',   dx: 0, fx: 'ko', snd: 'ko',
                  react: 'hit-head', fall: 'knock-out', fallStart: 0.85, fallDelay: 0.30 },
 };
@@ -354,84 +352,72 @@ const FX_STYLE = {
   ko:    { flash: 0.95, sparks: 12, shake: 0.1,   shakeT: 0.55 },
 };
 
-/* chapter captions */
-const CHAPTERS = {
-  boxing:   { n: '1 · BOXING', d: 'THE FLURRY' },
-  kicking:  { n: '2 · KICKBOXING', d: 'RANGE CONTROL' },
-  clinch:   { n: '3 · THE CLINCH', d: 'KNEES & ELBOWS' },
-  finish:   { n: '4 · THE FINISH', d: 'HANDS INTO KICKS' },
-};
-
+/* chapter beats (no on-screen numbering — the labels carry the story) */
 const TL = [
   { t: 0.0,  who: 'm', clip: 'guard' },
   { t: 0.0,  who: 'w', clip: 'guard' },
   { t: 0.2,  who: 'm', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
   { t: 0.2,  who: 'w', moveTo: 'fight', hop: true, tweenDur: HOP_IN.dur, hopH: HOP_IN.h },
-  { t: 0.5,  chap: 'boxing' },
 
-  /* --- chapter 1: the boxing flurry --- */
-  { t: 1.50, who: 'm', clip: 'jab', x: -0.60, tweenDur: 0.30, clamp: true, hit: 'jab_g' },
-  { t: 2.75, who: 'm', clip: 'cross', x: -0.52, tweenDur: 0.25, clamp: true, hit: 'cross_g' },
-  { t: 3.85, who: 'm', clip: 'lead-hook', x: -0.48, tweenDur: 0.25, clamp: true, hit: 'hook_g' },
-  { t: 3.85, who: 'w', clip: 'step-back', move: -0.30, fade: 0.1, clamp: true },
-  { t: 4.75, who: 'm', clip: 'jab-cross', x: -0.44, tweenDur: 0.22, clamp: true, hit: ['mjab2_g', 'mcross2_g'] },
-  { t: 4.80, who: 'w', clip: 'block', fade: 0.14, clamp: true },       // shell up on the flurry
-  { t: 5.90, who: 'w', clip: 'step-back', move: -0.25, fade: 0.1, clamp: true },
+  /* --- chapter 1: the boxing flurry (long jab range) --- */
+  { t: 1.50, who: 'm', clip: 'jab', x: -0.48, tweenDur: 0.30, clamp: true, hit: 'jab_g' },
+  { t: 2.75, who: 'm', clip: 'cross', x: -0.46, tweenDur: 0.25, clamp: true, hit: 'cross_g' },
+  { t: 3.85, who: 'm', clip: 'lead-hook', x: -0.44, tweenDur: 0.25, clamp: true, hit: 'hook_g' },
+  { t: 3.95, who: 'w', clip: 'step-back', move: 0.05, fade: 0.10, clamp: true },
+  { t: 4.75, who: 'm', clip: 'jab-cross', x: -0.42, tweenDur: 0.22, clamp: true, hit: ['mjab2_g', 'mcross2_g'] },
+  { t: 5.28, who: 'w', clip: 'block', fade: 0.14, clamp: true },       // shell up on the flurry
+  { t: 6.00, who: 'w', clip: 'step-back', move: 0.18, fade: 0.10, clamp: true },
   { t: 6.10, who: 'm', clip: 'guard' },
-  { t: 6.40, who: 'w', clip: 'guard', fade: 0.2 },
-  { t: 6.6,  chap: 'kicking' },
+  { t: 6.52, who: 'w', clip: 'guard', fade: 0.2 },
 
-  /* --- chapter 2: the kickboxing answer --- */
-  { t: 6.95, who: 'w', x: 1.15, tweenDur: 0.45 },
-  { t: 6.95, who: 'm', x: -0.55, tweenDur: 0.45 },
-  { t: 7.55, who: 'w', clip: 'roundhouse-kick', x: 0.30, tweenDur: 0.45, clamp: true, hit: 'rkick_g' },
-  { t: 7.80, who: 'm', clip: 'block', start: 0.30, fade: 0.14, clamp: true },
-  { t: 8.60, who: 'm', clip: 'step-back', move: -0.45, fade: 0.1, clamp: true },
-  { t: 9.15, who: 'm', clip: 'guard' },
-  { t: 9.30, who: 'w', clip: 'guard', fade: 0.2 },
-  { t: 9.40, who: 'w', x: 1.45, tweenDur: 0.4 },
-  { t: 9.95, who: 'w', clip: 'flying-kick', move: -0.60, tweenDur: 0.26, clamp: true, hit: 'flying_g' },
-  { t: 9.88, who: 'm', clip: 'block', fade: 0.14, clamp: true },
-  { t: 10.25, who: 'w', move: -0.28, tweenDur: 0.45 },                 // airborne drift, touch down
-  { t: 10.30, who: 'm', move: -0.65, tweenDur: 0.5 },                  // driven back
-  { t: 10.45, who: 'm', clip: 'step-back', fade: 0.12, clamp: true },
-  { t: 11.15, who: 'm', clip: 'guard' },
-  { t: 11.25, who: 'w', clip: 'guard', fade: 0.2 },
-  { t: 11.4, chap: 'clinch' },
+  /* --- chapter 2: the kickboxing answer, from kicking range --- */
+  { t: 6.95, who: 'w', x: 1.30, tweenDur: 0.50 },
+  { t: 6.95, who: 'm', x: -0.62, tweenDur: 0.45 },
+  { t: 7.65, who: 'w', clip: 'roundhouse-kick', x: 1.05, tweenDur: 0.45, clamp: true, hit: 'rkick_g' },
+  { t: 7.85, who: 'm', clip: 'block', start: 0.30, fade: 0.14, clamp: true },
+  { t: 8.70, who: 'm', clip: 'step-back', move: -0.35, fade: 0.1, clamp: true },
+  { t: 9.25, who: 'm', clip: 'guard' },
+  { t: 9.40, who: 'w', clip: 'guard', fade: 0.2 },
+  { t: 9.45, who: 'w', x: 1.55, tweenDur: 0.4 },
+  { t: 10.00, who: 'w', clip: 'flying-kick', move: -0.75, tweenDur: 0.30, clamp: true, hit: 'flying_g' },
+  { t: 9.95, who: 'm', clip: 'block', fade: 0.14, clamp: true },
+  { t: 10.35, who: 'w', move: -0.30, tweenDur: 0.45 },                 // airborne drift, touch down
+  { t: 10.40, who: 'm', move: -0.45, tweenDur: 0.5 },                  // driven back
+  { t: 10.55, who: 'm', clip: 'step-back', fade: 0.12, clamp: true },
+  { t: 11.30, who: 'm', clip: 'guard' },
+  { t: 11.40, who: 'w', clip: 'guard', fade: 0.2 },
 
-  /* --- chapter 3: the kickboxer owns the clinch (elbow -> knee) --- */
-  { t: 11.70, who: 'w', clip: 'step-forward', x: 0.26, tweenDur: 0.30, rate: 2.0, clamp: true },
-  { t: 11.75, who: 'm', clip: 'guard', x: -0.30, tweenDur: 0.35, fade: 0.12 },
-  { t: 12.20, who: 'w', clip: 'elbow', x: 0.22, tweenDur: 0.25, clamp: true, hit: 'elbow_head' },
-  { t: 13.70, who: 'w', clip: 'knee', x: 0.26, tweenDur: 0.30, clamp: true, hit: 'knee_body' },
-  { t: 15.10, who: 'w', clip: 'step-back', move: -0.35, fade: 0.12, clamp: true },
-  { t: 15.80, who: 'w', clip: 'guard', fade: 0.2 },
-  { t: 15.85, who: 'm', clip: 'guard', fade: 0.2 },
-  { t: 16.0, chap: 'finish' },
+  /* --- chapter 3: the pocket — he steps in, hooks and uppercut --- */
+  { t: 11.75, who: 'm', clip: 'step-forward', x: -0.54, tweenDur: 0.36, rate: 1.6, clamp: true },
+  { t: 11.85, who: 'w', clip: 'guard', x: 0.52, tweenDur: 0.42, fade: 0.12 },
+  { t: 12.40, who: 'm', clip: 'rear-hook', x: -0.52, tweenDur: 0.26, clamp: true, hit: 'rhook_g' },
+  { t: 12.45, who: 'w', clip: 'block', fade: 0.14, clamp: true },
+  { t: 13.65, who: 'm', clip: 'lead-uppercut', x: -0.50, tweenDur: 0.22, clamp: true, hit: 'uppercut_rock' },
+  { t: 14.90, who: 'm', clip: 'guard', fade: 0.15 },
+  { t: 14.80, who: 'w', clip: 'step-back', move: 0.20, fade: 0.12, clamp: true },
+  { t: 15.40, who: 'w', clip: 'guard', fade: 0.2 },
 
   /* --- chapter 4: the combined finish --- */
-  { t: 16.40, who: 'w', clip: 'jab-cross', x: 0.42, tweenDur: 0.3, clamp: true, hit: ['wjab_g', 'wcross_g'] },
-  { t: 16.45, who: 'm', clip: 'block', fade: 0.14, clamp: true },
-  { t: 17.70, who: 'm', clip: 'jab-cross', x: -0.44, tweenDur: 0.28, clamp: true, hit: ['mjab2_g', 'mcross2_g'] },
-  { t: 17.75, who: 'w', clip: 'block', fade: 0.14, clamp: true },
-  { t: 18.90, who: 'm', clip: 'lead-uppercut', x: -0.40, tweenDur: 0.24, clamp: true, hit: 'uppercut_rock' },
-  { t: 20.20, who: 'm', clip: 'guard', fade: 0.15 },
-  /* the head kick sails in while his fists are still up from the uppercut */
-  { t: 19.95, who: 'w', clip: 'guard', fade: 0.15 },
+  { t: 16.20, who: 'w', clip: 'jab-cross', x: 0.50, tweenDur: 0.30, clamp: true, hit: ['wjab_g', 'wcross_g'] },
+  { t: 16.80, who: 'm', clip: 'block', fade: 0.14, clamp: true },
+  { t: 17.55, who: 'm', clip: 'jab-cross', x: -0.44, tweenDur: 0.28, clamp: true, hit: ['mjab2_g', 'mcross2_g'] },
+  { t: 18.10, who: 'w', clip: 'block', fade: 0.14, clamp: true },
+  { t: 18.80, who: 'm', clip: 'guard', fade: 0.15 },
+  { t: 18.75, who: 'w', clip: 'guard', fade: 0.15 },
   /* she resets to kick range, then the head kick sails in at full extension */
-  { t: 20.30, who: 'w', x: 0.98, tweenDur: 0.5 },
-  { t: 20.60, who: 'w', clip: 'roundhouse-kick', x: 0.98, tweenDur: 0.42, clamp: true, hit: 'headkick_ko' },
+  { t: 19.05, who: 'w', x: 0.94, tweenDur: 0.45 },
+  { t: 19.40, who: 'w', clip: 'roundhouse-kick', x: 0.94, tweenDur: 0.42, clamp: true, hit: 'headkick_ko' },
   { t: 99, ko: true },   // exact slam time patched in below (KO_SLAM_T)
   /* --- aftermath: she celebrates, he gets back up --- */
-  { t: 24.20, who: 'w', clip: 'win', fade: 0.2, clamp: true },
-  { t: 25.20, who: 'm', clip: 'knock-out', rev: 3.2, start: 4.5, fade: 0.2 },  // reversed = stands up
-  { t: 25.90, koOff: true },
-  { t: 26.20, who: 'm', clip: 'guard', fade: 0.15 },
-  { t: 26.40, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
-  { t: 27.20, who: 'w', clip: 'guard', fade: 0.2 },
-  { t: 27.50, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 22.20, who: 'w', clip: 'win', fade: 0.2, clamp: true },
+  { t: 23.10, who: 'm', clip: 'knock-out', rev: 3.2, start: 4.5, fade: 0.2 },  // reversed = stands up
+  { t: 23.80, koOff: true },
+  { t: 24.10, who: 'm', clip: 'guard', fade: 0.15 },
+  { t: 24.30, who: 'm', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
+  { t: 25.10, who: 'w', clip: 'guard', fade: 0.2 },
+  { t: 25.40, who: 'w', moveTo: 'out', hop: true, tweenDur: HOP_OUT.dur, hopH: HOP_OUT.h },
 ];
-const END_T = 29.0;
+const END_T = 26.8;
 
 /* head-kick contact time: computed from the TL entry that carries headkick_ko */
 let KO_T = null;
@@ -635,6 +621,7 @@ function boutT() { return vt !== null ? vt : (performance.now() - clock0) / 1000
 function resetNudges() { man.nudgeX = 0; woman.nudgeX = 0; }
 
 function startBout() {
+  document.body.classList.add('ft-live');
   vt = null;
   const out = homeOut();
   man.baseX = out.m; woman.baseX = out.w;
@@ -652,15 +639,14 @@ function startBout() {
   clearFx();
   shakeT = 0;
   koEl.classList.remove('on');
-  chapEl.style.display = 'none';
   hideMoves();
 }
 
 function nudgeRamp(c, t) {
-  if (t < c.t - 0.25) return 0;
-  if (t < c.t) return (t - (c.t - 0.25)) / 0.25;
-  if (t <= c.clipEnd) return 1;
-  if (t < c.clipEnd + 0.4) return 1 - (t - c.clipEnd) / 0.4;
+  if (t < c.t - 0.22) return 0;
+  if (t < c.t) return (t - (c.t - 0.22)) / 0.22;
+  if (t < c.t + 0.30) return 1;
+  if (t < c.t + 0.70) return 1 - (t - (c.t + 0.30)) / 0.40;
   return 0;
 }
 
@@ -700,12 +686,6 @@ function updateBout(dt = 0) {
     const b = TL[i];
     if (b.ko) { koEl.classList.add('on'); continue; }
     if (b.koOff) { koEl.classList.remove('on'); continue; }
-    if (b.chap) {
-      const ch = CHAPTERS[b.chap];
-      chapEl.innerHTML = `<small>${ch.d}</small>${ch.n}`;
-      chapEl.style.display = 'block';
-      continue;
-    }
     const f = whoOf[b.who];
     if (b.clip) f.play(b.clip, {
       clamp: !!b.clamp, rev: b.rev || 0, rate: b.rate || 1, start: b.start || 0,
@@ -735,10 +715,16 @@ function updateBout(dt = 0) {
     if (p >= 1) moves.splice(i, 1);
   }
   resetNudges();
+  let nudgeM = 0, nudgeW = 0;
   for (const c of contacts) {
     const r = nudgeRamp(c, t);
-    if (r) whoOf[c.atk].nudgeX += c.dx * r * (c.atk === 'w' ? -1 : 1);
+    if (!r) continue;
+    const v = Math.max(0, c.dx) * r;
+    if (c.atk === 'm') nudgeM = Math.max(nudgeM, v);
+    else nudgeW = Math.max(nudgeW, v);
   }
+  man.nudgeX += nudgeM;
+  woman.nudgeX -= nudgeW;
   man.group.position.x = man.baseX + man.nudgeX;
   woman.group.position.x = woman.baseX + woman.nudgeX;
   man.group.position.y = man.hopY;
@@ -757,6 +743,7 @@ function updateBout(dt = 0) {
   if (t >= END_T) {
     done = true;
     stageEl.classList.add('ft-docked');
+    document.body.classList.remove('ft-live');
     replayBtn.hidden = false;
   }
 }
@@ -804,13 +791,12 @@ function placeTag(el, fighter) {
 
 /* ---------- move labels (name of the strike that just landed) ---------- */
 const MOVE_LABEL = {
-  jab_g: 'JAB', cross_g: 'CROSS', hook_g: 'LEAD HOOK',
+  jab_g: 'JAB', cross_g: 'CROSS', hook_g: 'LEAD HOOK', rhook_g: 'REAR HOOK',
   mjab2_g: 'JAB', mcross2_g: 'CROSS', wjab_g: 'JAB', wcross_g: 'CROSS',
   rkick_g: 'ROUNDHOUSE', flying_g: 'FLYING KICK',
-  elbow_head: 'ELBOW', knee_body: 'KNEE',
   uppercut_rock: 'UPPERCUT', headkick_ko: 'HEAD KICK',
 };
-const MOVE_TTL = { headkick_ko: 1.7, rkick_g: 1.3, flying_g: 1.35, uppercut_rock: 1.1, elbow_head: 1.05, knee_body: 1.05 };
+const MOVE_TTL = { headkick_ko: 1.9, rkick_g: 1.4, flying_g: 1.4, uppercut_rock: 1.25, rhook_g: 1.05 };
 const moveEls = { m: moveBoxing, w: moveKick };
 
 function showMove(who, hname, t) {
@@ -830,19 +816,33 @@ function hideMoves() {
     el.dataset.born = '';
   }
 }
-function placeMove(el, fighter) {
+/* the boxer's callout sits out to his left, the kickboxer's out to her right */
+function placeMove(el, fighter, side) {
   const born = parseFloat(el.dataset.born || '');
   const ttl = parseFloat(el.dataset.ttl || '0.95');
   if (!fighter.head || !fighter.ready || !Number.isFinite(born) || boutT() - born > ttl) {
     el.classList.remove('on');
     return;
   }
-  fighter.head.getWorldPosition(v);
-  v.y += 0.32;
-  v.project(camera);
   const stage = canvas.parentElement.getBoundingClientRect();
-  el.style.left = (v.x * 0.5 + 0.5) * stage.width + 'px';
-  el.style.top = (-v.y * 0.5 + 0.5) * stage.height + 'px';
+  const w = stage.width || 1;
+  const h = stage.height || 1;
+  fighter.head.getWorldPosition(v);
+  v.y += 0.14;
+  v.project(camera);
+  const hx = (v.x * 0.5 + 0.5) * w;
+  const hy = (-v.y * 0.5 + 0.5) * h;
+  const fs = Math.max(16, Math.min(46, w * 0.046));
+  el.style.fontSize = fs + 'px';
+  const gap = fs * 0.66;
+  const ew = el.offsetWidth;
+  const eh = el.offsetHeight;
+  let x = side === 'm' ? hx - gap : hx + gap;
+  let y = Math.min(h - eh * 0.5 - 6, Math.max(eh * 0.5 + 6, hy));
+  if (side === 'm') x = Math.max(ew + 8, Math.min(w - 8, x));
+  else x = Math.min(w - ew - 8, Math.max(8, x));
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
 }
 
 /* ---------- loop ---------- */
@@ -865,8 +865,8 @@ function tick() {
     if (off) camera.position.sub(off);
     placeTag(tagBoxing, man);
     placeTag(tagKick, woman);
-    placeMove(moveBoxing, man);
-    placeMove(moveKick, woman);
+    placeMove(moveBoxing, man, 'm');
+    placeMove(moveKick, woman, 'w');
     requestAnimationFrame(tick);
   } catch (e) {
     window.__tickErr = String(e && e.stack || e);
@@ -890,6 +890,7 @@ function tick() {
   } catch (e) {
     console.error(e);
     loadingEl.hidden = true;
+    document.body.classList.remove('ft-live');
     errorEl.textContent = 'Could not load the fighters. Please refresh and try again.';
     errorEl.hidden = false;
   }
@@ -912,7 +913,6 @@ function resetShow() {
   resetNudges(); clearFx(); shakeT = 0;
   for (const c of contacts) c.fired = false;
   koEl.classList.remove('on');
-  chapEl.style.display = 'none';
   hideMoves();
   const out = homeOut();
   man.baseX = out.m; woman.baseX = out.w;
@@ -941,8 +941,8 @@ function stepTo(t) {
   renderer.render(scene, camera);
   placeTag(tagBoxing, man);
   placeTag(tagKick, woman);
-  placeMove(moveBoxing, man);
-  placeMove(moveKick, woman);
+  placeMove(moveBoxing, man, 'm');
+  placeMove(moveKick, woman, 'w');
 }
 /* Contact probe: place the fighters at given x positions, play one clip alone
  * (raw 1x speed), and sample the world distance between two bones each frame.

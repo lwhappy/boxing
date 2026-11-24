@@ -6,14 +6,14 @@
 <link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="../../assets/img/glove-512.png" />
 <title>Fight Techniques — How Boxing and Kickboxing Moves Work Together | SilentJab</title>
-<meta name="description" content="What is a fight technique? Watch an animated four-chapter bout that chains boxing punches, kickboxing kicks, knees and elbows into one complete fighting system — jab, cross, hook, roundhouse kick, flying kick, knee, elbow and the hands-to-kick knockout combo." />
-<meta name="keywords" content="fight techniques, fighting techniques, boxing and kickboxing combined, mixed fighting techniques, striking techniques, jab cross hook combo, roundhouse kick, flying kick, knee strike, elbow strike, how to combine boxing and kickboxing, MMA striking basics, complete striking system" />
+<meta name="description" content="What is a fight technique? Watch an animated four-chapter bout that chains boxing punches, kickboxing kicks and close-range hooks into one complete fighting system — jab, cross, lead hook, rear hook, uppercut, roundhouse kick, flying kick and the hands-to-kick knockout combo." />
+<meta name="keywords" content="fight techniques, fighting techniques, boxing and kickboxing combined, mixed fighting techniques, striking techniques, jab cross hook combo, rear hook, uppercut, roundhouse kick, flying kick, how to combine boxing and kickboxing, MMA striking basics, complete striking system" />
 <link rel="canonical" href="https://silentjab.com/training/fight-techniques/" />
 <meta property="og:url" content="https://silentjab.com/training/fight-techniques/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SilentJab" />
 <meta property="og:title" content="Fight Techniques — How Boxing and Kickboxing Moves Work Together" />
-<meta property="og:description" content="An animated four-chapter bout: boxing flurries, kickboxing range control, the knee-and-elbow clinch, and the hands-to-head-kick finish that defines a complete fight technique." />
+<meta property="og:description" content="An animated four-chapter bout: boxing flurries, kickboxing range control, the hook-and-uppercut pocket, and the hands-to-head-kick finish that defines a complete fight technique." />
 <meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
 <meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -22,8 +22,8 @@
   "@context": "https://schema.org",
   "@type": "Article",
   "headline": "Fight Techniques — How Boxing and Kickboxing Moves Work Together",
-  "description": "An animated four-chapter bout showing how boxing punches and kickboxing kicks, knees and elbows chain into one complete fighting system.",
-  "keywords": "fight techniques, fighting techniques, boxing and kickboxing combined, striking techniques, roundhouse kick, knee strike, elbow strike, knockout combination",
+  "description": "An animated four-chapter bout showing how boxing punches and kickboxing kicks chain into one complete fighting system.",
+  "keywords": "fight techniques, fighting techniques, boxing and kickboxing combined, striking techniques, roundhouse kick, uppercut, knockout combination",
   "inLanguage": "en",
   "image": "https://silentjab.com/assets/img/og-cover.jpg",
   "author": { "@type": "Organization", "name": "SilentJab" },
@@ -54,6 +54,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     max-width:none;aspect-ratio:auto;border:none;border-radius:0;
     background:transparent;box-shadow:none;z-index:10}
   .ft-stage::before{display:none}
+  body.ft-live .fight-note{opacity:.10;pointer-events:none;transition:opacity .5s ease}
+  .fight-note{transition:opacity .5s ease}
   .ft-stage.ft-docked{position:relative;inset:auto;width:100%;height:auto;
     max-width:480px;aspect-ratio:16/7;z-index:auto;margin:0 auto}
   .ft-stage canvas{pointer-events:none}
@@ -75,36 +77,38 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     box-shadow:0 2px 10px rgba(20,30,45,.18)}
   .name-tag.boxing{background:#1d4ed8;color:#fff}
   .name-tag.kickboxing{background:#c2410c;color:#fff}
-  /* move label — the name of the strike that just landed, above the name tag */
-  .ft-move{position:absolute;transform:translate(-50%,calc(-100% - 26px));z-index:5;
-    pointer-events:none;opacity:0;transition:opacity .22s ease;white-space:nowrap}
+  /* move callout — the strike that just landed, big and loud beside the fighter */
+  .ft-move{position:absolute;z-index:6;pointer-events:none;white-space:nowrap;opacity:0;
+    transition:opacity .14s ease;--a1:#5b9dff;--a2:#1240d8}
+  .ft-move.boxing{transform:translate(-100%,-50%)}
+  .ft-move.kickboxing{transform:translate(0,-50%);--a1:#ffb04a;--a2:#d0450a}
   .ft-move.on{opacity:1}
-  .ft-move span{display:inline-block;padding:3px 10px;border-radius:7px;
-    font-size:11px;font-weight:900;letter-spacing:.16em;color:#fff;
-    background:rgba(12,15,21,.74);
-    border:1px solid rgba(255,255,255,.22);
-    text-shadow:0 1px 6px rgba(0,0,0,.55)}
-  .ft-move.on span{animation:ft-move-pop .34s cubic-bezier(.2,1.5,.4,1) both}
-  .ft-move.boxing span{box-shadow:0 0 0 1px rgba(59,130,246,.5),0 4px 16px rgba(29,78,216,.4)}
-  .ft-move.kickboxing span{box-shadow:0 0 0 1px rgba(249,115,22,.5),0 4px 16px rgba(194,65,12,.4)}
-  @keyframes ft-move-pop{0%{transform:translateY(7px) scale(.8);opacity:0}
-    60%{transform:translateY(-2px) scale(1.05);opacity:1}
-    100%{transform:translateY(0) scale(1);opacity:1}}
-  @media (max-width:560px){
-    .ft-move span{font-size:10px;padding:2px 8px;letter-spacing:.12em}
-    .ft-move{transform:translate(-50%,calc(-100% - 20px))}
+  .ft-move span{display:inline-block;
+    font-family:"Arial Black","Helvetica Neue",Impact,ui-sans-serif,-apple-system,sans-serif;
+    font-weight:900;font-style:italic;text-transform:uppercase;
+    letter-spacing:-.012em;line-height:.94;
+    padding:.13em .40em .19em .34em;
+    color:#fff;
+    background-image:
+      linear-gradient(180deg,rgba(255,255,255,.36),rgba(255,255,255,0) 48%),
+      linear-gradient(102deg,var(--a1),var(--a2));
+    clip-path:polygon(.26em 0,100% 0,calc(100% - .26em) 100%,0 100%);
+    -webkit-text-stroke:1px rgba(8,12,22,.20);
+    text-shadow:0 .05em .08em rgba(0,0,0,.45),0 0 .55em rgba(255,255,255,.25);
+    filter:drop-shadow(0 .10em .28em rgba(0,0,0,.5))}
+  .ft-move.kickboxing span{clip-path:polygon(0 0,calc(100% - .26em) 0,100% 100%,.26em 100%)}
+  .ft-move.on span{animation:ft-move-slam .42s cubic-bezier(.16,1.35,.32,1) both}
+  .ft-move::after{content:"";position:absolute;top:50%;width:.34em;height:.34em;
+    background:var(--a1);transform:translateY(-50%) rotate(45deg);opacity:.85;
+    box-shadow:0 0 .5em rgba(255,255,255,.35)}
+  .ft-move.boxing::after{right:-.58em}
+  .ft-move.kickboxing::after{left:-.58em}
+  @keyframes ft-move-slam{
+    0%{transform:scale(1.4) rotate(-5deg);opacity:0;filter:blur(5px)}
+    52%{transform:scale(.97) rotate(1.2deg);opacity:1;filter:blur(0)}
+    76%{transform:scale(1.03) rotate(-.6deg)}
+    100%{transform:scale(1) rotate(0)}
   }
-  /* chapter caption — the show tells the article's story in four acts */
-  .ft-chap{position:absolute;left:50%;bottom:6.5%;transform:translate(-50%,0);z-index:5;
-    pointer-events:none;text-align:center;display:none;
-    padding:7px 18px;border-radius:999px;
-    font-size:13px;font-weight:800;letter-spacing:.14em;color:#fff;white-space:nowrap;
-    background:rgba(14,17,23,.55);
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.22);
-    text-shadow:0 1px 6px rgba(0,0,0,.4)}
-  .ft-chap small{display:block;font-size:10px;font-weight:600;letter-spacing:.22em;opacity:.75;margin-top:2px}
-  @media (max-width:560px){ .ft-chap{font-size:11px;padding:6px 12px;bottom:4%} }
   .ko-slam{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
     opacity:0;transition:opacity .4s ease}
   .ko-slam.on{opacity:1}
@@ -157,7 +161,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     <div class="name-tag kickboxing" id="tag-kickboxing">KICKBOXING</div>
     <div class="ft-move boxing" id="move-boxing" aria-hidden="true"><span></span></div>
     <div class="ft-move kickboxing" id="move-kickboxing" aria-hidden="true"><span></span></div>
-    <div class="ft-chap" id="ft-chap"></div>
     <div class="ko-slam" id="ko" aria-hidden="true"><span>KO</span></div>
 
     <div class="fight-orbit-hint" aria-hidden="true">Drag to rotate · Scroll to zoom</div>
@@ -177,8 +180,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
       A real fight is never <em>boxing or kickboxing</em> — it is a conversation
       fought at three distances, and the winner is whoever speaks all three
       languages. The animated bout above plays that whole story in four
-      chapters: the boxer's hands, the kickboxer's legs, the knee-and-elbow
-      clinch, and the finish that chains them all together. That chain is what
+      chapters: the boxer's hands, the kickboxer's legs, the hook-and-uppercut
+      pocket, and the finish that chains them all together. That chain is what
       coaches actually mean by <strong>fight technique</strong>.
     </p>
 
@@ -208,18 +211,19 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
       every step they take into your range.
     </p>
 
-    <h2>Chapter 3 · The clinch — knees and elbows decide it</h2>
+    <h2>Chapter 3 · The pocket — hooks and uppercuts decide it</h2>
     <p>
-      When the distance dies, the long weapons stop working — and the shortest
-      ones take over. The kickboxer steps inside, lands a <strong>short
-      elbow</strong> on the chin and follows it with a <strong>knee</strong>
-      driven into the body. Knees and elbows are the clinch's currency: no
-      wind-up, no telegraph, just the tightest arcs in fighting. In MMA and
-      Muay Thai this exchange is where fights quietly turn — the fighter who
-      controls the inside position scores with knees and elbows while the
-      other one eats them. Watch the boxer here: his hands are still the
-      fastest thing in the ring, and they are completely useless at this
-      range.
+      Punches don't only work at jab range. When the boxer steps into the
+      <strong>pocket</strong> — the tight middle distance where both fighters
+      can hurt each other — the long straight punches give way to the short
+      arcs. His <strong>rear hook</strong> travels around the guard instead of
+      through it, and the <strong>uppercut</strong> lifts straight up under the
+      chin, the one direction a high guard can never cover. Watch the bout
+      above: the moment he closes the gap, his hands start finding angles her
+      gloves no longer protect, and the uppercut that rocks her lands because
+      it attacks from below, not because it is stronger. The pocket is where
+      fights quietly turn — and footwork, not power, decides who is allowed
+      to stand there.
     </p>
 
     <h2>Chapter 4 · The finish — chaining hands into kicks</h2>
@@ -239,8 +243,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     <h2>What the showcase teaches</h2>
     <ul>
       <li><strong>Range is a weapon.</strong> Punches own the close line,
-        kicks own the long line, knees and elbows own the clinch — know which
-        tool belongs to which distance.</li>
+        kicks own the long line, hooks and uppercuts own the pocket — know
+        which tool belongs to which distance.</li>
       <li><strong>Every attack forces a defence.</strong> Flurries shell the
         guard up, blocked kicks cost ground, rocked heads drop their hands —
         fight technique means attacking the <em>reaction</em>, not just the
@@ -259,8 +263,8 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
       <a href="../../moves/cross.html">cross</a>, the
       <a href="../../moves/leadhook.html">lead hook</a> and the
       <a href="../../moves/rearuppercut.html">rear uppercut</a> on their move
-      pages, the heavy-bag <a href="../simulator/">simulator lab</a> for knees,
-      elbows and kicks, the
+      pages, the heavy-bag <a href="../simulator/">simulator lab</a> for kicks and
+      bag rounds, the
       <a href="../boxing-vs-kickboxing/">boxing vs kickboxing range battle</a>
       for the pure style matchup, and the
       <a href="../../combos/">combination pages</a> to chain it all together.
@@ -281,6 +285,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=22"></script>
+<script type="module" src="./app.js?v=32"></script>
 </body>
 </html>
