@@ -39,6 +39,37 @@
 }
 </script>
 <link rel="stylesheet" href="../assets/home.css?v=11" />
+<style>
+  /* ---- fight cards: real match thumbnail instead of the glove icon ---- */
+  @media (min-width: 981px) {
+    #fights .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  #fights .card { padding-top: 0; }
+  #fights .card .lab-thumb {
+    display: block;
+    position: relative;
+    margin: 0 -20px 2px;
+    overflow: hidden;
+    background: #0b0e14;
+  }
+  #fights .card .lab-thumb img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform .45s cubic-bezier(.2, .8, .3, 1);
+  }
+  #fights .card .lab-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10, 12, 17, 0) 58%, rgba(13, 16, 22, 0.62));
+    pointer-events: none;
+  }
+  #fights .card:hover .lab-thumb img,
+  #fights .card:focus-visible .lab-thumb img { transform: scale(1.03); }
+</style>
 <script>
 window.PAGE = { section: 'fight', depth: 1 };
 </script>
@@ -110,14 +141,14 @@ window.PAGE = { section: 'fight', depth: 1 };
     <div class="grid">
 
       <a class="card" href="./game/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/fight/game.jpg" alt="Boxing and kickboxing simulator: the player landing a right hand on a male opponent mid-combination in the ring" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Boxing &amp; Kickboxing Simulator <span class="arrow">→</span></h3>
         <p>Pick your fighter and spar: jabs, hooks, uppercuts, elbows, knees and kicks — every hit tracked, three difficulty levels, works on phone and desktop.</p>
         <div class="meta"><span class="tag">playable</span><span>you vs the machine · 3 levels</span></div>
       </a>
 
       <a class="card" href="./fight1/">
-        <span class="ico ico-fig" aria-hidden="true"><img src="../assets/img/glove.png" alt="" width="52" height="56" loading="lazy" decoding="async"></span>
+        <span class="lab-thumb"><img src="../assets/img/fight/fight1.jpg" alt="Two women boxing: a right hand landing clean on the head, with the impact burst between the two fighters" width="800" height="450" loading="lazy" decoding="async"></span>
         <h3>Boxing Game Online <span class="arrow">→</span></h3>
         <p>A full fight between two women boxers — jabs, crosses, hooks, blocks and ring movement, all in the browser.</p>
         <div class="meta"><span class="tag">full fight</span><span>full match · 2 fighters</span></div>
