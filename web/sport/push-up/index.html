@@ -127,6 +127,14 @@
   .pu-phase p { margin: 0; font-size: 13px; line-height: 1.66; color: var(--muted-2); }
 
   .pager { margin-top: 30px; }
+
+  /* narrow screens: pull the two lower callout cards up clear of the
+     stage bar (inline tops are % of a much shorter canvas there) */
+  @media (max-width: 620px) {
+    .hero-callouts .hero-callout:nth-child(1) { top: 50% !important; }
+    .hero-callouts .hero-callout:nth-child(2) { top: 52% !important; }
+    .hero-callout .txt { font-size: 10.5px; }
+  }
 </style>
 <script>
 window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] };
@@ -371,6 +379,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=5"></script>
+<script type="module" src="../../assets/sport-stage.js?v=6"></script>
 </body>
 </html>

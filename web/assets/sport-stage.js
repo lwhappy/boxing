@@ -182,17 +182,29 @@ function buildMasks(root, smesh) {
 }
 
 /* ---------- stage factory ---------- */
-function makeRenderer(canvas, host) {
+/* opts.hRef: reference aspect for constant-HORIZONTAL-fov framing. The big
+ * stage spans a wide horizontal body; a fixed vertical fov crops it on
+ * narrow (mobile) canvases, so widen the vertical fov instead — the
+ * horizontal framing (and thus the desktop look at hRef) stays identical. */
+function makeRenderer(canvas, host, opts = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.35;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 60);
+  const BASE_FOV = 36;
+  const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 60);
+  const HFOV = opts.hRef
+    ? 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2)) * opts.hRef)
+    : 0;
   const resize = () => {
     const w = host.clientWidth || 1, h = host.clientHeight || 1;
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
+    if (HFOV) {
+      const f = 2 * Math.atan(Math.tan(HFOV / 2) / camera.aspect);
+      camera.fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(f), BASE_FOV, 64);
+    }
     camera.updateProjectionMatrix();
   };
   new ResizeObserver(resize).observe(host);
@@ -309,7 +321,7 @@ async function loadModel() {
 
   /* ---- big stage: push-up + callouts + views ---- */
   const bigCanvas = document.getElementById('pu-canvas-big');
-  const big = makeRenderer(bigCanvas, bigHost);
+  const big = makeRenderer(bigCanvas, bigHost, { hRef: 16 / 9 });
   const rootB = model.proto;
   big.scene.add(rootB);
   rootB.scale.setScalar(1.7);
@@ -450,6 +462,21 @@ async function loadModel() {
   }
   hideLoad(bigHost);
 
+  /* ---------- visibility gate: the homepage scroll-jank fix ----------
+   * Both WebGL canvases rendered unconditionally = constant GPU work while
+   * scrolling (and getBoundingClientRect callout layout). Only tick+render
+   * stages that are actually on screen; the rAF loop itself stays cheap. */
+  const vis = { big: true, small: true };
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        vis[en.target === bigHost ? 'big' : 'small'] = en.isIntersecting;
+      }
+    }, { rootMargin: '100px' });
+    obs.observe(bigHost);
+    if (smallHost) obs.observe(smallHost);
+  }
+
   /* ---------- shared loop ---------- */
   const clock = new THREE.Clock();
   let time = 0;
@@ -458,12 +485,14 @@ async function loadModel() {
     const dt = Math.min(0.05, clock.getDelta());
     time += dt;
     tickHighlight(dt, time);
-    viewTw.tick(dt);
-    mixerB.update(dt);
-    controlsB.update();
-    big.renderer.render(big.scene, big.camera);
-    updateCallouts();
-    if (small) {
+    if (vis.big) {
+      viewTw.tick(dt);
+      mixerB.update(dt);
+      controlsB.update();
+      big.renderer.render(big.scene, big.camera);
+      updateCallouts();
+    }
+    if (small && vis.small) {
       small.mixer.update(dt);
       small.controls.update();
       small.renderer.render(small.scene, small.camera);
