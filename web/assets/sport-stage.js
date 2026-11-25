@@ -508,6 +508,7 @@ async function loadModel() {
 
   /* ---- small stage: idle ---- */
   let small = null;
+  let mEls = [], updateMuscleLines = null;   // muscle labels (hoisted for chips)
   if (smallHost) {
     const smallCanvas = document.getElementById('pu-canvas-small');
     small = makeRenderer(smallCanvas, smallHost);
@@ -520,6 +521,60 @@ async function loadModel() {
       const mk = (m) => { const c = m.clone(); patchMaterial(c, hiS.uni); return c; };
       o.material = Array.isArray(o.material) ? o.material.map(mk) : mk(o.material);
     });
+    /* muscle labels: one tag + leader line per push-up muscle, pointing at
+     * the glowing fibres; tapping a chip focuses its label and dims the rest */
+    const MUS = [
+      { key: 'delts',   frag: 'leftshoulder', label: 'Shoulders', pos: { right: '2%', top: '10%' } },
+      { key: 'chest',   frag: 'spine2',       label: 'Chest',     pos: { left: '2%', top: '18%' } },
+      { key: 'triceps', frag: 'leftforearm',  label: 'Triceps',   pos: { right: '2%', top: '30%' } },
+      { key: 'core',    frag: 'spine1',       label: 'Core',      pos: { left: '2%', top: '40%' } },
+      { key: 'glutes',  frag: 'hips',         label: 'Glutes',    pos: { right: '2%', top: '50%' } },
+      { key: 'quads',   frag: 'leftupleg',    label: 'Quads',     pos: { left: '2%', top: '60%' } },
+    ];
+    const mui = document.createElement('div');
+    mui.className = 'hero-ui';
+    mui.innerHTML = '<svg class="hero-lines"></svg><div class="hero-callouts"></div>';
+    smallHost.appendChild(mui);
+    const msvg = mui.querySelector('.hero-lines');
+    const mbox = mui.querySelector('.hero-callouts');
+    mEls = MUS.map((m) => {
+      const el = document.createElement('div');
+      el.className = 'hero-callout pu-mlabel';
+      el.dataset.key = m.key;
+      el.innerHTML = `<span class="tag">${m.label}</span>`;
+      mbox.appendChild(el);
+      el.style.left = m.pos.left || 'auto';
+      el.style.right = m.pos.right || 'auto';
+      el.style.top = m.pos.top;
+      setTimeout(() => el.classList.add('show'), 600 + Math.random() * 500);
+      return el;
+    });
+    const mLines = MUS.map(() => {
+      const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      msvg.appendChild(pl);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '3');
+      msvg.appendChild(dot);
+      return { pl, dot };
+    });
+    const mBones = MUS.map((m) => boneByName(rootS, m.frag));
+    updateMuscleLines = () => {
+      const rect = smallHost.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      for (let i = 0; i < MUS.length; i++) {
+        if (!mEls[i].classList.contains('show')) continue;
+        const p = project(mBones[i], small.camera, w, h);
+        const cr = mEls[i].getBoundingClientRect();
+        const px = Math.min(w - 4, Math.max(4, p.x));
+        const py = Math.min(h - 4, Math.max(4, p.y));
+        const cxc = cr.left - rect.left + cr.width / 2;
+        const ex = px < cxc ? cr.left - rect.left : cr.right - rect.left;
+        const ey = cr.top - rect.top + cr.height / 2;
+        mLines[i].pl.setAttribute('points', `${ex},${ey} ${px},${ey} ${px},${py}`);
+        mLines[i].dot.setAttribute('cx', px);
+        mLines[i].dot.setAttribute('cy', py);
+      }
+    };
     /* explicit placement — the clone inherits rootB's recentering offset */
     rootS.position.set(0, 0, 0);
     rootS.rotation.y = -0.45;
@@ -572,6 +627,7 @@ async function loadModel() {
       small.mixer.update(dt);
       small.controls.update();
       small.renderer.render(small.scene, small.camera);
+      if (updateMuscleLines) updateMuscleLines();
     }
   })();
 
@@ -583,6 +639,10 @@ async function loadModel() {
     const on = !b.classList.contains('active') && !!key;
     chips.forEach((x) => x.classList.toggle('active', on && x === b));
     setGroup(on ? key : '');
+    mEls.forEach((el) => {
+      el.classList.toggle('focus', on && el.dataset.key === key);
+      el.classList.toggle('dim', on && el.dataset.key !== key);
+    });
     if (noteEl) {
       noteEl.textContent = on ? MUSCLE_NOTES[key] : 'Tap a muscle to light it up on both stages.';
       noteEl.classList.toggle('on', !!on);

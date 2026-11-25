@@ -78,6 +78,15 @@
   }
   .pu-mnote.on { color: #ffb27e; }
 
+  /* ---- muscle labels on the small stage: compact tag pills + leader lines ---- */
+  .pu-mlabel { width: auto; padding: 4px 10px 5px; border-radius: 999px; }
+  .pu-mlabel .tag { margin-bottom: 0; font-size: 9px; letter-spacing: .12em; }
+  .pu-mlabel.dim { opacity: .22; }
+  .pu-mlabel.focus {
+    border-color: rgba(255, 122, 61, .85);
+    box-shadow: 0 0 14px rgba(255, 122, 61, .35);
+  }
+
   /* ---- checkpoints strip ---- */
   .pu-checks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
   @media (max-width: 980px) { .pu-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -388,6 +397,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=15"></script>
+<script type="module" src="../../assets/sport-stage.js?v=16"></script>
 </body>
 </html>
