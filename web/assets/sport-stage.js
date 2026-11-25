@@ -364,12 +364,21 @@ async function loadModel() {
     feet: axis.clone(),
   };
 
-  /* callout overlay */
+  /* callout overlay — the four cards live in a flow BAND above the stage
+   * (.pu-callouts-band, styled page-side) so they never blanket the
+   * figure; the leader lines still reach them because .hero-ui gets
+   * overflow:visible page-side and updateCallouts() reads live rects */
   const ui = document.createElement('div');
   ui.className = 'hero-ui';
   ui.innerHTML = '<svg class="hero-lines"></svg><div class="hero-callouts"></div>';
   bigHost.appendChild(ui);
   const svg = ui.querySelector('.hero-lines');
+  const calloutsBox = ui.querySelector('.hero-callouts');
+  const band = document.createElement('div');
+  band.className = 'pu-callouts-band';
+  const heroSec = bigHost.closest('section.hero') || bigHost.parentElement;
+  heroSec.insertBefore(band, heroSec.firstElementChild);
+  band.appendChild(calloutsBox);
   const CALLS = [
     { tag: 'Hands', txt: 'Under the shoulders, slightly wide. Whole palm pressed down, fingers spread.', bone: handBone, side: 'l', top: 62 },
     { tag: 'Legs', txt: 'Knees locked, feet hip-width. Squeeze the thighs so the knees never bend first.', bone: footBone, side: 'r', top: 66 },
@@ -380,7 +389,7 @@ async function loadModel() {
     const el = document.createElement('div');
     el.className = 'hero-callout';
     el.innerHTML = `<span class="tag">${c.tag}</span><span class="txt">${c.txt}</span>`;
-    ui.querySelector('.hero-callouts').appendChild(el);
+    calloutsBox.appendChild(el);
     el.style[c.side === 'l' ? 'left' : 'right'] = '18px';
     el.style.top = c.top + '%';
     return el;

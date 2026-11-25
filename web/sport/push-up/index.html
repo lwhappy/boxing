@@ -128,19 +128,29 @@
 
   .pager { margin-top: 30px; }
 
-  /* narrow screens: the four callout cards would blanket a 353×300 stage,
-     so collapse them to tag pills (the full texts live in the checkpoint
-     cards right below) and re-spread the pills along the figure */
+  /* ---- callout band: the four FULL-TEXT cards live in normal flow above
+     the stage (both desktop & mobile) so they never blanket the athlete;
+     leader lines reach up into the band via .hero-ui overflow:visible ---- */
+  .pu-callouts-band {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+  /* the JS anchors cards with inline top/left/right — flow layout wins.
+     .hero-callouts is the band's only child; display:contents promotes the
+     cards themselves to the band's grid items */
+  .pu-callouts-band .hero-callout { position: static !important; width: auto; }
+  .pu-callouts-band .hero-callouts { display: contents; }
+  #pu-stage-big .hero-ui { overflow: visible; }
+
   @media (max-width: 620px) {
     .pu-hero > * { min-width: 0; }
     #pu-stage-big .stage-bar { flex-wrap: wrap; row-gap: 6px; }
     #pu-stage-big .stage-btn { padding: 5px 8px; font-size: 10px; }
-    .hero-callout { padding: 5px 11px; }
-    .hero-callout .txt { display: none; }
-    .hero-callouts .hero-callout:nth-child(1) { top: 58% !important; }  /* hands */
-    .hero-callouts .hero-callout:nth-child(2) { top: 64% !important; }  /* legs */
-    .hero-callouts .hero-callout:nth-child(3) { top: 42% !important; }  /* hips */
-    .hero-callouts .hero-callout:nth-child(4) { top: 34% !important; }  /* waist */
+    .pu-callouts-band { grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .pu-callouts-band .hero-callout { padding: 7px 9px 8px; }
+    .hero-callout .txt { font-size: 10px; line-height: 1.45; }
   }
 </style>
 <script>
@@ -386,6 +396,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=6"></script>
+<script type="module" src="../../assets/sport-stage.js?v=8"></script>
 </body>
 </html>
