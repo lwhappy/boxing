@@ -447,11 +447,14 @@ async function loadModel() {
       if (!callEls[i].classList.contains('show')) continue;
       const p = project(CALLS[i].bone, big.camera, w, h);
       const cr = callEls[i].getBoundingClientRect();
-      const cx = cr.left - rect.left + cr.width / 2;   // card bottom centre
-      const cy = cr.bottom - rect.top + 8;             // clear the card edge
+      /* line exits the card's side edge at mid-height, on the side that
+       * faces the body point (left edge when the dot sits left of the card) */
       const px = Math.min(w - 6, Math.max(6, p.x));
       const py = Math.min(h - 6, Math.max(6, p.y));
-      polys[i].pl.setAttribute('points', `${cx},${cy} ${px},${cy} ${px},${py}`);
+      const cxc = cr.left - rect.left + cr.width / 2;
+      const ex = px < cxc ? cr.left - rect.left : cr.right - rect.left;
+      const ey = cr.top - rect.top + cr.height / 2;
+      polys[i].pl.setAttribute('points', `${ex},${ey} ${px},${ey} ${px},${py}`);
       polys[i].dot.setAttribute('cx', px);
       polys[i].dot.setAttribute('cy', py);
     }
