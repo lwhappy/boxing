@@ -48,6 +48,7 @@ const V4ZERO = () => new THREE.Vector4(0, 0, 0, 0);
 const hi = {
   cur: V4ZERO(), curB: V4ZERO(),
   tgt: V4ZERO(), tgtB: V4ZERO(),
+  all: false,
   uni: {
     uHiA: { value: V4ZERO() },
     uHiB: { value: V4ZERO() },
@@ -55,29 +56,48 @@ const hi = {
     uHiK: { value: 0 },
   },
 };
+/* the small stage gets its OWN uniform channel: it idles with every
+ * push-up muscle lit, while the big stage stays clean until a chip is tapped */
+const hiS = {
+  cur: V4ZERO(), curB: V4ZERO(),
+  tgt: V4ZERO(), tgtB: V4ZERO(),
+  all: true,
+  uni: {
+    uHiA: { value: V4ZERO() },
+    uHiB: { value: V4ZERO() },
+    uHiC: hi.uni.uHiC,
+    uHiK: { value: 0 },
+  },
+};
+hiS.tgt.set(1, 1, 1, 1); hiS.tgtB.set(1, 1, 0, 0);  // idle = every push-up muscle
 function setGroup(key) {
   const t = V4ZERO(), tB = V4ZERO();
   if (key) {
     const g = GROUPS.find((x) => x.key === key);
     if (g.slot === 'A') t.setComponent(g.idx, 1); else tB.setComponent(g.idx, 1);
   }
-  hi.tgt.copy(t); hi.tgtB.copy(tB);
+  hi.tgt.copy(t); hi.tgtB.copy(tB); hi.all = false;
+  /* small stage: mirror the focused chip; with no chip, light ALL of them */
+  hiS.tgt.copy(t); hiS.tgtB.copy(tB);
+  if (!key) { hiS.tgt.set(1, 1, 1, 1); hiS.tgtB.set(1, 1, 0, 0); }
+  hiS.all = !key;
 }
-function tickHighlight(dt, time) {
+function tickHighlight(dt, time, st = hi) {
   const k = 1 - Math.exp(-dt * 7);
-  hi.cur.lerp(hi.tgt, k); hi.curB.lerp(hi.tgtB, k);
-  hi.uni.uHiA.value.copy(hi.cur); hi.uni.uHiB.value.copy(hi.curB);
-  const any = Math.max(hi.cur.length(), hi.curB.length()) > 0.02;
-  hi.uni.uHiK.value = any ? 0.8 + 0.2 * Math.sin(time * 5.2) : 0;
+  st.cur.lerp(st.tgt, k); st.curB.lerp(st.tgtB, k);
+  st.uni.uHiA.value.copy(st.cur); st.uni.uHiB.value.copy(st.curB);
+  const any = Math.max(st.cur.length(), st.curB.length()) > 0.02;
+  const base = st.all ? 0.5 : 0.8, amp = st.all ? 0.14 : 0.2;
+  st.uni.uHiK.value = any ? base + amp * Math.sin(time * 5.2) : 0;
 }
 
 /* ---------- material patch: emissive muscle glow ---------- */
-function patchMaterial(mat) {
+function patchMaterial(mat, uni = hi.uni) {
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uHiA = hi.uni.uHiA;
-    shader.uniforms.uHiB = hi.uni.uHiB;
-    shader.uniforms.uHiC = hi.uni.uHiC;
-    shader.uniforms.uHiK = hi.uni.uHiK;
+    shader.uniforms.uHiA = uni.uHiA;
+    shader.uniforms.uHiB = uni.uHiB;
+    shader.uniforms.uHiC = uni.uHiC;
+    shader.uniforms.uHiK = uni.uHiK;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
         attribute vec4 aMuscleA; attribute vec4 aMuscleB;
@@ -493,6 +513,13 @@ async function loadModel() {
     small = makeRenderer(smallCanvas, smallHost);
     const rootS = skeletonClone(rootB);
     small.scene.add(rootS);
+    /* independent highlight channel: clone the shared materials and re-patch
+     * them onto hiS's uniforms so this stage can glow on its own */
+    rootS.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mk = (m) => { const c = m.clone(); patchMaterial(c, hiS.uni); return c; };
+      o.material = Array.isArray(o.material) ? o.material.map(mk) : mk(o.material);
+    });
     /* explicit placement — the clone inherits rootB's recentering offset */
     rootS.position.set(0, 0, 0);
     rootS.rotation.y = -0.45;
@@ -533,6 +560,7 @@ async function loadModel() {
     const dt = Math.min(0.05, clock.getDelta());
     time += dt;
     tickHighlight(dt, time);
+    tickHighlight(dt, time, hiS);
     if (vis.big) {
       viewTw.tick(dt);
       mixerB.update(dt);
@@ -569,5 +597,6 @@ async function loadModel() {
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
     hi,
+    hiS,
   };
 })();
