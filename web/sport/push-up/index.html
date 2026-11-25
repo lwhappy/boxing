@@ -128,29 +128,22 @@
 
   .pager { margin-top: 30px; }
 
-  /* ---- callout band: the four FULL-TEXT cards live in normal flow above
-     the stage (both desktop & mobile) so they never blanket the athlete;
-     leader lines reach up into the band via .hero-ui overflow:visible ---- */
-  .pu-callouts-band {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 14px;
-  }
-  /* the JS anchors cards with inline top/left/right — flow layout wins.
-     .hero-callouts is the band's only child; display:contents promotes the
-     cards themselves to the band's grid items */
-  .pu-callouts-band .hero-callout { position: static !important; width: auto; }
-  .pu-callouts-band .hero-callouts { display: contents; }
-  #pu-stage-big .hero-ui { overflow: visible; }
+  /* ---- callouts: the four FULL-TEXT cards sit INSIDE the stage near the
+     top, staggered in two rows (positions anchored by sport-stage.js);
+     lines drop from each card's bottom edge to its body point ---- */
+  #pu-stage-big .hero-callout { width: 176px; }
+  #pu-stage-big .hero-callout .txt { font-size: 11.5px; line-height: 1.4; }
 
   @media (max-width: 620px) {
     .pu-hero > * { min-width: 0; }
+    /* taller stage on phones: the 2×2 callout block owns the top,
+       the athlete sits in the clear space underneath */
+    #pu-stage-big { aspect-ratio: 4 / 5.2; }
     #pu-stage-big .stage-bar { flex-wrap: wrap; row-gap: 6px; }
     #pu-stage-big .stage-btn { padding: 5px 8px; font-size: 10px; }
-    .pu-callouts-band { grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
-    .pu-callouts-band .hero-callout { padding: 7px 9px 8px; }
-    .hero-callout .txt { font-size: 10px; line-height: 1.45; }
+    /* 2×2 block across the stage top — cards keep the full text */
+    #pu-stage-big .hero-callout { width: calc(50% - 10px); padding: 6px 8px 7px; }
+    #pu-stage-big .hero-callout .txt { font-size: 10px; line-height: 1.4; }
   }
 </style>
 <script>
@@ -396,6 +389,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=8"></script>
+<script type="module" src="../../assets/sport-stage.js?v=10"></script>
 </body>
 </html>

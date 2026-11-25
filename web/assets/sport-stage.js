@@ -364,36 +364,72 @@ async function loadModel() {
     feet: axis.clone(),
   };
 
-  /* callout overlay — the four cards live in a flow BAND above the stage
-   * (.pu-callouts-band, styled page-side) so they never blanket the
-   * figure; the leader lines still reach them because .hero-ui gets
-   * overflow:visible page-side and updateCallouts() reads live rects */
+  /* callout overlay — the four cards sit INSIDE the stage near the top,
+   * staggered in two rows (top row: hands / legs, second row: waist / hips)
+   * so they frame the figure instead of blanketing it; leader lines drop
+   * from each card's bottom edge to its body point every frame */
   const ui = document.createElement('div');
   ui.className = 'hero-ui';
   ui.innerHTML = '<svg class="hero-lines"></svg><div class="hero-callouts"></div>';
   bigHost.appendChild(ui);
   const svg = ui.querySelector('.hero-lines');
   const calloutsBox = ui.querySelector('.hero-callouts');
-  const band = document.createElement('div');
-  band.className = 'pu-callouts-band';
-  const heroSec = bigHost.closest('section.hero') || bigHost.parentElement;
-  heroSec.insertBefore(band, heroSec.firstElementChild);
-  band.appendChild(calloutsBox);
   const CALLS = [
-    { tag: 'Hands', txt: 'Under the shoulders, slightly wide. Whole palm pressed down, fingers spread.', bone: handBone, side: 'l', top: 62 },
-    { tag: 'Legs', txt: 'Knees locked, feet hip-width. Squeeze the thighs so the knees never bend first.', bone: footBone, side: 'r', top: 66 },
-    { tag: 'Hips', txt: 'Level with shoulders and heels — no sagging, no piking. Glutes squeezed.', bone: hipsBone, side: 'r', top: 26 },
-    { tag: 'Waist', txt: 'One straight line head to heels: ribs down, lower back flat, waist braced.', bone: waistBone, side: 'l', top: 22 },
+    { tag: 'Hands', txt: 'Under the shoulders, slightly wide. Whole palm pressed down, fingers spread.', bone: handBone },
+    { tag: 'Waist', txt: 'One straight line head to heels: ribs down, lower back flat, waist braced.', bone: waistBone },
+    { tag: 'Legs', txt: 'Knees locked, feet hip-width. Squeeze the thighs so the knees never bend first.', bone: footBone },
+    { tag: 'Hips', txt: 'Level with shoulders and heels — no sagging, no piking. Glutes squeezed.', bone: hipsBone },
   ];
+  /* per-card anchors; wide screens stagger across the full stage top,
+   * narrow screens fall back to a 2×2 block that still leaves the athlete
+   * visible underneath */
+  const POS = {
+    wide: {
+      Hands: { left: '2.5%', top: '5%' },
+      Waist: { left: '21%', top: '34%' },
+      Legs:  { left: '41%', top: '7%' },
+      Hips:  { right: '2.5%', top: '29%' },
+    },
+    narrow: {
+      Hands: { left: '3%', top: '3%' },
+      Legs:  { right: '3%', top: '3%' },
+      Waist: { left: '3%', top: '36%' },
+      Hips:  { right: '3%', top: '36%' },
+    },
+  };
+  const narrowMQ = window.matchMedia('(max-width: 620px)');
   const callEls = CALLS.map((c) => {
     const el = document.createElement('div');
     el.className = 'hero-callout';
     el.innerHTML = `<span class="tag">${c.tag}</span><span class="txt">${c.txt}</span>`;
     calloutsBox.appendChild(el);
-    el.style[c.side === 'l' ? 'left' : 'right'] = '18px';
-    el.style.top = c.top + '%';
     return el;
   });
+  const layoutCallouts = () => {
+    const set = narrowMQ.matches ? POS.narrow : POS.wide;
+    CALLS.forEach((c, i) => {
+      const p = set[c.tag];
+      callEls[i].style.left = p.left || 'auto';
+      callEls[i].style.right = p.right || 'auto';
+      callEls[i].style.top = p.top;
+    });
+  };
+  layoutCallouts();
+
+  /* narrow screens: raise the orbit target (camera follows) so the athlete
+   * sits in the LOWER half of the taller phone canvas, clear of the 2×2
+   * callout block; desktop framing is untouched */
+  let frameY = 0.36;
+  const applyNarrowFrame = () => {
+    const want = narrowMQ.matches ? 0.64 : 0.36;
+    const d = want - frameY;
+    frameY = want;
+    controlsB.target.y += d;
+    big.camera.position.y += d;
+    controlsB.update();
+  };
+  applyNarrowFrame();
+  narrowMQ.addEventListener?.('change', () => { layoutCallouts(); applyNarrowFrame(); });
   const polys = CALLS.map(() => {
     const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     svg.appendChild(pl);
@@ -411,8 +447,8 @@ async function loadModel() {
       if (!callEls[i].classList.contains('show')) continue;
       const p = project(CALLS[i].bone, big.camera, w, h);
       const cr = callEls[i].getBoundingClientRect();
-      const cx = CALLS[i].side === 'l' ? cr.right - rect.left : cr.left - rect.left;
-      const cy = cr.top - rect.top + cr.height / 2;
+      const cx = cr.left - rect.left + cr.width / 2;   // card bottom centre
+      const cy = cr.bottom - rect.top;
       const px = Math.min(w - 6, Math.max(6, p.x));
       const py = Math.min(h - 6, Math.max(6, p.y));
       polys[i].pl.setAttribute('points', `${cx},${cy} ${px},${cy} ${px},${py}`);
