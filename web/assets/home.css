@@ -361,7 +361,10 @@ a.chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.22); }
 /* 训练舞台：两人并排，画幅比单招页更方正一点 */
 .stage.training-stage { aspect-ratio: 16 / 9; }
 @media (max-width: 620px) {
-  .stage.training-stage { aspect-ratio: 4 / 3.1; min-height: 300px; }
+  /* max-width:100% is required: with only min-height set, the aspect-ratio
+     transfers 300px × 4/3.1 ≈ 387px back into the WIDTH and pushes the
+     stage card past the viewport on phones */
+  .stage.training-stage { aspect-ratio: 4 / 3.1; min-height: 300px; max-width: 100%; }
 }
 
 /* ---------------- 3D stage（首页交互演示） ---------------- */
