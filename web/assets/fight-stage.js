@@ -838,7 +838,7 @@ function fireHit() {
 
 /* ---------- render loop ---------- */
 const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
+function frame() {
   const dt = clock.getDelta();
   for (const c of Object.values(chars)) c.mixer.update(dt);
   updatePoseTween(dt);
@@ -854,7 +854,25 @@ renderer.setAnimationLoop(() => {
   updateEffects(dt);
   controls.update();
   renderer.render(scene, camera);
-});
+}
+renderer.setAnimationLoop(frame);
+
+/* visibility gate (scroll perf): fully stop the render loop while the stage
+ * is scrolled out of view — a no-op on the fullscreen /fight/game/ page,
+ * but the punch-demo dock stops burning GPU while readers scroll the text */
+if ('IntersectionObserver' in window) {
+  let running = true;
+  new IntersectionObserver(([en]) => {
+    if (en.isIntersecting && !running) {
+      running = true;
+      clock.getDelta();          // drain the paused gap so dt does not jump
+      renderer.setAnimationLoop(frame);
+    } else if (!en.isIntersecting && running) {
+      running = false;
+      renderer.setAnimationLoop(null);
+    }
+  }, { rootMargin: '100px' }).observe(canvas);
+}
 
 /* ---------- start ---------- */
 load();

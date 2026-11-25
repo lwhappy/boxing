@@ -719,10 +719,18 @@ function placeTag(el, fighter) {
 }
 
 /* ---------- loop ---------- */
+/* visibility gate (scroll perf): skip update+render while the stage is
+ * scrolled out of view (fullscreen live phase is fixed, always visible) */
+let stageVisible = true;
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([en]) => { stageVisible = en.isIntersecting; },
+    { rootMargin: '100px' }).observe(canvas.parentElement);
+}
 const clock = new THREE.Clock();
 function tick() {
   try {
     const dt = Math.min(0.05, clock.getDelta());
+    if (!stageVisible) { requestAnimationFrame(tick); return; }
     updateBout(dt);
     man.mixer && man.mixer.update(dt);
     woman.mixer && woman.mixer.update(dt);

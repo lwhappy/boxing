@@ -730,10 +730,18 @@ new ResizeObserver(() => {
 }).observe(stageEl);
 
 /* ---------- loop ---------- */
+/* visibility gate (scroll perf): skip update+render while the stage is
+ * scrolled out of view (fullscreen live phase is fixed, always visible) */
+let stageVisible = true;
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([en]) => { stageVisible = en.isIntersecting; },
+    { rootMargin: '100px' }).observe(stageEl);
+}
 const clock = new THREE.Clock();
 function tick() {
   try {
     const dt = Math.min(0.05, clock.getDelta());
+    if (!stageVisible) { requestAnimationFrame(tick); return; }
     const t = boutT();
     updateShow(dt);
     woman.mixer && woman.mixer.update(dt);

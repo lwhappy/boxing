@@ -847,10 +847,19 @@ function placeMove(el, fighter, side) {
 
 /* ---------- loop ---------- */
 let frozen = false;          // QA: freeze the live loop for deterministic probes
+/* visibility gate (scroll perf): while the docked stage is scrolled out of
+ * view, skip update+render+label layout entirely; the fullscreen live phase
+ * is fixed in the viewport so it is always "visible" */
+let stageVisible = true;
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([en]) => { stageVisible = en.isIntersecting; },
+    { rootMargin: '100px' }).observe(canvas.parentElement);
+}
 const clock = new THREE.Clock();
 function tick() {
   try {
     const dt = Math.min(0.05, clock.getDelta());
+    if (!stageVisible) { requestAnimationFrame(tick); return; }
     if (!frozen) {
       updateBout(dt);
       man.mixer && man.mixer.update(dt);

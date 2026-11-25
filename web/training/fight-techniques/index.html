@@ -54,7 +54,9 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
     max-width:none;aspect-ratio:auto;border:none;border-radius:0;
     background:transparent;box-shadow:none;z-index:10}
   .ft-stage::before{display:none}
-  body.ft-live .fight-note{opacity:.10;pointer-events:none;transition:opacity .5s ease}
+  /* watch the bout AND read: keep the article fully visible behind the
+     fullscreen stage (no dim, no pointer blocking) */
+  body.ft-live .fight-note{opacity:1}
   .fight-note{transition:opacity .5s ease}
   .ft-stage.ft-docked{position:relative;inset:auto;width:100%;height:auto;
     max-width:480px;aspect-ratio:16/7;z-index:auto;margin:0 auto}
@@ -286,6 +288,6 @@ window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training',
   }
 }
 </script>
-<script type="module" src="./app.js?v=32"></script>
+<script type="module" src="./app.js?v=33"></script>
 </body>
 </html>
