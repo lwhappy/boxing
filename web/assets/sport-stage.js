@@ -390,11 +390,11 @@ async function loadModel() {
       Legs:  { left: '41%', top: '-9%' },
       Hips:  { right: '2.5%', top: '15%' },
     },
-    narrow: { /* 2×2 block hugging the top edge, deliberately uneven rows */
-      Hands: { left: '3%', top: '-11%' },
-      Legs:  { right: '4%', top: '-7%' },
-      Waist: { left: '4%', top: '24%' },
-      Hips:  { right: '3%', top: '29%' },
+    narrow: { /* 2×2 block hugging the top corners, deliberately uneven */
+      Hands: { left: '0%', top: '-11%' },
+      Legs:  { right: '0%', top: '-7%' },
+      Waist: { left: '1.5%', top: '24%' },
+      Hips:  { right: '1%', top: '29%' },
     },
   };
   const narrowMQ = window.matchMedia('(max-width: 620px)');
@@ -448,7 +448,7 @@ async function loadModel() {
       const p = project(CALLS[i].bone, big.camera, w, h);
       const cr = callEls[i].getBoundingClientRect();
       const cx = cr.left - rect.left + cr.width / 2;   // card bottom centre
-      const cy = cr.bottom - rect.top;
+      const cy = cr.bottom - rect.top + 8;             // clear the card edge
       const px = Math.min(w - 6, Math.max(6, p.x));
       const py = Math.min(h - 6, Math.max(6, p.y));
       polys[i].pl.setAttribute('points', `${cx},${cy} ${px},${cy} ${px},${py}`);
