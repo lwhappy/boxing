@@ -130,7 +130,9 @@
 
   /* ---- callouts: the four FULL-TEXT cards sit INSIDE the stage near the
      top, staggered in two rows (positions anchored by sport-stage.js);
-     lines drop from each card's bottom edge to its body point ---- */
+     the first row rides the stage's top edge, so let .hero-ui spill ---- */
+  #pu-stage-big { overflow: visible; }
+  #pu-stage-big .hero-ui { overflow: visible; }
   #pu-stage-big .hero-callout { width: 176px; }
   #pu-stage-big .hero-callout .txt { font-size: 11.5px; line-height: 1.4; }
 
@@ -389,6 +391,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=10"></script>
+<script type="module" src="../../assets/sport-stage.js?v=11"></script>
 </body>
 </html>

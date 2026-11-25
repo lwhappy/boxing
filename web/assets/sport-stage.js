@@ -384,17 +384,17 @@ async function loadModel() {
    * narrow screens fall back to a 2×2 block that still leaves the athlete
    * visible underneath */
   const POS = {
-    wide: {
-      Hands: { left: '2.5%', top: '5%' },
-      Waist: { left: '21%', top: '34%' },
-      Legs:  { left: '41%', top: '7%' },
-      Hips:  { right: '2.5%', top: '29%' },
+    wide: {   /* first row rides the stage's top edge (~50px above it) */
+      Hands: { left: '2.5%', top: '-12%' },
+      Waist: { left: '21%', top: '20%' },
+      Legs:  { left: '41%', top: '-9%' },
+      Hips:  { right: '2.5%', top: '15%' },
     },
-    narrow: {
-      Hands: { left: '3%', top: '3%' },
-      Legs:  { right: '3%', top: '3%' },
-      Waist: { left: '3%', top: '36%' },
-      Hips:  { right: '3%', top: '36%' },
+    narrow: { /* 2×2 block, deliberately uneven; first row half outside */
+      Hands: { left: '3%', top: '-10%' },
+      Legs:  { right: '4%', top: '-7%' },
+      Waist: { left: '4%', top: '16%' },
+      Hips:  { right: '3%', top: '21%' },
     },
   };
   const narrowMQ = window.matchMedia('(max-width: 620px)');
