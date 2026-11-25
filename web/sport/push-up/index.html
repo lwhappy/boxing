@@ -138,12 +138,9 @@
 
   @media (max-width: 620px) {
     .pu-hero > * { min-width: 0; }
-    /* taller stage on phones: the 2×2 callout block owns the top,
-       the athlete sits in the clear space underneath */
-    #pu-stage-big { aspect-ratio: 4 / 5.2; }
     #pu-stage-big .stage-bar { flex-wrap: wrap; row-gap: 6px; }
     #pu-stage-big .stage-btn { padding: 5px 8px; font-size: 10px; }
-    /* 2×2 block across the stage top — cards keep the full text */
+    /* 2×2 block, first row half above the stage edge — cards keep full text */
     #pu-stage-big .hero-callout { width: calc(50% - 10px); padding: 6px 8px 7px; }
     #pu-stage-big .hero-callout .txt { font-size: 10px; line-height: 1.4; }
   }
@@ -391,6 +388,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=11"></script>
+<script type="module" src="../../assets/sport-stage.js?v=12"></script>
 </body>
 </html>
