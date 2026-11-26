@@ -413,7 +413,7 @@ async function loadModel() {
     },
     narrow: { /* 2×2 block hugging the top corners, deliberately uneven;
                * second row pulled up/out so the athlete's head stays clear */
-      Chest: { left: '0%', top: '-11%' },
+      Chest: { left: '0%', top: '-17%' },
       Hips:  { right: '0%', top: '-7%' },
       Knees: { left: '0%', top: '14%' },
       Feet:  { right: '0%', top: '18%' },
@@ -488,11 +488,15 @@ async function loadModel() {
   const bar = document.createElement('div');
   bar.className = 'stage-bar';
   bar.innerHTML = `
-    <button type="button" class="stage-btn active" data-view="side">Side</button>
-    <button type="button" class="stage-btn" data-view="front">Front</button>
-    <button type="button" class="stage-btn" data-view="back">Back</button>
-    <button type="button" class="stage-btn slow" id="sq-slow">0.5×</button>
-    <button type="button" class="stage-btn" id="sq-play">⏸ Pause</button>`;
+    <span class="sq-grp">
+      <button type="button" class="stage-btn active" data-view="side">Side</button>
+      <button type="button" class="stage-btn" data-view="front">Front</button>
+      <button type="button" class="stage-btn" data-view="back">Back</button>
+    </span>
+    <span class="sq-grp">
+      <button type="button" class="stage-btn slow" id="sq-slow">0.5×</button>
+      <button type="button" class="stage-btn" id="sq-play">⏸ Pause</button>
+    </span>`;
   bigHost.appendChild(bar);
   bar.addEventListener('click', (e) => {
     const b = e.target.closest('button');

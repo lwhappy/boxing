@@ -132,6 +132,13 @@
   #sq-stage-big .hero-ui { overflow: visible; }
   #sq-stage-big .hero-callout { width: 176px; }
   #sq-stage-big .hero-callout .txt { font-size: 11.5px; line-height: 1.4; }
+  /* split the button bar: views hug the left, controls hug the right, so
+     the bar never blankets the athlete's feet in the middle */
+  #sq-stage-big .stage-bar {
+    left: 12px; right: 12px; transform: none;
+    justify-content: space-between;
+  }
+  #sq-stage-big .sq-grp { display: flex; gap: 6px; }
 
   /* ---- muscle labels on the small stage: compact tag pills + leader lines ---- */
   .sq-mlabel { width: auto; padding: 4px 10px 5px; border-radius: 999px; }
@@ -144,7 +151,6 @@
 
   @media (max-width: 620px) {
     .sq-hero > * { min-width: 0; }
-    #sq-stage-big .stage-bar { flex-wrap: wrap; row-gap: 6px; }
     #sq-stage-big .stage-btn { padding: 5px 8px; font-size: 10px; }
     /* 2×2 block, first row half above the stage edge — cards keep full text */
     #sq-stage-big .hero-callout { width: calc(44% - 8px); padding: 6px 8px 7px; }
@@ -393,6 +399,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Air Squat' }]
   }
 }
 </script>
-<script type="module" src="../../assets/squat-stage.js?v=4"></script>
+<script type="module" src="../../assets/squat-stage.js?v=5"></script>
 </body>
 </html>
