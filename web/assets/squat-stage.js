@@ -411,11 +411,12 @@ async function loadModel() {
       Knees: { right: '2.5%', top: '-9%' },
       Feet:  { right: '2.5%', top: '30%' },
     },
-    narrow: { /* 2×2 block hugging the top corners, deliberately uneven */
+    narrow: { /* 2×2 block hugging the top corners, deliberately uneven;
+               * second row pulled up/out so the athlete's head stays clear */
       Chest: { left: '0%', top: '-11%' },
       Hips:  { right: '0%', top: '-7%' },
-      Knees: { left: '1.5%', top: '24%' },
-      Feet:  { right: '1%', top: '29%' },
+      Knees: { left: '0%', top: '14%' },
+      Feet:  { right: '0%', top: '18%' },
     },
   };
   const narrowMQ = window.matchMedia('(max-width: 620px)');
