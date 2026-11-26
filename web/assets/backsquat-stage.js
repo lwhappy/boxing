@@ -438,11 +438,22 @@ async function loadModel() {
    * where the hands will arrive at the bottom of the reach — measured by
    * scanning the grab clip for the frame with the lowest palm midpoint */
   const barRest = { pos: new THREE.Vector3(), axis: null };
+  /* ground -> hands handoff: the floor pose (plate-radius lift, forced-
+   * horizontal axis) and the palm pose differ slightly at the switch
+   * frame, which read as a visual "flash". Ease between the two over a
+   * handful of frames instead of snapping. */
+  const BLEND_FRAMES = 14;
+  let barBlend = 0;
+  const fromPosW = new THREE.Vector3(), fromQW = new THREE.Quaternion();
+  const _rootQI = new THREE.Quaternion();
   function updateBar() {
     if (!barBell || !handLB || !handRB) return;
     rootB.updateMatrixWorld(true);
-    if (phase === 'grab') {
-      if (actGrab.time >= contactT) barMode = 'hands';
+    if (phase === 'grab' && barMode === 'ground' && actGrab.time >= contactT) {
+      barMode = 'hands';
+      barBlend = BLEND_FRAMES;
+      barBell.getWorldPosition(fromPosW);
+      barBell.getWorldQuaternion(fromQW);
     }
     if (barMode === 'ground') {
       barBell.position.copy(rootB.worldToLocal(barRest.pos.clone()));
@@ -453,12 +464,24 @@ async function loadModel() {
     }
     palmPoint(handLB, knucLB, _qa);
     palmPoint(handRB, knucRB, _qb);
+    const midW = _qa.clone().add(_qb).multiplyScalar(0.5);  // palm midpoint, world
     _qm.copy(_qb).sub(_qa).normalize();                    // world hand axis
-    barBell.position.copy(rootB.worldToLocal(_qa.clone().add(_qb).multiplyScalar(0.5)));
-    _qrot.copy(rootB.getWorldQuaternion(new THREE.Quaternion()).invert());
-    _qm.applyQuaternion(_qrot);                            // axis in root space
-    barBell.quaternion.setFromUnitVectors(shaftAxis, _qm);
+    rootB.getWorldQuaternion(_rootQI).invert();
+    _qm.applyQuaternion(_rootQI);                          // axis in root space
+    const qw = new THREE.Quaternion().setFromUnitVectors(shaftAxis, _qm);
+    if (barBlend > 0) {                                    // ease floor pose -> palm pose
+      const t = 1 - (barBlend-- / BLEND_FRAMES);
+      const e = t * t * (3 - 2 * t);                       // smoothstep
+      barBell.position.copy(rootB.worldToLocal(fromPosW.clone().lerp(midW, e)));
+      barBell.quaternion.copy(fromQL().slerp(qw, e));
+    } else {
+      barBell.position.copy(rootB.worldToLocal(midW));
+      barBell.quaternion.copy(qw);
+    }
   }
+  /* the captured floor pose, expressed in root space for slerping */
+  const _fromQL = new THREE.Quaternion();
+  const fromQL = () => _fromQL.copy(_rootQI).multiply(fromQW);
   /* QA: perpendicular distance of the bar centre from the palm-to-palm line
    * (should be ~0) + offset along the axis from the midpoint */
   function barFit() {
