@@ -346,6 +346,7 @@ async function loadModel() {
   };
   function makeDumbbell(hLen) {
     const g = new THREE.Group();
+    g.name = 'fc-dumbbell';
     const steel = new THREE.MeshPhongMaterial({ color: 0xc9cfd6, shininess: 150, specular: new THREE.Color(0x9ba2ab) });
     const knurl = new THREE.MeshPhongMaterial({ color: 0x8e959d, shininess: 55, specular: new THREE.Color(0x6b727a) });
     const rubber = new THREE.MeshPhongMaterial({ color: 0x23272c, shininess: 26, specular: new THREE.Color(0x525860) });
@@ -609,6 +610,13 @@ async function loadModel() {
     const smallCanvas = document.getElementById('fc-canvas-small');
     small = makeRenderer(smallCanvas, smallHost);
     const rootS = skeletonClone(rootB);
+    /* skeletonClone copies the WHOLE subtree — including the pair of bells the
+     * big stage already hung in its hands. Left in, each hand of the small
+     * stage ended up holding two of them. Strip the inherited pair, then let
+     * attachProps(rootS) build its own. */
+    const inherited = [];
+    rootS.traverse((o) => { if (o.name === 'fc-dumbbell') inherited.push(o); });
+    for (const o of inherited) if (o.parent) o.parent.remove(o);
     small.scene.add(rootS);
     rootS.position.set(0, 0, 0);
     rootS.rotation.y = -0.45;
