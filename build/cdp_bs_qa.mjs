@@ -37,6 +37,11 @@ await shot('bs_hero_bottom');
 await ev('__bs.seekBig(0)');
 await sleep(600);
 await shot('bs_hero_top');
+// close-up on the grip (athlete ~3 units tall in world space)
+await ev('(()=>{const c=__bs.big.controls,t=__bs.big.camera;t.position.set(1.7,2.85,2.1);c.target.set(0,2.42,0);c.update();})()');
+await sleep(800);
+await shot('bs_grip_closeup');
+await ev('(()=>{const c=__bs.big.controls,cam=__bs.big.camera;cam.position.set(3.0,1.05,0.06);c.target.set(0,0.8,0);c.update();})()');
 await ev('__bs.setGroup("quads")');
 await sleep(900);
 await ev('document.getElementById("bs-stage-small").scrollIntoView({block:"center"})');

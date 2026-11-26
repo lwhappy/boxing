@@ -21,7 +21,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-backsquat.glb?v=1', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-backsquat.glb?v=3', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -387,6 +387,11 @@ async function loadModel() {
   };
   const handLB = boneExact(rootB, 'lefthand');
   const handRB = boneExact(rootB, 'righthand');
+  const knucLB = boneExact(rootB, 'lefthandmiddle1');
+  const knucRB = boneExact(rootB, 'righthandmiddle1');
+  /* the bar must pass through the PALM centre, not the wrist joint —
+   * walk 45% of the way from each wrist toward the middle knuckle */
+  const PALM_T = 0.45;
   let barBell = null, shaftAxis = null;
   rootB.traverse((o) => {
     if (barBell || !o.isMesh || !o.name.toLowerCase().includes('barbell')) return;
@@ -399,28 +404,35 @@ async function loadModel() {
   const _qa = new THREE.Vector3(), _qb = new THREE.Vector3(), _qm = new THREE.Vector3();
   const _qrot = new THREE.Quaternion();
   const _wa = new THREE.Vector3(), _wb = new THREE.Vector3(), _wc = new THREE.Vector3();
+  const _qp = new THREE.Vector3();
+  function palmPoint(hand, knuc, out) {
+    hand.getWorldPosition(out);
+    knuc.getWorldPosition(_qp).sub(out).multiplyScalar(PALM_T);
+    return out.add(_qp);
+  }
   function updateBar() {
     if (!barBell || !handLB || !handRB) return;
     rootB.updateMatrixWorld(true);
-    handLB.getWorldPosition(_qa);
-    handRB.getWorldPosition(_qb);
+    palmPoint(handLB, knucLB, _qa);
+    palmPoint(handRB, knucRB, _qb);
     _qm.copy(_qb).sub(_qa).normalize();                    // world hand axis
     barBell.position.copy(rootB.worldToLocal(_qa.clone().add(_qb).multiplyScalar(0.5)));
     _qrot.copy(rootB.getWorldQuaternion(new THREE.Quaternion()).invert());
     _qm.applyQuaternion(_qrot);                            // axis in root space
     barBell.quaternion.setFromUnitVectors(shaftAxis, _qm);
   }
-  /* QA: perpendicular distance of the bar centre from the hand-to-hand line
+  /* QA: perpendicular distance of the bar centre from the palm-to-palm line
    * (should be ~0) + offset along the axis from the midpoint */
   function barFit() {
     if (!barBell || !handLB || !handRB) return 'no barbell';
     rootB.updateMatrixWorld(true);
-    handLB.getWorldPosition(_wa); handRB.getWorldPosition(_wb);
+    palmPoint(handLB, knucLB, _wa); palmPoint(handRB, knucRB, _wb);
     barBell.getWorldPosition(_wc);
     const axis = _wb.clone().sub(_wa); const hd = axis.length(); axis.normalize();
     const rel = _wc.clone().sub(_wa);
     const perp = rel.clone().addScaledVector(axis, -rel.dot(axis)).length();
-    return `hd=${hd.toFixed(3)} perp=${perp.toFixed(4)} along=${(rel.dot(axis) - hd / 2).toFixed(4)}`;
+    const b = _wc;
+    return `hd=${hd.toFixed(3)} perp=${perp.toFixed(4)} along=${(rel.dot(axis) - hd / 2).toFixed(4)} bar=${b.x.toFixed(2)},${b.y.toFixed(2)},${b.z.toFixed(2)}`;
   }
   if (barBell) {
     rootB.updateMatrixWorld(true);
