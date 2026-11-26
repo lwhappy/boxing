@@ -503,11 +503,13 @@ async function loadModel() {
       console.log('[sport] bar contact at', bestT.toFixed(2) + 's', 'of',
         grabClip.duration.toFixed(2) + 's');
     }
+    /* IMPORTANT: rewind BEFORE the first updateBar — the scan left
+     * actGrab.time at contactT, which would trip the ground->hands flip
+     * and nail the bar to the palms from frame one */
+    barMode = actGrab ? 'ground' : 'hands';
+    if (actGrab) { actGrab.time = 0; actGrab.paused = false; }
     updateBar();
   }
-  /* scan done — rewind to the trimmed clip's opening and start the intro */
-  if (actGrab) { actGrab.time = 0; actGrab.paused = false; }
-  else barMode = 'hands';
 
   const dist = 3.0;
   const target = new THREE.Vector3(0, 0.78, 0);
@@ -825,6 +827,7 @@ async function loadModel() {
     setGroup,
     barFit,
     phase: () => phase,
+    barMode: () => barMode,
     seekBig: (t) => { startSquat(); actB.time = ((t % squatClip.duration) + squatClip.duration) % squatClip.duration; mixerB.update(0); updateBar(); },
     big: { mixer: mixerB, act: actB, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
