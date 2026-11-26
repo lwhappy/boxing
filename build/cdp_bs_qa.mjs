@@ -22,31 +22,29 @@ const shot = async (name) => { const s = await send('Page.captureScreenshot', { 
 
 await send('Emulation.setDeviceMetricsOverride', { width: 1400, height: 950, deviceScaleFactor: 1, mobile: false }, sid);
 await send('Page.navigate', { url: 'http://127.0.0.1:8945/sport/back-squat/' }, sid);
-await sleep(9000);
+await sleep(8000);
 console.log('ready:', await ev('typeof window.__bs'), 'overflow:', await ev('document.documentElement.scrollWidth > document.documentElement.clientWidth'));
-// hand-to-bar fit: bar centre must sit on the hand-to-hand line (perp distance ~0)
-const fit = `__bs.barFit()`;
+console.log('phase:', await ev('__bs.phase()'), '| bar:', await ev('__bs.barFit()'));
+await shot('bs_grab_mid');
+// wait out the rest of the grab intro (~10s total), then the squat must be running
+await sleep(6000);
+console.log('phase after intro:', await ev('__bs.phase()'), '| bar:', await ev('__bs.barFit()'));
+// hand-to-bar fit across the squat
 for (const t of [0, 0.6, 1.0, 1.8, 2.4]) {
   await ev(`__bs.seekBig(${t}); null`);
-  console.log('t=' + t, await ev(fit));
+  console.log('t=' + t, await ev('__bs.barFit()'));
 }
-// freeze at bottom of the squat to inspect the bar
 await ev('__bs.seekBig(1.0)');
 await sleep(800);
 await shot('bs_hero_bottom');
 await ev('__bs.seekBig(0)');
 await sleep(600);
 await shot('bs_hero_top');
-// close-up on the grip (athlete ~3 units tall in world space)
-await ev('(()=>{const c=__bs.big.controls,t=__bs.big.camera;t.position.set(1.7,2.85,2.1);c.target.set(0,2.42,0);c.update();})()');
-await sleep(800);
-await shot('bs_grip_closeup');
-await ev('(()=>{const c=__bs.big.controls,cam=__bs.big.camera;cam.position.set(3.0,1.05,0.06);c.target.set(0,0.8,0);c.update();})()');
 await ev('__bs.setGroup("quads")');
 await sleep(900);
 await ev('document.getElementById("bs-stage-small").scrollIntoView({block:"center"})');
 await sleep(700);
 await shot('bs_small_quads');
-console.log('small barbell hidden:', await ev('__bs.small ? __bs.small.root.traverse ? (() => { let f = false; __bs.small.root.traverse(o => { if (o.name.toLowerCase().includes("barbell") && o.visible) f = true; }); return f ? "VISIBLE(bad)" : "hidden"; })() : "n/a" : "no small"'));
+console.log('small barbell hidden:', await ev('__bs.small ? (() => { let f = false; __bs.small.root.traverse(o => { if (o.name.toLowerCase().includes("barbell") && o.visible) f = true; }); return f ? "VISIBLE(bad)" : "hidden"; })() : "no small"'));
 console.log('logs:', JSON.stringify(logs.slice(0, 10)));
 process.exit(0);

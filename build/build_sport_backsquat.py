@@ -24,6 +24,7 @@ RIG = "/Users/justrun/project/boxing-game/sport/rig/man.fbx"
 CLIPS = [
     ("idle", "/Users/justrun/project/boxing-game/sport/rig/Idle.fbx"),
     ("back-squat", "/Users/justrun/Downloads/Back Squat.fbx"),
+    ("grab-bar", "/Users/justrun/project/boxing-game/sport/rig/Back Squat grabbar.fbx"),
 ]
 OUT = "/Users/justrun/project/boxing-3/web/media/glb/sport-backsquat.glb"
 MAXTEX = 2048
@@ -218,95 +219,13 @@ for name, path in CLIPS:
             continue
         bpy.data.objects.remove(o, do_unlink=True)
 
-# --- graft the real grip: the squat donor's arms never wrap the bar, so
-# overwrite the whole arm chain (shoulders -> fingers) of the baked
-# back-squat action with the grip pose from the dedicated grab-bar clip,
-# sampled at its steady hold segment. Legs and torso keep the squat
-# motion; the JS stage re-pins the bar to the hands every frame. ---
-GRAB = "/Users/justrun/project/boxing-game/sport/rig/Back Squat grabbar.fbx"
-GRIP_HOLD = 250
-bpy.context.scene.render.fps = 24
-before_g = set(bpy.data.actions.keys())
-objs_g = set(bpy.data.objects)
-bpy.ops.import_scene.fbx(filepath=GRAB)
-donor_g = next(o for o in bpy.data.objects
-               if o.type == "ARMATURE" and o not in known)
-known.add(donor_g)
-act_g = next(bpy.data.actions[n] for n in bpy.data.actions.keys()
-             if n not in before_g)
-retime(act_g)
-print(f"[sport] grab clip: frames {tuple(round(x, 1) for x in act_g.frame_range)}")
-
-M_dg = donor_g.matrix_world.copy()
-k_g = ((M_n @ rig.pose.bones["mixamorig:Hips"].bone.matrix_local)
-       .to_translation().length /
-       (M_dg @ donor_g.pose.bones["mixamorig:Hips"].bone.matrix_local)
-       .to_translation().length)
-G_g = Matrix.Scale(k_g, 4) @ Matrix.Rotation(1.5707963268, 4, "X")
-M_target_g = M_n.inverted() @ G_g @ M_dg
-
-ad_g = donor_g.animation_data
-ad_g.action = None
-for track in ad_g.nla_tracks:
-    track.mute = True
-ad_g.action = act_g
-bpy.context.scene.frame_set(GRIP_HOLD)
-bpy.context.view_layer.update()
-
-GRIP_SUB = ("Shoulder", "Arm", "ForeArm", "Hand")
-grip_bones = [b for b in rig.pose.bones
-              if donor_g.pose.bones.get(b.name)
-              and any(t in b.name for t in GRIP_SUB)]
-grip_pose = {}
-for b in grip_bones:
-    db = donor_g.pose.bones[b.name]
-    grip_pose[b.name] = (M_target_g @ db.matrix).copy()
-print(f"[sport] grafting grip pose onto {len(grip_bones)} arm-chain bones")
-
+# --- the barbell: modelled from scratch (the donor FBX ships no prop) ---
+# Measure the hand-to-hand line on a mid-back-squat frame and build
+# shaft + plates around it, then bone-parent the result to Spine2. (The JS
+# stage owns the bar's pose at runtime: floor rest during the grab intro,
+# palm-pinning once the hands take it and through the whole squat.)
 bar_act = bpy.data.actions["back-squat"]
 fr_bs0, fr_bs1 = int(bar_act.frame_range[0]), int(bar_act.frame_range[1])
-ad.action = bar_act
-for f in range(fr_bs0 - 1, fr_bs1 + 2):
-    sf = max(f, fr_bs0)
-    bpy.context.scene.frame_set(sf)          # rig parents in squat pose
-    bpy.context.view_layer.update()
-    for b in grip_bones:
-        desired = grip_pose[b.name]
-        if b.parent is not None:
-            rel = b.parent.matrix.inverted() @ desired
-        else:
-            rel = desired
-        basis_mat = rest_rel_inv[b.name] @ rel
-        loc, quat, scl = basis_mat.decompose()
-        b.location = loc
-        b.rotation_quaternion = quat
-        b.scale = scl
-        b.keyframe_insert("location", frame=f)
-        b.keyframe_insert("rotation_quaternion", frame=f)
-        b.keyframe_insert("scale", frame=f)
-print(f"[sport] grip grafted over frames {fr_bs0 - 1}..{fr_bs1 + 1}")
-
-# verify the graft: pose a few frames and report the hand line
-for probe in (fr_bs0, (fr_bs0 + fr_bs1) // 2, fr_bs1):
-    bpy.context.scene.frame_set(probe)
-    bpy.context.view_layer.update()
-    hl = (M_n @ rig.pose.bones["mixamorig:LeftHand"].matrix).to_translation()
-    hr = (M_n @ rig.pose.bones["mixamorig:RightHand"].matrix).to_translation()
-    print(f"[sport] grip f{probe}: hand dist={((hr - hl).length) * 100:.1f}cm")
-ad.action = None
-
-# drop the grab donor, keep only the grafted action
-for o in list(bpy.data.objects):
-    if o in objs_g or o is rig or o is mesh:
-        continue
-    bpy.data.objects.remove(o, do_unlink=True)
-bpy.data.actions.remove(act_g)
-
-# --- the barbell: modelled from scratch (the donor FBX ships no prop) ---
-# Measure the GRIPPED hand-to-hand line on a mid-back-squat frame and build
-# shaft + plates around it, then bone-parent the result to Spine2. (The JS
-# stage re-pins the bar to the hands every frame; the parenting only sets
-# its exported default transform.)
 ad.action = bar_act
 mid_bs = (fr_bs0 + fr_bs1) // 2
 bpy.context.scene.frame_set(mid_bs)
@@ -381,7 +300,7 @@ print(f"[sport] barbell joined: verts={len(bar.data.vertices)} parent_bone={bar.
 
 
 for a in list(bpy.data.actions):
-    if a.name not in {"idle", "back-squat"}:
+    if a.name not in {"idle", "back-squat", "grab-bar"}:
         bpy.data.actions.remove(a)
 for track in list(ad.nla_tracks):
     if track.strips and track.strips[0].action is None:

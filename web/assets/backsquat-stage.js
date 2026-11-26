@@ -21,7 +21,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-backsquat.glb?v=3', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-backsquat.glb?v=4', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -338,19 +338,40 @@ async function loadModel() {
   const clipOf = (frag) => model.clips.find((c) => c.name.toLowerCase().includes(frag));
   const squatClip = clipOf('squat');
   const idleClip = clipOf('idle');
+  const grabClip = clipOf('grab');
 
-  /* ---- big stage: air squat + callouts + views ---- */
+  /* ---- big stage: bar sequence + callouts + views ----
+   * Choreography: the bar starts ON THE FLOOR; the grab-bar clip plays once
+   * (reach down, take the bar, bring it up to the shoulders), then the
+   * loaded back squat takes over and loops. The bar rests at a fixed floor
+   * pose until the hands reach it, then rides the palms. */
   const bigCanvas = document.getElementById('bs-canvas-big');
   const big = makeRenderer(bigCanvas, bigHost, { hRef: 16 / 9 });
   const rootB = model.proto;
   big.scene.add(rootB);
   rootB.scale.setScalar(1.7);
 
-  /* frame: standing figure, side on; facing dir from the toe line */
   const mixerB = new THREE.AnimationMixer(rootB);
   const actB = mixerB.clipAction(squatClip);
-  actB.play();
-  actB.time = 0;
+  const actGrab = grabClip ? mixerB.clipAction(grabClip) : null;
+  let phase = actGrab ? 'grab' : 'squat';
+  let barMode = 'ground';          // 'ground' -> fixed floor pose, then 'hands'
+  let contactT = Infinity;         // grab-clip time at which the hands arrive
+  const startSquat = () => {
+    if (phase === 'squat') return;
+    phase = 'squat'; barMode = 'hands';
+    actB.reset().play();
+    if (actGrab) actGrab.stop();
+  };
+  if (actGrab) {
+    mixerB.addEventListener('finished', startSquat);
+    actGrab.setLoop(THREE.LoopOnce, 1);
+    actGrab.clampWhenFinished = true;
+    actGrab.reset().play();
+    actGrab.paused = true;         // held still during the contact scan below
+  } else {
+    actB.play();
+  }
   mixerB.update(0);
   rootB.updateMatrixWorld(true);
 
@@ -410,9 +431,23 @@ async function loadModel() {
     knuc.getWorldPosition(_qp).sub(out).multiplyScalar(PALM_T);
     return out.add(_qp);
   }
+  /* ground rest: the bar lies on the floor in front of the athlete, right
+   * where the hands will arrive at the bottom of the reach — measured by
+   * scanning the grab clip for the frame with the lowest palm midpoint */
+  const barRest = { pos: new THREE.Vector3(), axis: null };
   function updateBar() {
     if (!barBell || !handLB || !handRB) return;
     rootB.updateMatrixWorld(true);
+    if (phase === 'grab') {
+      if (actGrab.time >= contactT) barMode = 'hands';
+    }
+    if (barMode === 'ground') {
+      barBell.position.copy(rootB.worldToLocal(barRest.pos.clone()));
+      _qrot.copy(rootB.getWorldQuaternion(new THREE.Quaternion()).invert());
+      _qm.copy(barRest.axis).applyQuaternion(_qrot);
+      barBell.quaternion.setFromUnitVectors(shaftAxis, _qm);
+      return;
+    }
     palmPoint(handLB, knucLB, _qa);
     palmPoint(handRB, knucRB, _qb);
     _qm.copy(_qb).sub(_qa).normalize();                    // world hand axis
@@ -437,8 +472,39 @@ async function loadModel() {
   if (barBell) {
     rootB.updateMatrixWorld(true);
     rootB.attach(barBell);      // out of the bone chain — JS owns its pose now
+    if (actGrab) {
+      /* scan the grab clip for the lowest palm point (= bar on the floor),
+       * fix the rest pose there, then let the intro play */
+      let bestT = 0, bestY = Infinity;
+      const n = 90;
+      for (let i = 0; i <= n; i++) {
+        actGrab.time = (i / n) * grabClip.duration;
+        mixerB.update(0);
+        rootB.updateMatrixWorld(true);
+        const y = palmPoint(handLB, knucLB, _qa).add(palmPoint(handRB, knucRB, _qb)).multiplyScalar(0.5).y;
+        if (y < bestY) { bestY = y; bestT = actGrab.time; }
+      }
+      contactT = bestT;
+      actGrab.time = bestT;
+      mixerB.update(0);
+      rootB.updateMatrixWorld(true);
+      palmPoint(handLB, knucLB, _qa);
+      palmPoint(handRB, knucRB, _qb);
+      barRest.pos.copy(_qa).add(_qb).multiplyScalar(0.5);
+      /* the shaft rests ON the floor: lift the centre by the plate radius */
+      const bbS = barBell.geometry.boundingBox.getSize(new THREE.Vector3());
+      const perp = shaftAxis.x ? Math.min(bbS.y, bbS.z)
+        : shaftAxis.y ? Math.min(bbS.x, bbS.z) : Math.min(bbS.x, bbS.y);
+      barRest.pos.y = perp / 2;
+      barRest.axis = sideDir.clone();       // horizontal, across the athlete
+      console.log('[sport] bar contact at', bestT.toFixed(2) + 's', 'of',
+        grabClip.duration.toFixed(2) + 's');
+    }
     updateBar();
   }
+  /* start the intro: the scan left the grab clip paused on its first frame */
+  if (actGrab) { actGrab.time = 0; actGrab.paused = false; }
+  else barMode = 'hands';
 
   const dist = 3.0;
   const target = new THREE.Vector3(0, 0.78, 0);
@@ -582,11 +648,15 @@ async function loadModel() {
       viewTw.to(views[b.dataset.view]);
       bar.querySelectorAll('[data-view]').forEach((x) => x.classList.toggle('active', x === b));
     } else if (b.id === 'bs-slow') {
-      actB.timeScale = actB.timeScale === 1 ? 0.5 : 1;
-      b.classList.toggle('on', actB.timeScale !== 1);
+      const ts = actB.timeScale === 1 ? 0.5 : 1;
+      actB.timeScale = ts;
+      if (actGrab) actGrab.timeScale = ts;
+      b.classList.toggle('on', ts !== 1);
     } else if (b.id === 'bs-play') {
       const running = actB.timeScale !== 0;
-      actB.timeScale = running ? 0 : 1;
+      const ts = running ? 0 : 1;
+      actB.timeScale = ts;
+      if (actGrab) actGrab.timeScale = ts;
       b.textContent = running ? '▶ Play' : '⏸ Pause';
     }
   });
@@ -751,7 +821,8 @@ async function loadModel() {
   window.__bs = {
     setGroup,
     barFit,
-    seekBig: (t) => { actB.time = ((t % squatClip.duration) + squatClip.duration) % squatClip.duration; mixerB.update(0); updateBar(); },
+    phase: () => phase,
+    seekBig: (t) => { startSquat(); actB.time = ((t % squatClip.duration) + squatClip.duration) % squatClip.duration; mixerB.update(0); updateBar(); },
     big: { mixer: mixerB, act: actB, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
