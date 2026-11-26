@@ -442,12 +442,21 @@ async function loadModel() {
    * sits in the LOWER half of the phone canvas, clear of the 2×2 callout
    * block; desktop framing is untouched */
   let frameY = 0.78;
+  let frameX = 0;
   const applyNarrowFrame = () => {
     const want = narrowMQ.matches ? 1.24 : 0.78;
     const d = want - frameY;
     frameY = want;
     controlsB.target.y += d;
     big.camera.position.y += d;
+    /* phones: also slide the athlete sideways into the free gap between the
+     * split button groups (three left / two right), so the Back button and
+     * the controls never blanket the feet */
+    const wantX = narrowMQ.matches ? 0.42 : 0;
+    const dx = wantX - frameX;
+    frameX = wantX;
+    controlsB.target.x += dx;
+    big.camera.position.x += dx;
     controlsB.update();
   };
   applyNarrowFrame();
