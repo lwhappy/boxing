@@ -401,15 +401,15 @@ async function loadModel() {
     { tag: 'Knees', txt: 'Track over the toes and stay pushed out. Heels glued to the floor.', bone: kneeBone },
     { tag: 'Feet', txt: 'Shoulder-width, toes turned out about 15°. Whole foot planted, weight mid-foot.', bone: footBone },
   ];
-  /* per-card anchors; wide screens stagger across the full stage top,
-   * narrow screens fall back to a 2×2 block that still leaves the athlete
-   * visible underneath */
+  /* per-card anchors: two stacked columns, one per side, filling the empty
+   * stage flanks (athlete stays centred between them); narrow screens fall
+   * back to a 2×2 corner block that still leaves the athlete visible */
   const POS = {
-    wide: {   /* first row rides the stage's top edge (~50px above it) */
+    wide: {   /* left column: Chest / Hips — right column: Knees / Feet */
       Chest: { left: '2.5%', top: '-12%' },
-      Hips:  { left: '41%', top: '-9%' },
-      Knees: { right: '2.5%', top: '15%' },
-      Feet:  { left: '21%', top: '28%' },
+      Hips:  { left: '2.5%', top: '34%' },
+      Knees: { right: '2.5%', top: '-9%' },
+      Feet:  { right: '2.5%', top: '30%' },
     },
     narrow: { /* 2×2 block hugging the top corners, deliberately uneven */
       Chest: { left: '0%', top: '-11%' },
@@ -468,12 +468,14 @@ async function loadModel() {
       if (!callEls[i].classList.contains('show')) continue;
       const p = project(CALLS[i].bone, big.camera, w, h);
       const cr = callEls[i].getBoundingClientRect();
-      /* line exits the card's side edge at mid-height, on the side that
-       * faces the body point (left edge when the dot sits left of the card) */
+      /* line exits the card's edge at mid-height, always the side FACING
+       * the centred athlete: cards anchored on the left (style.left set)
+       * exit via their RIGHT edge midpoint, right-anchored cards via
+       * their LEFT edge midpoint */
       const px = Math.min(w - 6, Math.max(6, p.x));
       const py = Math.min(h - 6, Math.max(6, p.y));
-      const cxc = cr.left - rect.left + cr.width / 2;
-      const ex = px < cxc ? cr.left - rect.left : cr.right - rect.left;
+      const onLeft = callEls[i].style.left !== 'auto';
+      const ex = onLeft ? cr.right - rect.left : cr.left - rect.left;
       const ey = cr.top - rect.top + cr.height / 2;
       polys[i].pl.setAttribute('points', `${ex},${ey} ${px},${ey} ${px},${py}`);
       polys[i].dot.setAttribute('cx', px);
