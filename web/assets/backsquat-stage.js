@@ -372,6 +372,62 @@ async function loadModel() {
   facing.y = 0; facing.normalize();                                   // belly side
   const sideDir = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), facing).normalize();
 
+  /* ---- the barbell: re-attach to the root and pin it to the hands ----
+   * The GLB ships the bar bone-parented to Spine2 at ONE baked frame, so as
+   * soon as the spine animates the hands drift off the steel. Hands are the
+   * truth: every frame we rebuild the bar's pose from the hand joints —
+   * midpoint onto the shaft, shaft axis along the hand-to-hand line. (Roll
+   * around that axis is unconstrained: shaft and plates are rotationally
+   * symmetric.) The shaft's local axis is detected from its bounding box so
+   * the glTF Y-up conversion can't fool us. */
+  const boneExact = (root, nm) => {
+    let f = null;
+    root.traverse((o) => { if (f || !o.isBone) return; if (o.name.toLowerCase().endsWith(nm)) f = o; });
+    return f;
+  };
+  const handLB = boneExact(rootB, 'lefthand');
+  const handRB = boneExact(rootB, 'righthand');
+  let barBell = null, shaftAxis = null;
+  rootB.traverse((o) => {
+    if (barBell || !o.isMesh || !o.name.toLowerCase().includes('barbell')) return;
+    barBell = o;
+    o.geometry.computeBoundingBox();
+    const s = o.geometry.boundingBox.getSize(new THREE.Vector3());
+    shaftAxis = s.x >= s.y && s.x >= s.z ? new THREE.Vector3(1, 0, 0)
+      : s.y >= s.z ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+  });
+  const _qa = new THREE.Vector3(), _qb = new THREE.Vector3(), _qm = new THREE.Vector3();
+  const _qrot = new THREE.Quaternion();
+  const _wa = new THREE.Vector3(), _wb = new THREE.Vector3(), _wc = new THREE.Vector3();
+  function updateBar() {
+    if (!barBell || !handLB || !handRB) return;
+    rootB.updateMatrixWorld(true);
+    handLB.getWorldPosition(_qa);
+    handRB.getWorldPosition(_qb);
+    _qm.copy(_qb).sub(_qa).normalize();                    // world hand axis
+    barBell.position.copy(rootB.worldToLocal(_qa.clone().add(_qb).multiplyScalar(0.5)));
+    _qrot.copy(rootB.getWorldQuaternion(new THREE.Quaternion()).invert());
+    _qm.applyQuaternion(_qrot);                            // axis in root space
+    barBell.quaternion.setFromUnitVectors(shaftAxis, _qm);
+  }
+  /* QA: perpendicular distance of the bar centre from the hand-to-hand line
+   * (should be ~0) + offset along the axis from the midpoint */
+  function barFit() {
+    if (!barBell || !handLB || !handRB) return 'no barbell';
+    rootB.updateMatrixWorld(true);
+    handLB.getWorldPosition(_wa); handRB.getWorldPosition(_wb);
+    barBell.getWorldPosition(_wc);
+    const axis = _wb.clone().sub(_wa); const hd = axis.length(); axis.normalize();
+    const rel = _wc.clone().sub(_wa);
+    const perp = rel.clone().addScaledVector(axis, -rel.dot(axis)).length();
+    return `hd=${hd.toFixed(3)} perp=${perp.toFixed(4)} along=${(rel.dot(axis) - hd / 2).toFixed(4)}`;
+  }
+  if (barBell) {
+    rootB.updateMatrixWorld(true);
+    rootB.attach(barBell);      // out of the bone chain — JS owns its pose now
+    updateBar();
+  }
+
   const dist = 3.0;
   const target = new THREE.Vector3(0, 0.78, 0);
   big.camera.position.copy(sideDir).multiplyScalar(dist).add(target);
@@ -639,6 +695,7 @@ async function loadModel() {
     if (vis.big) {
       viewTw.tick(dt);
       mixerB.update(dt);
+      updateBar();
       controlsB.update();
       big.renderer.render(big.scene, big.camera);
       updateCallouts();
@@ -681,7 +738,8 @@ async function loadModel() {
   /* ---------- QA handles ---------- */
   window.__bs = {
     setGroup,
-    seekBig: (t) => { actB.time = ((t % squatClip.duration) + squatClip.duration) % squatClip.duration; mixerB.update(0); },
+    barFit,
+    seekBig: (t) => { actB.time = ((t % squatClip.duration) + squatClip.duration) % squatClip.duration; mixerB.update(0); updateBar(); },
     big: { mixer: mixerB, act: actB, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
