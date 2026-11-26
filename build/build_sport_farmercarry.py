@@ -1,14 +1,23 @@
 """Build web/media/glb/sport-farmercarry.glb — the Tripo man walking with two dumbbells.
 
-Farmer's carry needs no new mocap: it IS a walk. The donor walk clip ships a
-normal arm swing, so after retargeting we override the arm chain every frame
-(upper arms pinned straight down along the body axis, elbows straight, wrists
-neutral) and model a pair of dumbbells bone-parented to the hands.
+Farmer's carry needs no new mocap: it IS a walk, and the walk donor ships the
+full legs/spine/torso pass. It also ships a normal arm swing and a forward
+root translation:
+
+  * arms  — after retargeting, the upper-arm / forearm / hand chain is pinned
+            to ONE constant basis (computed once from the rest T-pose): arms
+            hang straight down with a slight outward angle, no swing. Because
+            the basis is constant and relative to the shoulder, the arms still
+            ride the torso as it turns — they just never swing on their own.
+  * drift — the donated clip translates the hips ~0.7 m forward over one cycle.
+            That translation is projected out of every baked hips position
+            (only the component along the walk direction), so the loop walks on
+            the spot and keeps its vertical bob.
 
 Source rig:  /Users/justrun/project/boxing-game/sport/rig/man.fbx
              (Tripo "男运动健将" mesh, 25k verts, Mixamo 65-bone skeleton, 0.01 scale)
-Clip donors: /Users/justrun/project/boxing-game/sport/rig/Idle.fbx
-             /Users/justrun/project/boxing-game/sport/rig/Push Up.fbx
+Clip donor:  /Users/justrun/project/boxing-game/sport/rig/Walking.fbx
+             (Mixamo walk, 38 frames @ 24 fps, full root motion)
 
 The donor FBX armatures ship in a DIFFERENT world orientation than the sculpt's
 (sculpt Armature rot.x = +90°), so verbatim action copies play upside down —
@@ -22,12 +31,13 @@ Textures are rebuilt down to base-colour + normal at 2048 and exported as JPEG.
 Usage: Blender -b -P build/build_sport_backsquat.py
 """
 import bpy
+import math
 import os
 from mathutils import Matrix, Vector
 
 RIG = "/Users/justrun/project/boxing-game/sport/rig/man.fbx"
 CLIPS = [
-    ("carry", "/Users/justrun/project/boxing-game/sport/rig/Idle.fbx"),
+    ("carry", "/Users/justrun/project/boxing-game/sport/rig/Walking.fbx"),
 ]
 OUT = "/Users/justrun/project/boxing-3/web/media/glb/sport-farmercarry.glb"
 MAXTEX = 2048
@@ -134,6 +144,25 @@ for name, path in CLIPS:
     M_target = M_n.inverted() @ G @ M_d
     ad_n = rig.animation_data
 
+    # --- root motion: a travelling walk translated the hips ~0.7 m forward
+    #     over one cycle. Project that component out of every baked hips
+    #     position (keeping the perpendicular bob/sway) so the loop walks on
+    #     the spot instead of sliding off the camera. ---
+    hip_pts = []
+    for f in range(fr0, fr1 + 1):
+        bpy.context.scene.frame_set(f)
+        bpy.context.view_layer.update()
+        hip_pts.append((M_target @ donor.pose.bones["mixamorig:Hips"].matrix).to_translation())
+    drift = hip_pts[-1] - hip_pts[0]
+    hip_fix = [Vector((0.0, 0.0, 0.0)) for _ in hip_pts]
+    if drift.length > 1e-4:
+        u = drift.normalized()
+        s0 = hip_pts[0].dot(u)
+        hip_fix = [-((p.dot(u) - s0)) * u for p in hip_pts]
+        unit = rig.matrix_world.to_scale().x
+        print(f"[sport] {name}: root travel {drift.length * unit:.3f} m over "
+              f"{len(hip_pts)} frames -> cancelled (in-place loop)")
+
     for a in bpy.data.actions:
         if a.name == name:
             a.name = f"donor_{name}"
@@ -163,6 +192,14 @@ for name, path in CLIPS:
             # donor armature-space pose -> world -> registered -> sculpt
             # armature space; per-bone basis then stays small (no stretch)
             desired_map[b.name] = (M_target @ db.matrix).copy()
+        # cancel the walk's forward travel: shift the WHOLE pose rigidly. Only
+        # the hips (the root) needs its own matrix changed — but every bone's
+        # matrix must carry the same offset, otherwise each child bone's
+        # parent-relative basis absorbs the difference and the limbs stay
+        # behind while the pelvis walks off.
+        fix = hip_fix[sf - fr0]
+        for m in desired_map.values():
+            m.translation = m.translation + fix
         for b in rig.pose.bones:
             if b.name not in desired_map:
                 continue
@@ -206,7 +243,10 @@ for name, path in CLIPS:
         if bd is None:
             continue
         ws = (M_n @ b.matrix).to_translation()
-        wd = (G @ M_d @ bd.matrix).to_translation()
+        wd = (M_n @ (M_target @ bd.matrix)).to_translation()
+        # the hips carry the deliberate in-place correction; the arm chain is
+        # overridden on purpose later, so neither is a retarget error
+        wd = wd + (M_n.to_3x3() @ hip_fix[mid_f - fr0])
         err = (ws - wd).length
         if err > worst:
             worst, worst_b = err, b.name
@@ -238,13 +278,22 @@ for name, path in CLIPS:
             continue
         bpy.data.objects.remove(o, do_unlink=True)
 
-# --- arm override: a farmer's carry is walked with the arms locked down at
-#     the sides, not swinging. After retargeting, rebuild the arm chain every
-#     frame so the upper arms point along the body-down axis (shoulder->feet)
-#     and the elbows stay straight; wrists neutral.
+# --- arm override -----------------------------------------------------------
+# A farmer's carry is walked with the arms locked at the sides: no swing, just
+# a natural hang. The walk donor animates the whole arm chain every frame, so
+# rather than follow it we DERIVE one constant basis per arm from the rest
+# T-pose — arm rotated to hang straight down with a touch of abduction and a
+# touch of forward lean — and stamp that same basis on every frame. A constant
+# basis is rigid relative to the shoulder, so the arms still ride the torso as
+# it turns through the gait, they just never swing on their own.
 carry_act = bpy.data.actions["carry"]
-ad.action = carry_act
-fr_c0, fr_c1 = int(carry_act.frame_range[0]), int(carry_act.frame_range[1])
+ad.action = None
+for b in rig.pose.bones:
+    b.location = (0, 0, 0)
+    b.rotation_mode = "QUATERNION"
+    b.rotation_quaternion = (1, 0, 0, 0)
+    b.scale = (1, 1, 1)
+bpy.context.view_layer.update()
 
 rest_rel_inv = {}
 for b in rig.pose.bones:
@@ -267,37 +316,133 @@ def set_basis(pb, basis):
     pb.scale = scl
 
 
+def world_turn(pb, point, rot):
+    """Rotate a bone about a world point, return its new basis matrix."""
+    if hasattr(rot, "to_matrix"):
+        rot = rot.to_matrix().to_4x4()
+    mw = rig.matrix_world @ pb.matrix
+    mw_new = (Matrix.Translation(point) @ rot
+              @ Matrix.Translation(-point) @ mw)
+    desired = rig.matrix_world.inverted() @ mw_new
+    return rest_rel_inv[pb.name] @ (pb.parent.matrix.inverted() @ desired)
+
+
+UP = (wpos("mixamorig:Head") - wpos("mixamorig:Hips")).normalized()
+DOWN = -UP
+SIDE_R = wpos("mixamorig:RightUpLeg") - wpos("mixamorig:LeftUpLeg")
+SIDE_R -= UP * SIDE_R.dot(UP)
+SIDE_R.normalize()
+FWD = UP.cross(SIDE_R)
+if (wpos("mixamorig:LeftToeBase") - wpos("mixamorig:LeftFoot")).dot(FWD) < 0:
+    FWD = -FWD
+
+ABDUCT = 0.11      # how far the upper arm clears the ribs (fraction of arm len)
+LEAN_FWD = 0.02    # a hair forward so the bells hang clear of the thighs
+
+keep = {}
+for side, sgn in (("Left", -1.0), ("Right", 1.0)):
+    arm = rig.pose.bones[f"mixamorig:{side}Arm"]
+    fore = rig.pose.bones[f"mixamorig:{side}ForeArm"]
+    h0, h1 = wpos(arm.name), wpos(fore.name)
+    d = (h1 - h0).normalized()
+    target = (DOWN + sgn * ABDUCT * SIDE_R + LEAN_FWD * FWD).normalized()
+    set_basis(arm, world_turn(arm, h0, d.rotation_difference(target)))
+    for pb in (rig.pose.bones[f"mixamorig:{side}ForeArm"],
+               rig.pose.bones[f"mixamorig:{side}Hand"]):
+        set_basis(pb, Matrix.Identity(4))       # straight elbow, neutral wrist
+    bpy.context.view_layer.update()
+
+    hand = f"mixamorig:{side}Hand"
+
+    # --- close the fist first: every phalanx is a plain local-X rotation
+    #     (+60/+75/+45 progressive curl), which is the hinge the Mixamo finger
+    #     bones actually bend on. Doing it in bone space is what makes it
+    #     symmetric on both hands; the world-space "rotate toward the palm
+    #     normal" attempt kept the fingers half open on one side. ---
+    fingers = {}
+    for finger in ("Index", "Middle", "Ring", "Pinky"):
+        for seg, deg in enumerate((60, 75, 45), start=1):
+            pb = rig.pose.bones[f"mixamorig:{side}Hand{finger}{seg}"]
+            pb.rotation_mode = "QUATERNION"
+            pb.rotation_quaternion = Matrix.Rotation(math.radians(deg), 4, "X").to_quaternion()
+            fingers[pb.name] = pb.rotation_quaternion.copy()
+    for seg, deg in ((1, 32), (2, 26)):          # thumb folds over the bar
+        pb = rig.pose.bones[f"mixamorig:{side}HandThumb{seg}"]
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = Matrix.Rotation(math.radians(deg), 4, "X").to_quaternion()
+        fingers[pb.name] = pb.rotation_quaternion.copy()
+    bpy.context.view_layer.update()
+
+    # --- roll the wrist so the palm faces the thigh. The palm side is now
+    #     whatever side the curled fingertips landed on — no guessing at
+    #     cross-product handedness. ---
+    wrist = Vector(wpos(hand))
+    palm_c = (wrist + Vector(wpos(f"mixamorig:{side}HandMiddle1"))) * 0.5
+    tips = [Vector(wpos(f"mixamorig:{side}Hand{f}4"))
+            for f in ("Index", "Middle", "Ring", "Pinky")]
+    palm_side = sum((t - palm_c for t in tips), Vector()) / len(tips)
+    if palm_side.length < 1e-6:
+        continue
+    palm_side.normalize()
+    axe = (Vector(wpos(f"mixamorig:{side}ForeArm")) - wrist).normalized()
+    want = SIDE_R if sgn < 0 else -SIDE_R        # toward the body midline
+    want = (want - axe * want.dot(axe))
+    if want.length < 1e-6:
+        continue
+    want.normalize()
+    ang = palm_side.angle(want)
+    if palm_side.cross(want).dot(axe) < 0:
+        ang = -ang
+    set_basis(rig.pose.bones[hand],
+              world_turn(rig.pose.bones[hand], wrist, Matrix.Rotation(ang, 4, axe)))
+    bpy.context.view_layer.update()
+
+    # sanity: a closed fist puts every fingertip within ~3 cm of the palm
+    tips_after = {f: round((Vector(wpos(f"mixamorig:{side}Hand{f}4")) - palm_c).length, 3)
+                  for f in ("Index", "Middle", "Ring", "Pinky")}
+    print(f"[sport] {side} fist tips->palm {tips_after}  wrist roll "
+          f"{round(ang * 57.2958):+d}deg")
+
+    keep[side] = {
+        "arm": rig.pose.bones[f"mixamorig:{side}Arm"].rotation_quaternion.copy(),
+        "hand": rig.pose.bones[hand].rotation_quaternion.copy(),
+        "fingers": fingers,
+        "roll_deg": round(ang * 57.2958, 1),
+    }
+    print(f"[sport] {side} arm: abduction {ABDUCT * 100:.0f}%  wrist roll "
+          f"{keep[side]['roll_deg']:+.0f}deg  fingers curled {len(fingers)}")
+
+ad.action = carry_act
+fr_c0, fr_c1 = int(carry_act.frame_range[0]), int(carry_act.frame_range[1])
 for f in range(fr_c0, fr_c1 + 1):
     bpy.context.scene.frame_set(f)
-    bpy.context.view_layer.update()
-    body_up = (wpos("mixamorig:Head") - wpos("mixamorig:Hips")).normalized()
-    down = -body_up
     for side in ("Left", "Right"):
         arm = rig.pose.bones[f"mixamorig:{side}Arm"]
         fore = rig.pose.bones[f"mixamorig:{side}ForeArm"]
         hand = rig.pose.bones[f"mixamorig:{side}Hand"]
-        h0 = (rig.matrix_world @ arm.matrix).to_translation()
-        h1 = (rig.matrix_world @ fore.matrix).to_translation()
-        d = (h1 - h0).normalized()
-        if d.length < 1e-4:
-            continue
-        q = d.rotation_difference(down)
-        mw = rig.matrix_world @ arm.matrix
-        mw_new = (Matrix.Translation(h0) @ q.to_matrix().to_4x4()
-                  @ Matrix.Translation(-h0) @ mw)
-        desired = rig.matrix_world.inverted() @ mw_new
-        parent_desired = arm.parent.matrix
-        rel = parent_desired.inverted() @ desired
-        set_basis(arm, rest_rel_inv[arm.name] @ rel)
-        arm.keyframe_insert("location", frame=f)
-        arm.keyframe_insert("rotation_quaternion", frame=f)
-        arm.keyframe_insert("scale", frame=f)
-        for pb in (fore, hand):          # straight elbow, neutral wrist
-            set_basis(pb, Matrix.Identity(4))
+        for pb in (arm, fore, hand):
+            pb.rotation_mode = "QUATERNION"
+            pb.location = (0, 0, 0)
+            pb.scale = (1, 1, 1)
+        arm.rotation_quaternion = keep[side]["arm"]
+        fore.rotation_quaternion = (1, 0, 0, 0)
+        hand.rotation_quaternion = keep[side]["hand"]
+        for nm, q in keep[side]["fingers"].items():
+            pb = rig.pose.bones[nm]
+            pb.rotation_mode = "QUATERNION"
+            pb.location = (0, 0, 0)
+            pb.scale = (1, 1, 1)
+            pb.rotation_quaternion = q
+        for pb in (arm, fore, hand):
             pb.keyframe_insert("location", frame=f)
             pb.keyframe_insert("rotation_quaternion", frame=f)
             pb.keyframe_insert("scale", frame=f)
-print(f"[sport] arms pinned to the sides over {fr_c1 - fr_c0 + 1} frames")
+        for nm in keep[side]["fingers"]:
+            pb = rig.pose.bones[nm]
+            pb.keyframe_insert("location", frame=f)
+            pb.keyframe_insert("rotation_quaternion", frame=f)
+            pb.keyframe_insert("scale", frame=f)
+print(f"[sport] arms locked down over {fr_c1 - fr_c0 + 1} frames")
 
 # The dumbbells are NOT baked here: bone-parented props get their offsets
 # scrambled by the export-time rest reset (the barbell lesson). The stage

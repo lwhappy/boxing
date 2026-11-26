@@ -22,7 +22,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-farmercarry.glb?v=1', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-farmercarry.glb?v=3', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -331,72 +331,84 @@ async function loadModel() {
   const clipOf = (frag) => model.clips.find((c) => c.name.toLowerCase().includes(frag));
   const carryClip = clipOf('carry') || model.clips[0];
 
-  /* ---- dumbbells: a pair built in three.js and pinned through the palms
-   *      every frame (bone-parented props get scrambled by the GLB's
-   *      export-time rest reset — the barbell lesson) ---- */
-  const PALM_T = 0.45;
+  /* ---- dumbbells: a pair of hex-head bells built in three.js and pinned
+   *      into the palms every frame (bone-parented props get scrambled by the
+   *      GLB's export-time rest reset — the barbell lesson).
+   *      Geometry is sized from the hand itself, and the bar runs along the
+   *      knuckle line (index -> pinky), which is the axis a real grip closes
+   *      around; the old build laid the bar across the body, so from the side
+   *      it read as a single black disc. ---- */
   const XAXIS = new THREE.Vector3(1, 0, 0);
-  const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _ax = new THREE.Vector3();
-  const _kn = new THREE.Vector3();
   const boneExact = (root, nm) => {
     let f = null;
     root.traverse((o) => { if (f || !o.isBone) return; if (o.name.toLowerCase().endsWith(nm)) f = o; });
     return f;
   };
-  function makeDumbbell(span) {
+  function makeDumbbell(hLen) {
     const g = new THREE.Group();
-    const steel = new THREE.MeshPhongMaterial({ color: 0x9aa1a8, shininess: 95, specular: new THREE.Color(0x707070) });
-    const rubber = new THREE.MeshPhongMaterial({ color: 0x14161a, shininess: 10, specular: new THREE.Color(0x151515) });
-    const hl = span * 0.56, hr = span * 0.055, dr = span * 0.16, dh = span * 0.18;
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(hr, hr, hl, 18), steel);
-    shaft.rotation.z = Math.PI / 2;
-    g.add(shaft);
+    const steel = new THREE.MeshPhongMaterial({ color: 0xc9cfd6, shininess: 150, specular: new THREE.Color(0x9ba2ab) });
+    const knurl = new THREE.MeshPhongMaterial({ color: 0x8e959d, shininess: 55, specular: new THREE.Color(0x6b727a) });
+    const rubber = new THREE.MeshPhongMaterial({ color: 0x23272c, shininess: 26, specular: new THREE.Color(0x525860) });
+    const collar = new THREE.MeshPhongMaterial({ color: 0x6f767e, shininess: 120, specular: new THREE.Color(0x5a6169) });
+
+    const shaftR = 0.082 * hLen, shaftL = 0.95 * hLen;
+    const headR = 0.36 * hLen, headW = 0.40 * hLen;
+    const tube = (r, len, seg) => {
+      const geo = new THREE.CylinderGeometry(r, r, len, seg);
+      geo.rotateZ(Math.PI / 2);                 // bar runs along local X
+      return geo;
+    };
+
+    g.add(new THREE.Mesh(tube(shaftR, shaftL, 20), steel));
+    const grip = new THREE.Mesh(tube(shaftR * 1.1, shaftL * 0.5, 20), knurl);
+    g.add(grip);
     for (const sgn of [-1, 1]) {
-      const head = new THREE.Mesh(new THREE.CylinderGeometry(dr, dr, dh, 22), rubber);
-      head.rotation.z = Math.PI / 2;
-      head.position.x = sgn * (hl * 0.5 + dh * 0.42);
+      const head = new THREE.Mesh(tube(headR, headW, 6), rubber);   // hex block
+      head.position.x = sgn * (shaftL / 2 + headW * 0.5);
       g.add(head);
-      const collar = new THREE.Mesh(new THREE.CylinderGeometry(hr * 1.5, hr * 1.5, hl * 0.10, 14), steel);
-      collar.rotation.z = Math.PI / 2;
-      collar.position.x = sgn * (hl * 0.5 - hl * 0.06);
-      g.add(collar);
+      const cap = new THREE.Mesh(tube(headR * 0.74, headW * 0.18, 6), collar);
+      cap.position.x = sgn * (shaftL / 2 + headW * 0.92);
+      g.add(cap);
     }
     g.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
     return g;
   }
-  function palmLocal(root, hand, knuc, out) {
-    hand.getWorldPosition(out);
-    knuc.getWorldPosition(_kn).sub(out).multiplyScalar(PALM_T);
-    out.add(_kn);
-    return root.worldToLocal(out);          // local: dumbbell sizes match this space
+  function handMeasure(root) {
+    const h = boneExact(root, 'lefthand'), m = boneExact(root, 'lefthandmiddle1');
+    if (!h || !m) return 0.1;
+    const a = h.getWorldPosition(new THREE.Vector3());
+    const b = m.getWorldPosition(new THREE.Vector3());
+    return Math.max(0.02, a.distanceTo(b));
+  }
+  const _h = new THREE.Vector3(), _k = new THREE.Vector3();
+  const _i = new THREE.Vector3(), _p = new THREE.Vector3(), _ax = new THREE.Vector3();
+  function pinOne(root, db, hand, idx, pinky, mid) {
+    if (!hand || !idx || !pinky || !mid) return;
+    hand.getWorldPosition(_h); root.worldToLocal(_h);
+    mid.getWorldPosition(_k); root.worldToLocal(_k);
+    idx.getWorldPosition(_i); root.worldToLocal(_i);
+    pinky.getWorldPosition(_p); root.worldToLocal(_p);
+    db.position.copy(_h).lerp(_k, 0.52);      // grip sits in the palm
+    _ax.subVectors(_p, _i);                    // index -> pinky = bar axis
+    if (_ax.lengthSq() < 1e-12) return;
+    db.quaternion.setFromUnitVectors(XAXIS, _ax.normalize());
   }
   function pinProps(p) {
-    if (!p.handL || !p.handR) return;
+    if (!p.root) return;
     p.root.updateMatrixWorld(true);
-    palmLocal(p.root, p.handL, p.knucL, _pa);
-    palmLocal(p.root, p.handR, p.knucR, _pb);
-    _ax.copy(_pb).sub(_pa);
-    if (_ax.lengthSq() < 1e-10) return;
-    _ax.normalize();
-    p.dbL.position.copy(_pa);
-    p.dbR.position.copy(_pb);
-    p.dbL.quaternion.setFromUnitVectors(XAXIS, _ax);
-    p.dbR.quaternion.copy(p.dbL.quaternion);
-  }
-  function propSpan(root) {
-    const L = boneExact(root, 'lefthand'), R = boneExact(root, 'righthand');
-    const Lk = boneExact(root, 'lefthandmiddle1'), Rk = boneExact(root, 'righthandmiddle1');
-    if (!L || !R) return 0.3;
-    return palmLocal(root, L, Lk, new THREE.Vector3()).distanceTo(palmLocal(root, R, Rk, new THREE.Vector3()));
+    pinOne(p.root, p.dbL, p.handL, p.idxL, p.pinkL, p.midL);
+    pinOne(p.root, p.dbR, p.handR, p.idxR, p.pinkR, p.midR);
   }
   function attachProps(root) {
-    const span = propSpan(root);
-    const dbL = makeDumbbell(span), dbR = makeDumbbell(span);
+    const hLen = handMeasure(root);
+    const dbL = makeDumbbell(hLen), dbR = makeDumbbell(hLen);
     root.add(dbL); root.add(dbR);
     const p = {
-      root, dbL, dbR,
+      root, dbL, dbR, hLen,
       handL: boneExact(root, 'lefthand'), handR: boneExact(root, 'righthand'),
-      knucL: boneExact(root, 'lefthandmiddle1'), knucR: boneExact(root, 'righthandmiddle1'),
+      idxL: boneExact(root, 'lefthandindex1'), idxR: boneExact(root, 'righthandindex1'),
+      pinkL: boneExact(root, 'lefthandpinky1'), pinkR: boneExact(root, 'righthandpinky1'),
+      midL: boneExact(root, 'lefthandmiddle1'), midR: boneExact(root, 'righthandmiddle1'),
     };
     pinProps(p);
     return p;
@@ -432,10 +444,28 @@ async function loadModel() {
   const mid = pL.clone().add(pR).multiplyScalar(0.5);
   rootB.position.x -= mid.x; rootB.position.z -= mid.z;
   rootB.updateMatrixWorld(true);
-  const facing = toeL.getWorldPosition(new THREE.Vector3())
-    .sub(footBone.getWorldPosition(new THREE.Vector3()));
-  facing.y = 0; facing.normalize();
-  const sideDir = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), facing).normalize();
+  /* facing averaged over the whole gait: any single frame of a walk has the
+   * pelvis rotated and one foot mid-swing, which used to park the "side"
+   * camera behind the athlete. Averaging the toe vectors over one cycle gives
+   * the true travel direction, so the side view is a clean profile. */
+  const UP = new THREE.Vector3(0, 1, 0);
+  const toeR = boneByName(rootB, 'righttoebase');
+  const acc = new THREE.Vector3();
+  for (let i = 0; i < 12; i++) {
+    mixerB.setTime((i / 12) * carryClip.duration);
+    rootB.updateMatrixWorld(true);
+    for (const [ft, toe] of [[footBone, toeL], [footR, toeR]]) {
+      if (!ft || !toe) continue;
+      const d = toe.getWorldPosition(new THREE.Vector3())
+        .sub(ft.getWorldPosition(new THREE.Vector3()));
+      d.y = 0;
+      if (d.lengthSq() > 1e-8) acc.add(d.normalize());
+    }
+  }
+  mixerB.setTime(0);
+  rootB.updateMatrixWorld(true);
+  const facing = acc.lengthSq() > 1e-8 ? acc.normalize() : new THREE.Vector3(0, 0, 1);
+  const sideDir = new THREE.Vector3().crossVectors(UP, facing).normalize();
 
   const dist = 3.0;
   const target = new THREE.Vector3(0, 0.78, 0);
@@ -452,24 +482,27 @@ async function loadModel() {
   bigHost.appendChild(ui);
   const svg = ui.querySelector('.hero-lines');
   const calloutsBox = ui.querySelector('.hero-callouts');
+  /* Cue wording follows the standard dumbbell-carry coaching card: start at
+   * full extension, neutral spine + braced abs, chest up / shoulders back,
+   * quick smooth steps. */
   const CALLS = [
-    { tag: 'Grip', txt: 'Handle centred in the palm, fingers hooked, wrist stacked straight under the forearm.', bone: handBone },
-    { tag: 'Shoulders', txt: 'Pinned down and back — no shrug, no forward roll, even as the load pulls.', bone: chestBone },
-    { tag: 'Brace', txt: 'Tall spine, ribs stacked over the pelvis, stomach braced against the fold.', bone: ribBone },
-    { tag: 'Feet', txt: 'Short, quiet steps. Whole foot planted, no bounce, no lateral sway.', bone: footBone },
+    { tag: 'Start', txt: 'Deadlift the dumbbells to full hip and knee extension — handle centred in the palm.', bone: hipsBone },
+    { tag: 'Spine', txt: 'Maintain a neutral spine and contract the abdominals — ribs stacked over the pelvis.', bone: ribBone },
+    { tag: 'Chest', txt: 'Keep the chest up and the shoulders back — no shrug, no forward roll.', bone: chestBone },
+    { tag: 'Feet', txt: 'Take quick, smooth steps — whole foot planted, no bounce, no lateral sway.', bone: footBone },
   ];
   const POS = {
     wide: {
-      Grip:      { left: '2.5%', top: '-12%' },
-      Shoulders: { left: '2.5%', top: '34%' },
-      Brace:     { right: '2.5%', top: '-9%' },
-      Feet:      { right: '2.5%', top: '30%' },
+      Spine: { left: '2.5%', top: '-12%' },
+      Start: { left: '2.5%', top: '34%' },
+      Chest: { right: '2.5%', top: '-9%' },
+      Feet:  { right: '2.5%', top: '30%' },
     },
     narrow: {
-      Grip:      { left: '0%', top: '-17%' },
-      Shoulders: { right: '0%', top: '-7%' },
-      Brace:     { left: '0%', top: '14%' },
-      Feet:      { right: '0%', top: '18%' },
+      Spine: { left: '0%', top: '-17%' },
+      Start: { right: '0%', top: '-7%' },
+      Chest: { left: '0%', top: '14%' },
+      Feet:  { right: '0%', top: '18%' },
     },
   };
   const narrowMQ = window.matchMedia('(max-width: 620px)');
@@ -644,8 +677,10 @@ async function loadModel() {
     mixerS.clipAction(clipOf('carry') || model.clips[0]).play();
     mixerS.timeScale = 0.6;
     const h = 0.98 * 1.7;
-    const targetS = new THREE.Vector3(0, h * 0.5, 0);
-    small.camera.position.set(0.55, h * 0.8, h * 1.6);
+    /* the walk stands taller than the old idle and swings the legs wider, so
+     * the small stage sits a little further back and lower or the feet clip */
+    const targetS = new THREE.Vector3(0, h * 0.48, 0);
+    small.camera.position.set(0.62, h * 0.62, h * 1.95);
     small.camera.lookAt(targetS);
     small.controls = makeControls(smallCanvas, small.camera, targetS);
     small.mixer = mixerS;
