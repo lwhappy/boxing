@@ -81,6 +81,8 @@
   /* ---- muscle labels on the small stage: compact tag pills + leader lines ---- */
   .pu-mlabel { width: auto; padding: 4px 10px 5px; border-radius: 999px; }
   .pu-mlabel .tag { margin-bottom: 0; font-size: 9px; letter-spacing: .12em; }
+  /* the labels are tappable — same selection as the chips below */
+  .pu-mlabel { pointer-events: auto; cursor: pointer; }
   .pu-mlabel.dim { opacity: .22; }
   .pu-mlabel.focus {
     border-color: rgba(255, 122, 61, .85);
@@ -315,7 +317,7 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
     <div class="section-head">
       <div>
         <h2>Muscles the push-up works</h2>
-        <p>Tap any of these on the stage to see exactly where each one sits on the athlete.</p>
+        <p>Tap the muscle chips above — or the labels on the idle stage — to light each one up on the athlete.</p>
       </div>
     </div>
     <div class="pu-work">
@@ -392,6 +394,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Push-Up' }] }
   }
 }
 </script>
-<script type="module" src="../../assets/sport-stage.js?v=16"></script>
+<script type="module" src="../../assets/sport-stage.js?v=17"></script>
 </body>
 </html>

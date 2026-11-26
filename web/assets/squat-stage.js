@@ -648,22 +648,31 @@ async function loadModel() {
     }
   })();
 
-  /* ---------- muscle chips ---------- */
+  /* ---------- muscle chips (hero) + muscle labels (idle stage) ----------
+   * both drive the same selection: a chip tap toggles its group, a tap on
+   * one of the stage's own labels selects/toggles that muscle directly */
   const noteEl = document.getElementById('sq-muscle-note');
   const chips = [...document.querySelectorAll('.sq-muscle')];
-  chips.forEach((b) => b.addEventListener('click', () => {
-    const key = b.dataset.g || '';
-    const on = !b.classList.contains('active') && !!key;
-    chips.forEach((x) => x.classList.toggle('active', on && x === b));
-    setGroup(on ? key : '');
+  const applyMuscle = (key, btn) => {
+    chips.forEach((x) => x.classList.toggle('active', !!key && x === btn));
+    setGroup(key);
     mEls.forEach((el) => {
-      el.classList.toggle('focus', on && el.dataset.key === key);
-      el.classList.toggle('dim', on && el.dataset.key !== key);
+      el.classList.toggle('focus', !!key && el.dataset.key === key);
+      el.classList.toggle('dim', !!key && el.dataset.key !== key);
     });
     if (noteEl) {
-      noteEl.textContent = on ? MUSCLE_NOTES[key] : 'Tap a muscle to light it up on both stages.';
-      noteEl.classList.toggle('on', !!on);
+      noteEl.textContent = key ? MUSCLE_NOTES[key] : 'Tap a muscle to light it up on both stages.';
+      noteEl.classList.toggle('on', !!key);
     }
+  };
+  chips.forEach((b) => b.addEventListener('click', () => {
+    applyMuscle(b.classList.contains('active') ? '' : b.dataset.g, b);
+  }));
+  mEls.forEach((el) => el.addEventListener('click', () => {
+    const key = el.dataset.key;
+    if (!key) return;
+    applyMuscle(el.classList.contains('focus') ? '' : key,
+      chips.find((c) => c.dataset.g === key));
   }));
 
   /* ---------- QA handles ---------- */

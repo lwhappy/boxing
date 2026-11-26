@@ -143,6 +143,8 @@
   /* ---- muscle labels on the small stage: compact tag pills + leader lines ---- */
   .sq-mlabel { width: auto; padding: 4px 10px 5px; border-radius: 999px; }
   .sq-mlabel .tag { margin-bottom: 0; font-size: 9px; letter-spacing: .12em; }
+  /* the labels are tappable — same selection as the chips below */
+  .sq-mlabel { pointer-events: auto; cursor: pointer; }
   .sq-mlabel.dim { opacity: .22; }
   .sq-mlabel.focus {
     border-color: rgba(255, 122, 61, .85);
@@ -322,7 +324,7 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Air Squat' }]
     <div class="section-head">
       <div>
         <h2>Muscles the air squat works</h2>
-        <p>Tap any of these on the stage to see exactly where each one sits on the athlete.</p>
+        <p>Tap the muscle chips above — or the labels on the idle stage — to light each one up on the athlete.</p>
       </div>
     </div>
     <div class="sq-work">
@@ -399,6 +401,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Air Squat' }]
   }
 }
 </script>
-<script type="module" src="../../assets/squat-stage.js?v=6"></script>
+<script type="module" src="../../assets/squat-stage.js?v=7"></script>
 </body>
 </html>
