@@ -213,6 +213,22 @@ for name, path in CLIPS:
     ad_n.action = None
     ad_d.action = None
 
+    # the grab clip opens with the hands at waist height miming a HELD bar
+    # (a "putting the bar down" preamble). Cut it so the clip opens already
+    # mid-bend, reaching for the bar that lies on the floor.
+    if name == "grab-bar":
+        cut = 40
+        for fcu in fcurves(new_act):
+            for kp in fcu.keyframe_points:
+                kp.co.x -= cut
+                kp.handle_left.x -= cut
+                kp.handle_right.x -= cut
+            while fcu.keyframe_points and fcu.keyframe_points[0].co.x < 0:
+                fcu.keyframe_points.remove(fcu.keyframe_points[0])
+            fcu.update()
+        print(f"[sport] {name}: trimmed {cut} frames -> "
+              f"{tuple(round(x, 1) for x in new_act.frame_range)}")
+
     # drop the donor armature + meshes, keep only the baked action
     for o in list(bpy.data.objects):
         if o in objs_before or o is rig or o is mesh:

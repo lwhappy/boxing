@@ -21,7 +21,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-backsquat.glb?v=4', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-backsquat.glb?v=5', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -356,19 +356,22 @@ async function loadModel() {
   const actGrab = grabClip ? mixerB.clipAction(grabClip) : null;
   let phase = actGrab ? 'grab' : 'squat';
   let barMode = 'ground';          // 'ground' -> fixed floor pose, then 'hands'
-  let contactT = Infinity;         // grab-clip time at which the hands arrive
+  let contactT = Infinity;         // grab-clip time at which both hands arrive
   const startSquat = () => {
     if (phase === 'squat') return;
     phase = 'squat'; barMode = 'hands';
     actB.reset().play();
-    if (actGrab) actGrab.stop();
+    if (actGrab && actGrab.isRunning()) actB.crossFadeFrom(actGrab, 0.3, false);
+    else if (actGrab) actGrab.stop();
   };
   if (actGrab) {
     mixerB.addEventListener('finished', startSquat);
     actGrab.setLoop(THREE.LoopOnce, 1);
     actGrab.clampWhenFinished = true;
+    /* activate now so the floor-contact scan below can evaluate poses;
+     * it stays paused until the scan is done, then the intro begins */
     actGrab.reset().play();
-    actGrab.paused = true;         // held still during the contact scan below
+    actGrab.paused = true;
   } else {
     actB.play();
   }
@@ -495,14 +498,14 @@ async function loadModel() {
       const bbS = barBell.geometry.boundingBox.getSize(new THREE.Vector3());
       const perp = shaftAxis.x ? Math.min(bbS.y, bbS.z)
         : shaftAxis.y ? Math.min(bbS.x, bbS.z) : Math.min(bbS.x, bbS.y);
-      barRest.pos.y = perp / 2;
+      barRest.pos.y = (perp / 2) * rootB.scale.y;   // rest ON the floor (world units)
       barRest.axis = sideDir.clone();       // horizontal, across the athlete
       console.log('[sport] bar contact at', bestT.toFixed(2) + 's', 'of',
         grabClip.duration.toFixed(2) + 's');
     }
     updateBar();
   }
-  /* start the intro: the scan left the grab clip paused on its first frame */
+  /* scan done — rewind to the trimmed clip's opening and start the intro */
   if (actGrab) { actGrab.time = 0; actGrab.paused = false; }
   else barMode = 'hands';
 
