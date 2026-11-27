@@ -336,9 +336,12 @@ async function loadModel() {
     g.name = 'kb-bell';
     const iron = new THREE.MeshPhongMaterial({ color: 0x2e3238, shininess: 38, specular: new THREE.Color(0x585f68) });
     const steel = new THREE.MeshPhongMaterial({ color: 0x9aa1a8, shininess: 110, specular: new THREE.Color(0x767d86) });
-    const r = 0.072;                    // bell body radius
-    const barL = 0.17, barR = 0.016;
-    const postH = 0.052, postR = 0.014;
+    /* The start clip is authored empty-handed with the hands far apart
+     * (~0.20 local units). To let both hands grip a bell that stays parked on
+     * the body's midline, the handle has to be long enough to span them. */
+    const r = 0.085;                    // bell body radius (scaled with handle)
+    const barL = 0.40, barR = 0.018;   // long handle — covers the wide-set hands
+    const postH = 0.058, postR = 0.016;
     /* grip crossbar along local X */
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(barR, barR, barL, 18), steel);
     bar.rotation.z = Math.PI / 2;
@@ -394,7 +397,13 @@ async function loadModel() {
     _x.normalize();
     _z.crossVectors(_x, _y).normalize();
     _m.makeBasis(_x, _y, _z);
-    p.bell.position.copy(p.mid);
+    /* Park the bell on the body's midline (root-local x=0) and NEVER slide it
+     * sideways. The empty-handed Mixamo grip sits ~0.12 units to the right of
+     * the midline; the old code dragged the bell onto that offset as the hands
+     * closed -> a visible sideways jump at the grab and again at set-down.
+     * With a long handle both wide-set hands reach the centered bell, so the
+     * bell can stay put: only y (lift) and z (swing plane) may move. */
+    p.bell.position.set(0, p.mid.y, p.mid.z);
     p.bell.quaternion.setFromRotationMatrix(_m);
   }
   function attachProps(root) {
