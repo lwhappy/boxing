@@ -398,13 +398,11 @@ async function loadModel() {
     _x.normalize();
     _z.crossVectors(_x, _y).normalize();
     _m.makeBasis(_x, _y, _z);
-    /* Park the bell on the body's midline (root-local x=0) and NEVER slide it
-     * sideways. The empty-handed Mixamo grip sits ~0.12 units to the right of
-     * the midline; the old code dragged the bell onto that offset as the hands
-     * closed -> a visible sideways jump at the grab and again at set-down.
-     * With a long handle both wide-set hands reach the centered bell, so the
-     * bell can stay put: only y (lift) and z (swing plane) may move. */
-    p.bell.position.set(0, p.mid.y, p.mid.z);
+    /* The bell rides the palm midpoint so both hands always sit ON the
+     * handle. At the pickup frame the hands are already closed together and
+     * their midpoint is essentially the body midline (~0.02 local), so the
+     * bell still waits visually centered — but the grip looks natural. */
+    p.bell.position.copy(p.mid);
     p.bell.quaternion.setFromRotationMatrix(_m);
   }
   function attachProps(root) {
@@ -547,11 +545,11 @@ async function loadModel() {
         floorPos.copy(rests[slot].pos); floorQuat.copy(rests[slot].quat);
       }
     }
+    /* Floor rest = where the closed hands are at the grip frame. The Mixamo
+     * grip closes at x~0.02 (visually the body midline), so the bell waits
+     * centered AND the hands land right on the handle — no forced offset. */
     rests[slot].pos.copy(floorPos);
     rests[slot].quat.copy(floorQuat);
-    /* park the bell on the body midline (root-local x=0): the feet/hips sit
-     * there, and both hands close onto it there. */
-    rests[slot].pos.x = 0;
     act.time = 0;
     return bestT;
   }
