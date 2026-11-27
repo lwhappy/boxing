@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="../../assets/img/glove-512.png" />
+<title>Taekwondo vs Muay Thai Animated: Roundhouse Kick vs Knee Strike | SilentJab</title>
+<meta name="description" content="Animated demonstration: a taekwondo fighter lands two roundhouse kicks on a Muay Thai fighter, who closes the distance with a fast step-in and answers with a flying knee strike that ends the fight instantly. Watch the animated bout and learn why the knee is Muay Thai's close-range weapon." />
+<meta name="keywords" content="taekwondo vs muay thai, roundhouse kick vs knee, muay thai knee strike, flying knee, taekwondo roundhouse kick, animated martial arts demo, kicking arts comparison, which is better taekwondo or muay thai, knee strike knockout, martial arts animation" />
+<link rel="canonical" href="https://silentjab.com/training/taekwondo-vs-muay-thai/" />
+<meta property="og:url" content="https://silentjab.com/training/taekwondo-vs-muay-thai/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SilentJab" />
+<meta property="og:title" content="Taekwondo vs Muay Thai Animated: Roundhouse Kick vs Knee Strike" />
+<meta property="og:description" content="An animated bout between two kickers: taekwondo scores from long range with roundhouse kicks, Muay Thai closes in and finishes with a knee strike. Health bars track every point of damage." />
+<meta property="og:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:image" content="https://silentjab.com/assets/img/og-cover.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Taekwondo vs Muay Thai Animated: Roundhouse Kick vs Knee Strike | SilentJab",
+  "description": "An animated demonstration bout: the taekwondo fighter scores twice with roundhouse kicks, the Muay Thai fighter closes the distance and lands a knee strike knockout. Live health bars show the damage.",
+  "keywords": "taekwondo vs muay thai, roundhouse kick, knee strike, flying knee, animated martial arts demonstration, kicking styles comparison",
+  "inLanguage": "en",
+  "primaryImageOfPage": "https://silentjab.com/assets/img/glove.png",
+  "about": { "@type": "Thing", "name": "Taekwondo vs Muay Thai comparison" },
+  "isPartOf": { "@type": "WebSite", "name": "SilentJab", "url": "https://silentjab.com/" },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://silentjab.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Training", "item": "https://silentjab.com/training/" },
+      { "@type": "ListItem", "position": 3, "name": "Taekwondo vs Muay Thai", "item": "https://silentjab.com/training/taekwondo-vs-muay-thai/" }
+    ]
+  }
+}
+</script>
+<link rel="stylesheet" href="../../assets/home.css?v=11" />
+<link rel="stylesheet" href="../../assets/fight.css?v=9" />
+<script>
+window.PAGE = { section: 'training', depth: 2, breadcrumb: [{ label: 'Training', href: '../' }, { label: 'Taekwondo vs Muay Thai' }] };
+</script>
+<script src="../../assets/site-config.js"></script>
+<script src="../../assets/site-head.js"></script>
+<!-- Google AdSense -->
+<meta name="google-adsense-account" content="ca-pub-8470399807799168" />
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8470399807799168" crossorigin="anonymous"></script>
+<style>
+  /* ---- page-local: same fullscreen-arena + dock flow as boxing-vs-kickboxing,
+   *     plus per-fighter health bars over the heads ---- */
+  .tmt-stage{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;
+    max-width:none;aspect-ratio:auto;border:none;border-radius:0;
+    background:transparent;box-shadow:none;z-index:10}
+  .tmt-stage::before{display:none}
+  /* docked state: once the bout ends the canvas returns to the article flow
+   * above the text, so it no longer covers the page */
+  .tmt-stage.tmt-docked{position:relative;inset:auto;width:100%;height:auto;
+    max-width:480px;aspect-ratio:16/7;z-index:auto;margin:0 auto}
+  .tmt-stage canvas{pointer-events:none}
+  .tmt-stage .fight-orbit-hint{display:none}
+  .tmt-replay{display:none}
+  .tmt-stage.tmt-docked .tmt-replay{
+    display:inline-flex;align-items:center;gap:6px;
+    position:absolute;right:10px;bottom:10px;z-index:6;
+    appearance:none;cursor:pointer;font:inherit;
+    font-size:12px;font-weight:700;letter-spacing:.04em;color:#fff;
+    padding:6px 13px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.28);
+    background:rgba(16,19,25,.55);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    transition:background .15s ease,border-color .15s ease}
+  .tmt-stage.tmt-docked .tmt-replay:hover{background:rgba(16,19,25,.75);border-color:rgba(255,90,106,.7)}
+
+  /* fighter label + health bar, tracked to the head bone every frame */
+  .fighter-hp{position:absolute;transform:translate(-50%,-100%);
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    pointer-events:none;z-index:4}
+  .hp-name{padding:3px 10px;border-radius:999px;
+    font-size:12px;font-weight:700;letter-spacing:.08em;white-space:nowrap;
+    color:#fff;box-shadow:0 2px 10px rgba(20,30,45,.18)}
+  .fighter-hp.muay .hp-name{background:#1d4ed8}
+  .fighter-hp.tkd .hp-name{background:#c2410c}
+  .hp-track{position:relative;width:74px;height:10px;border-radius:999px;
+    background:rgba(16,19,25,.35);overflow:hidden;
+    border:1px solid rgba(255,255,255,.55)}
+  .hp-track .fill{position:absolute;inset:0;width:100%;
+    border-radius:999px;transition:width .3s ease}
+  .fighter-hp.muay .fill{background:linear-gradient(180deg,#60a5fa,#1d4ed8)}
+  .fighter-hp.tkd .fill{background:linear-gradient(180deg,#fb923c,#c2410c)}
+  .hp-track .pct{position:absolute;inset:0;display:grid;place-items:center;
+    font-size:8px;font-weight:800;letter-spacing:.04em;color:#fff;
+    text-shadow:0 1px 2px rgba(16,19,25,.75)}
+  .fighter-hp.flash .hp-track{box-shadow:0 0 14px rgba(226,59,59,.85)}
+
+  .ko-slam{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
+    opacity:0;transition:opacity .4s ease}
+  .ko-slam.on{opacity:1}
+  .ko-slam span{font-size:clamp(90px,24vw,220px);font-weight:900;letter-spacing:.06em;color:#e23b3b;
+    text-shadow:0 6px 0 rgba(120,20,20,.25),0 12px 40px rgba(226,59,59,.35);
+    animation:ko-pop .45s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes ko-pop{from{transform:scale(2.6);opacity:0}to{transform:scale(1);opacity:1}}
+</style>
+<link rel="stylesheet" href="../../assets/base.css?v=2" />
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="../../index.html" aria-label="SilentJab home">
+      <span class="logo-mark" aria-hidden="true">
+        <img src="../../assets/img/glove.png" srcset="../../assets/img/glove.png 1x, ../../assets/img/glove@2x.png 2x, ../../assets/img/glove@3x.png 3x" alt="" width="30" height="20">
+      </span>
+      <span class="logo-text">SilentJab</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="../../moves/" data-section="moves">Moves</a>
+      <a href="../../combos/" data-section="combos">Combos</a>
+      <a href="../" data-section="training">Training</a>
+      <a href="../../sport/" data-section="sport">Sport</a>
+      <a href="../../fight/" data-section="fight">Fight</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="wrap">
+    <ol>
+      <li><a href="../../index.html">Home</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><a href="../">Training</a></li>
+      <li class="sep" aria-hidden="true">/</li>
+      <li><span aria-current="page">Taekwondo vs Muay Thai</span></li>
+    </ol>
+  </div>
+</nav>
+<script src="../../assets/site-nav.js"></script>
+
+<main class="fight-main">
+  <p class="fight-message" id="fight-message" hidden></p>
+
+  <div class="fight-stage tmt-stage" aria-label="Taekwondo versus Muay Thai animated bout">
+    <canvas id="tmt-canvas"></canvas>
+
+    <div class="fighter-hp muay" id="hp-muay">
+      <div class="hp-name">MUAY THAI</div>
+      <div class="hp-track"><i class="fill"></i><b class="pct">100%</b></div>
+    </div>
+    <div class="fighter-hp tkd" id="hp-tkd">
+      <div class="hp-name">TAEKWONDO</div>
+      <div class="hp-track"><i class="fill"></i><b class="pct">100%</b></div>
+    </div>
+    <div class="ko-slam" id="ko" aria-hidden="true"><span>KO</span></div>
+
+    <div class="fight-orbit-hint" aria-hidden="true">Drag to rotate · Scroll to zoom</div>
+    <button type="button" class="tmt-replay" id="tmt-replay" hidden>↻ Replay</button>
+
+    <div class="fight-loading" id="tmt-loading">
+      <div class="ring"></div>
+      <span id="tmt-loading-text">Loading the fighters…</span>
+    </div>
+    <div class="fight-error" id="tmt-error" hidden></div>
+  </div>
+
+  <!-- ============ SEO / reader copy ============ -->
+  <section class="fight-note">
+    <h1>Taekwondo vs Muay Thai — Roundhouse Kick vs Knee Strike (Animated)</h1>
+    <p>
+      Taekwondo and Muay Thai are both kicking arts, but they win at completely
+      different distances. The <strong>animated demonstration</strong> above
+      shows the whole story with live health bars: the taekwondo fighter opens
+      from long range and lands two full-contact <strong>roundhouse
+      kicks</strong> that drop the Muay Thai fighter to 20% health — and then
+      the Muay Thai fighter closes the distance with one explosive step and
+      finishes the bout with a <strong>knee strike</strong> that takes the
+      taekwondo fighter from 100% to zero.
+    </p>
+
+    <h2>Taekwondo rules at long range</h2>
+    <p>
+      A taekwondo roundhouse kick travels faster and further than any punch —
+      the striking foot can exceed 1,000 N of peak force and arrives from more
+      than a metre outside punching range. In the animated bout above, the
+      taekwondo fighter scores twice with it: the first roundhouse snaps the
+      Muay Thai fighter's health bar from 100% to <strong>60%</strong>, and the
+      second one — thrown before he can reset — cuts it again to
+      <strong>20%</strong>. That is the taekwondo game plan: stay long, chamber
+      fast, and score with kicks before the opponent can ever reach you with a
+      hand or a knee.
+    </p>
+
+    <h2>Muay Thai rules at knee range</h2>
+    <p>
+      Muay Thai is called "the art of eight limbs" for a reason — and the
+      knee is its shortest, heaviest weapon. Once the distance closes, the
+      geometry flips: a roundhouse kick needs room to arc, but a knee strike
+      only needs a single step. In the animated demonstration, the Muay Thai
+      fighter eats both kicks, then <strong>dashes forward with a long step</strong>
+      straight into taekwondo's blind zone and drives a <strong>knee
+      strike</strong> up through the middle. The taekwondo fighter's health
+      bar drops from 100% to <strong>0%</strong> on the spot and he collapses —
+      a knockout with the shortest strike in the fight.
+    </p>
+
+    <h2>What the animated bout teaches</h2>
+    <ul>
+      <li><strong>Taekwondo's plan:</strong> stay at kicking range, chamber and
+        fire roundhouse kicks faster than the opponent can close, reset after
+        every score.</li>
+      <li><strong>Muay Thai's plan:</strong> walk through the range phase,
+        then close with one committed step — inside kicking range the roundhouse
+        dies and the knee owns the fight.</li>
+      <li><strong>The deciding factor:</strong> distance control. The health
+        bars in the animation show it plainly — taekwondo wins the scoring race
+        from far away, Muay Thai wins the fight up close.</li>
+    </ul>
+
+    <p>
+      Want to train the tools from both corners? Throw the roundhouse kick the
+      taekwondo fighter opens with on the
+      <a href="../simulator/">heavy-bag simulator lab</a> — it includes
+      roundhouse and flying kicks you can fire yourself — then study how a
+      committed step turns into a finishing strike: the same explosive hip
+      extension powers a fight-ending knee. For the conditioning behind that
+      step-in dash, the <a href="../../sport/air-squat/">air squat</a> and
+      <a href="../../sport/plank/">plank</a> pages cover the leg and trunk
+      strength that keep the dash explosive late into a round.
+    </p>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 SilentJab — boxing simulator &amp; technique reference for striking sports.</span>
+  <span><a href="../../index.html">Home</a> · <a href="../../moves/">Moves</a> · <a href="../../combos/">Combos</a> · <a href="../">Training</a> · <a href="../../guides/">Guides</a> · <a href="../../contact/">Contact</a> · <a href="../../about/">About</a> · <a href="../../privacy/">Privacy</a> · <a href="../../terms/">Terms</a></span>
+</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../vendor/three/three.module.min.js",
+    "three/addons/": "../../vendor/three/addons/"
+  }
+}
+</script>
+<script type="module" src="./app.js?v=1"></script>
+</body>
+</html>
