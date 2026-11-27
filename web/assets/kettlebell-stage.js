@@ -24,7 +24,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-kettlebell.glb?v=1', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-kettlebell.glb?v=2', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -317,6 +317,7 @@ async function loadModel() {
   const clipOf = (frag) => model.clips.find((c) => c.name.toLowerCase().includes(frag));
   const startClip = clipOf('start');
   const swingClip = clipOf('swing') || model.clips[0];
+  const grabClip = clipOf('grab');
 
   /* ---- the kettlebell: built in three.js and pinned between the palms every
    *      frame. Local X rides the hand-to-hand line, local -Y is steered to
@@ -401,7 +402,13 @@ async function loadModel() {
     return p;
   }
 
-  /* ---- big stage: the swing + callouts + views ---- */
+  /* ---- big stage: the pickup intro + swing + callouts + views ----
+   * Choreography (the barbell lesson, applied): the bell starts ON THE
+   * FLOOR; the grab clip plays once (bend down, take hold, stand up), then
+   * the kb-start intro (hinge -> hike -> first swing) and finally the
+   * looping kb-swing cycle. The bell rests at a fixed floor pose until the
+   * hands reach it, then rides the palms — the rest pose is captured with
+   * the EXACT construction hands mode uses, so the switch cannot flash. */
   const bigCanvas = document.getElementById('kb-canvas-big');
   const big = makeRenderer(bigCanvas, bigHost, { hRef: 16 / 9 });
   const rootB = model.proto;
@@ -410,16 +417,40 @@ async function loadModel() {
 
   const mixerB = new THREE.AnimationMixer(rootB);
   const actSwing = mixerB.clipAction(swingClip);
-  let phase = 'intro';
   const actStart = startClip ? mixerB.clipAction(startClip) : null;
-  const startSwing = () => {
-    if (phase !== 'intro') return;
-    phase = 'swing';
+  const actGrab = grabClip ? mixerB.clipAction(grabClip) : null;
+  let phase = actGrab ? 'grab' : (actStart ? 'start' : 'swing');
+  let bellMode = actGrab ? 'ground' : 'hands';  // 'ground' -> floor rest, then 'hands'
+  let contactT = Infinity;                      // grab-clip time the palms arrive
+  const startKb = () => {   // floor pickup done -> kb-start intro
+    if (phase !== 'grab') return;
+    phase = 'start'; bellMode = 'hands';
+    actStart.reset().play();
+    if (actGrab && actGrab.isRunning()) actStart.crossFadeFrom(actGrab, 0.3, false);
+    else if (actGrab) actGrab.stop();
+  };
+  const startSwing = () => {  // kb-start done -> the looping swing
+    if (phase === 'swing') return;
+    phase = 'swing'; bellMode = 'hands';
     actSwing.reset().play();
     if (actStart && actStart.isRunning()) actSwing.crossFadeFrom(actStart, 0.3, false);
     else if (actStart) actStart.stop();
+    if (actGrab && actGrab.isRunning()) actGrab.stop();
   };
-  if (actStart) {
+  if (actGrab) {
+    mixerB.addEventListener('finished', startKb);
+    actGrab.setLoop(THREE.LoopOnce, 1);
+    actGrab.clampWhenFinished = true;
+    /* activate now so the floor-contact scan below can evaluate poses;
+     * it stays paused until the scan is done, then the intro begins */
+    actGrab.reset().play();
+    actGrab.paused = true;
+    if (actStart) {
+      mixerB.addEventListener('finished', startSwing);
+      actStart.setLoop(THREE.LoopOnce, 1);
+      actStart.clampWhenFinished = true;
+    }
+  } else if (actStart) {
     mixerB.addEventListener('finished', startSwing);
     actStart.setLoop(THREE.LoopOnce, 1);
     actStart.clampWhenFinished = true;
@@ -432,6 +463,50 @@ async function loadModel() {
   rootB.updateMatrixWorld(true);
 
   const propsB = attachProps(rootB);
+
+  /* ---- bell floor rest + ground->hands switch (root-local capture) ---- */
+  const bellRest = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  function captureRest(p) {
+    pinKb(p);
+    bellRest.pos.copy(p.bell.position);
+    bellRest.quat.copy(p.bell.quaternion);
+  }
+  function updateBell(p) {
+    if (phase === 'grab' && bellMode === 'ground' && actGrab && actGrab.time >= contactT) {
+      bellMode = 'hands';
+    }
+    if (bellMode === 'ground') {
+      p.bell.position.copy(bellRest.pos);
+      p.bell.quaternion.copy(bellRest.quat);
+      return;
+    }
+    pinKb(p);
+  }
+  if (actGrab) {
+    /* scan the grab clip for the lowest palm midpoint (= bell on the floor),
+     * freeze the rest pose there, then rewind and let the intro play */
+    let bestT = 0, bestY = Infinity;
+    const n = 120;
+    for (let i = 0; i <= n; i++) {
+      actGrab.time = (i / n) * grabClip.duration;
+      mixerB.update(0);
+      captureRest(propsB);
+      if (bellRest.pos.y < bestY) { bestY = bellRest.pos.y; bestT = actGrab.time; }
+    }
+    contactT = bestT;
+    actGrab.time = bestT;
+    mixerB.update(0);
+    captureRest(propsB);       // final capture at the contact frame itself
+    console.log('[sport] bell contact at', bestT.toFixed(2) + 's', 'of',
+      grabClip.duration.toFixed(2) + 's');
+    /* IMPORTANT: rewind BEFORE the first updateBell — the scan left
+     * actGrab.time at contactT, which would trip the ground->hands flip
+     * and pin the bell to the palms from frame one */
+    bellMode = 'ground';
+    actGrab.time = 0;
+    actGrab.paused = false;
+    updateBell(propsB);
+  }
 
   const hipsBone = boneByName(rootB, 'hips');
   const footBone = boneByName(rootB, 'leftfoot');
@@ -695,7 +770,7 @@ async function loadModel() {
     if (vis.big) {
       viewTw.tick(dt);
       mixerB.update(dt);
-      pinKb(propsB);
+      updateBell(propsB);
       controlsB.update();
       big.renderer.render(big.scene, big.camera);
       updateCallouts();
@@ -754,13 +829,15 @@ async function loadModel() {
   window.__kb = {
     setGroup,
     phase: () => phase,
+    bellMode: () => bellMode,
     bellFit,
     seekBig: (t) => {
       startSwing();
       actSwing.time = ((t % swingClip.duration) + swingClip.duration) % swingClip.duration;
-      mixerB.update(0); pinKb(propsB);
+      mixerB.update(0); updateBell(propsB);
     },
-    big: { mixer: mixerB, act: actSwing, actStart, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
+    big: { mixer: mixerB, act: actSwing, actStart, actGrab, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
+    updateBell: () => updateBell(propsB),
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
     props: propsB,

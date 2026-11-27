@@ -36,6 +36,9 @@ from mathutils import Matrix, Vector
 
 RIG = "/Users/justrun/project/boxing-game/sport/rig/man.fbx"
 CLIPS = [
+    # bend down + take hold + stand up — the floor pickup that opens the page
+    # (bell starts ON THE FLOOR; rides the palms once both hands arrive)
+    ("grab-bar", "/Users/justrun/project/boxing-game/sport/rig/Back Squat grabbar.fbx"),
     ("kb-start", "/Users/justrun/project/boxing-game/sport/rig/kettlebell swing/Kettlebell Swing start.fbx"),
     ("kb-swing", "/Users/justrun/project/boxing-game/sport/rig/kettlebell swing/Kettlebell Swing.fbx"),
 ]
@@ -291,7 +294,7 @@ for name, path in CLIPS:
 
 
 for a in list(bpy.data.actions):
-    if a.name not in {"kb-start", "kb-swing"}:
+    if a.name not in {"grab-bar", "kb-start", "kb-swing"}:
         bpy.data.actions.remove(a)
 for track in list(ad.nla_tracks):
     if track.strips and track.strips[0].action is None:

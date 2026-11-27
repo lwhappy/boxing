@@ -22,7 +22,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-const GLB = new URL('../media/glb/sport-farmercarry.glb?v=3', import.meta.url).href;
+const GLB = new URL('../media/glb/sport-farmercarry.glb?v=4', import.meta.url).href;
 
 /* ---------- muscle groups (attribute slot order matters: A0..A3, B0..B1) --- */
 const GROUPS = [
@@ -415,21 +415,103 @@ async function loadModel() {
     return p;
   }
 
-  /* ---- big stage: the carry walk + callouts + views ---- */
+  /* ---- big stage: the grab intro + carry walk + callouts + views ----
+   * Choreography (the barbell lesson, applied): both bells start ON THE
+   * FLOOR; the grab clip plays once (bend down, take hold, stand up), then
+   * the carry takes over and loops. Each bell rests at a fixed floor pose
+   * built EXACTLY like the hands pose at the contact frame, so the
+   * ground->hands switch is pixel-identical — no flash, no roll. */
   const bigCanvas = document.getElementById('fc-canvas-big');
   const big = makeRenderer(bigCanvas, bigHost, { hRef: 16 / 9 });
   const rootB = model.proto;
   big.scene.add(rootB);
   rootB.scale.setScalar(1.7);
 
+  const grabClip = clipOf('grab');
   const mixerB = new THREE.AnimationMixer(rootB);
   const actB = mixerB.clipAction(carryClip);
-  actB.play();
-  actB.time = 0;
+  const actGrab = grabClip ? mixerB.clipAction(grabClip) : null;
+  let phase = actGrab ? 'grab' : 'carry';
+  let dbMode = actGrab ? 'ground' : 'hands';   // 'ground' -> floor rest, then 'hands'
+  let contactT = Infinity;                     // grab-clip time both palms arrive
+  const startCarry = () => {
+    if (phase === 'carry') return;
+    phase = 'carry'; dbMode = 'hands';
+    actB.reset().play();
+    if (actGrab && actGrab.isRunning()) actB.crossFadeFrom(actGrab, 0.3, false);
+    else if (actGrab) actGrab.stop();
+  };
+  if (actGrab) {
+    mixerB.addEventListener('finished', startCarry);
+    actGrab.setLoop(THREE.LoopOnce, 1);
+    actGrab.clampWhenFinished = true;
+    /* activate now so the floor-contact scan below can evaluate poses;
+     * it stays paused until the scan is done, then the intro begins */
+    actGrab.reset().play();
+    actGrab.paused = true;
+  } else {
+    actB.play();
+    actB.time = 0;
+  }
   mixerB.update(0);
   rootB.updateMatrixWorld(true);
 
   const propsB = attachProps(rootB);
+
+  /* ---- bells floor rest + ground->hands switch ----
+   * rests are captured in ROOT-LOCAL space by pinning the bells with the
+   * contact-frame pose — the exact same construction hands mode uses — then
+   * frozen. The switch therefore cannot flash: identical position, identical
+   * quaternion, to the last bit. */
+  const restL = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  const restR = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  function captureRest(p) {
+    p.root.updateMatrixWorld(true);
+    pinOne(p.root, p.dbL, p.handL, p.idxL, p.pinkL, p.midL);
+    pinOne(p.root, p.dbR, p.handR, p.idxR, p.pinkR, p.midR);
+    restL.pos.copy(p.dbL.position); restL.quat.copy(p.dbL.quaternion);
+    restR.pos.copy(p.dbR.position); restR.quat.copy(p.dbR.quaternion);
+  }
+  function updateProps(p) {
+    if (!p.root) return;
+    p.root.updateMatrixWorld(true);
+    if (phase === 'grab' && dbMode === 'ground' && actGrab && actGrab.time >= contactT) {
+      dbMode = 'hands';
+    }
+    if (dbMode === 'ground') {
+      p.dbL.position.copy(restL.pos); p.dbL.quaternion.copy(restL.quat);
+      p.dbR.position.copy(restR.pos); p.dbR.quaternion.copy(restR.quat);
+      return;
+    }
+    pinOne(p.root, p.dbL, p.handL, p.idxL, p.pinkL, p.midL);
+    pinOne(p.root, p.dbR, p.handR, p.idxR, p.pinkR, p.midR);
+  }
+  if (actGrab) {
+    /* scan the grab clip for the lowest PALM MIDPOINT (= bells on the floor),
+     * freeze the rest poses there, then rewind and let the intro play */
+    let bestT = 0, bestY = Infinity;
+    const n = 120;
+    for (let i = 0; i <= n; i++) {
+      actGrab.time = (i / n) * grabClip.duration;
+      mixerB.update(0);
+      captureRest(propsB);
+      const y = (restL.pos.y + restR.pos.y) * 0.5;
+      if (y < bestY) { bestY = y; bestT = actGrab.time; }
+    }
+    contactT = bestT;
+    actGrab.time = bestT;
+    mixerB.update(0);
+    captureRest(propsB);       // final capture at the contact frame itself
+    console.log('[sport] bells contact at', bestT.toFixed(2) + 's', 'of',
+      grabClip.duration.toFixed(2) + 's');
+    /* IMPORTANT: rewind BEFORE the first updateProps — the scan left
+     * actGrab.time at contactT, which would trip the ground->hands flip
+     * and pin the bells to the palms from frame one */
+    dbMode = 'ground';
+    actGrab.time = 0;
+    actGrab.paused = false;
+    updateProps(propsB);
+  }
 
   const hipsBone = boneByName(rootB, 'hips');
   const footBone = boneByName(rootB, 'leftfoot');
@@ -584,6 +666,7 @@ async function loadModel() {
   bigHost.appendChild(bar);
   const setSpeed = (v) => {
     actB.timeScale = v;
+    if (actGrab) actGrab.timeScale = v;
     if (small) small.mixer.timeScale = 0.6 * v;
   };
   bar.addEventListener('click', (e) => {
@@ -717,7 +800,7 @@ async function loadModel() {
     if (vis.big) {
       viewTw.tick(dt);
       mixerB.update(dt);
-      pinProps(propsB);
+      updateProps(propsB);
       controlsB.update();
       big.renderer.render(big.scene, big.camera);
       updateCallouts();
@@ -756,8 +839,11 @@ async function loadModel() {
 
   window.__fc = {
     setGroup,
-    seekBig: (t) => { actB.time = ((t % carryClip.duration) + carryClip.duration) % carryClip.duration; mixerB.update(0); pinProps(propsB); },
-    big: { mixer: mixerB, act: actB, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
+    phase: () => phase,
+    dbMode: () => dbMode,
+    seekBig: (t) => { startCarry(); actB.time = ((t % carryClip.duration) + carryClip.duration) % carryClip.duration; mixerB.update(0); updateProps(propsB); },
+    big: { mixer: mixerB, act: actB, actGrab, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
+    updateProps: () => updateProps(propsB),
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
     props: propsB,
