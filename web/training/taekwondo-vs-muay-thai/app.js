@@ -596,6 +596,7 @@ function updateBout(dt = 0) {
 
   if (t >= END_T) {
     done = true;
+    resetHp(); // docked stage shows both fighters fresh at 100%
     stageEl.classList.add('tmt-docked');
     replayBtn.hidden = false;
   }
