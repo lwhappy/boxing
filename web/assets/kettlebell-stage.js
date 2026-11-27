@@ -336,12 +336,13 @@ async function loadModel() {
     g.name = 'kb-bell';
     const iron = new THREE.MeshPhongMaterial({ color: 0x2e3238, shininess: 38, specular: new THREE.Color(0x585f68) });
     const steel = new THREE.MeshPhongMaterial({ color: 0x9aa1a8, shininess: 110, specular: new THREE.Color(0x767d86) });
-    /* The start clip is authored empty-handed with the hands far apart
-     * (~0.20 local units). To let both hands grip a bell that stays parked on
-     * the body's midline, the handle has to be long enough to span them. */
-    const r = 0.085;                    // bell body radius (scaled with handle)
-    const barL = 0.40, barR = 0.018;   // long handle — covers the wide-set hands
-    const postH = 0.058, postR = 0.016;
+    /* Normal kettlebell proportions: the body is a bit wider than a hand,
+     * the handle a little wider than a grip. The bell stays on the midline
+     * and the hands come to IT (the Mixamo grip closes to ~0.09 local), so
+     * no oversized handle is needed. */
+    const r = 0.078;                    // bell body radius
+    const barL = 0.15, barR = 0.016;   // normal handle length
+    const postH = 0.052, postR = 0.014;
     /* grip crossbar along local X */
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(barR, barR, barL, 18), steel);
     bar.rotation.z = Math.PI / 2;
@@ -503,95 +504,58 @@ async function loadModel() {
       bellMode = 'ground';
     }
     if (bellMode === 'ground') {
+      /* The bell is nailed to the floor — no lateral, no fore-aft, no lift —
+       * until the moment both hands reach it (contact) and bellMode flips to
+       * 'hands'. Before that it never moves at all. */
       const r = rests[(phase === 'end' || phase === 'rest') ? 'end' : 'start'];
-      if (phase === 'start' && actStart) {
-        /* lift-off blend: over the last LIFT_LEAD seconds before the grab,
-         * ease the bell from its floor rest up onto the descending palms.
-         * The clip's landing frame sits ~4cm above the true floor (the hands
-         * look planted before they bottom out); a hard switch would pop the
-         * bell up. Blending keeps it glued to the floor until the hands are
-         * right on the handle, then rides them up — no pop, no float. */
-        const LIFT_LEAD = 0.18;
-        const t0 = contact.start - LIFT_LEAD;
-        if (actStart.time >= t0) {
-          p.root.updateMatrixWorld(true);
-          pinKb(p);                      // held pose for this frame -> p.bell
-          const heldPos = p.bell.position.clone();
-          const heldQuat = p.bell.quaternion.clone();
-          const k = THREE.MathUtils.smoothstep(
-            (actStart.time - t0) / LIFT_LEAD, 0, 1);
-          p.bell.position.lerpVectors(r.pos, heldPos, k);
-          p.bell.quaternion.copy(r.quat).slerp(heldQuat, k);
-          return;
-        }
-      }
       p.bell.position.copy(r.pos);
       p.bell.quaternion.copy(r.quat);
       return;
     }
     pinKb(p);
   }
-  /* scan a clip for its lowest palm midpoint (= bell on the floor), freeze
-   * that clip's rest pose there, and return the contact time. NOTE: the
-   * action must be ACTIVATED (play + paused) or the mixer evaluates nothing
-   * and the scan silently returns 0.
-   * `lead` (root-local units): for the pickup clip, snap the contact to the
-   * FIRST frame where the hands have "landed" (within lead of the lowest
-   * height) instead of the absolute bottom. The Mixamo start is authored
-   * empty-handed — its hands look planted ~0.4s before they reach the floor.
-   * Grab at the landing frame so the handle meets the hands the moment they
-   * drop, instead of leaving a visible reach gap. The bell's HEIGHT stays at
-   * the true floor level (lowest point) so it never floats; only its x/z
-   * slide to the landing spot. */
-  function scanContact(act, clip, slot, lead = 0) {
+  /* Find the frame where the hands are both LOW and CLOSED together — the
+   * natural two-handed grip on a kettlebell. The bell's floor rest is captured
+   * there (via pinKb, the same construction hands mode uses), then snapped to
+   * the body midline (x=0). From then on the bell is nailed to that spot until
+   * the clip reaches this contact frame; only then does it ride the hands.
+   * NOTE: the action must be ACTIVATED (play + paused) or the mixer evaluates
+   * nothing and the scan silently returns 0. */
+  function scanContact(act, clip, slot) {
     act.reset().play();
     act.paused = true;
-    let bestT = 0, bestY = Infinity;
+    const _pr = new THREE.Vector3(), _pl = new THREE.Vector3();
+    let bestT = 0, bestScore = -Infinity;
     const floorPos = new THREE.Vector3(), floorQuat = new THREE.Quaternion();
-    const n = 120;
+    const n = 160;
     for (let i = 0; i <= n; i++) {
       act.time = (i / n) * clip.duration;
       mixerB.update(0);
-      captureRest(propsB, slot);
-      if (rests[slot].pos.y < bestY) {
-        bestY = rests[slot].pos.y; bestT = act.time;
+      propsB.root.updateMatrixWorld(true);
+      /* palm points in root-local */
+      palmLocal(propsB.root, propsB.handR, propsB.knucR, _pr);
+      palmLocal(propsB.root, propsB.handL, propsB.knucL, _pl);
+      const gap = _pr.distanceTo(_pl);
+      const midY = (_pr.y + _pl.y) * 0.5;
+      /* prefer LOW hands (near the floor) AND closed gap (both hands grip):
+       * score = -gap - 2*midY. For start, the minimum-hand frame at t=2.2
+       * (gap~0.114) is low; for end the closing frame is picked the same way. */
+      const score = -gap - 2 * midY;
+      if (score > bestScore) {
+        bestScore = score; bestT = act.time;
+        captureRest(propsB, slot);
         floorPos.copy(rests[slot].pos); floorQuat.copy(rests[slot].quat);
       }
     }
-    if (lead > 0) {
-      /* first frame where the hands look "planted" (within lead of the floor)
-       * becomes the grab time; keep the TRUE floor height so the bell never
-       * floats, but take that frame's x/z so the handle meets the hands. */
-      let landT = bestT;
-      for (let i = 0; i <= n; i++) {
-        act.time = (i / n) * clip.duration;
-        mixerB.update(0);
-        pinKb(propsB);
-        if (propsB.bell.position.y <= bestY + lead) { landT = act.time; break; }
-      }
-      bestT = landT;
-      act.time = landT;
-      mixerB.update(0);
-      pinKb(propsB);
-      rests[slot].pos.copy(propsB.bell.position);
-      rests[slot].pos.y = floorPos.y;       // true floor height
-      rests[slot].quat.copy(floorQuat);     // floor orientation (not mid-air tilt)
-    } else {
-      rests[slot].pos.copy(floorPos);
-      rests[slot].quat.copy(floorQuat);
-      act.time = bestT;
-      mixerB.update(0);
-    }
-    /* Center the floor bell on the body's midline. The Mixamo start pose is
-     * asymmetric (the left hand reaches far to one side), so the palm midpoint
-     * sat ~12cm off-center — the bell looked parked beside the lifter. The
-     * feet/hips sit at root-local x=0, so snap the floor x there. The lift-off
-     * blend still carries it from this centered spot onto the hands. */
+    rests[slot].pos.copy(floorPos);
+    rests[slot].quat.copy(floorQuat);
+    /* park the bell on the body midline (root-local x=0): the feet/hips sit
+     * there, and both hands close onto it there. */
     rests[slot].pos.x = 0;
     act.time = 0;
     return bestT;
   }
-  if (actStart) contact.start = scanContact(actStart, startClip, 'start', 0.03);
+  if (actStart) contact.start = scanContact(actStart, startClip, 'start');
   if (actEnd) {
     actStart.stop();                   // a paused-but-active action would blend its pose in
     contact.end = scanContact(actEnd, endClip, 'end');
