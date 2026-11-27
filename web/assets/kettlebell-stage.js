@@ -487,6 +487,27 @@ async function loadModel() {
     }
     if (bellMode === 'ground') {
       const r = rests[(phase === 'end' || phase === 'rest') ? 'end' : 'start'];
+      if (phase === 'start' && actStart) {
+        /* lift-off blend: over the last LIFT_LEAD seconds before the grab,
+         * ease the bell from its floor rest up onto the descending palms.
+         * The clip's landing frame sits ~4cm above the true floor (the hands
+         * look planted before they bottom out); a hard switch would pop the
+         * bell up. Blending keeps it glued to the floor until the hands are
+         * right on the handle, then rides them up — no pop, no float. */
+        const LIFT_LEAD = 0.18;
+        const t0 = contact.start - LIFT_LEAD;
+        if (actStart.time >= t0) {
+          p.root.updateMatrixWorld(true);
+          pinKb(p);                      // held pose for this frame -> p.bell
+          const heldPos = p.bell.position.clone();
+          const heldQuat = p.bell.quaternion.clone();
+          const k = THREE.MathUtils.smoothstep(
+            (actStart.time - t0) / LIFT_LEAD, 0, 1);
+          p.bell.position.lerpVectors(r.pos, heldPos, k);
+          p.bell.quaternion.copy(r.quat).slerp(heldQuat, k);
+          return;
+        }
+      }
       p.bell.position.copy(r.pos);
       p.bell.quaternion.copy(r.quat);
       return;
@@ -496,25 +517,58 @@ async function loadModel() {
   /* scan a clip for its lowest palm midpoint (= bell on the floor), freeze
    * that clip's rest pose there, and return the contact time. NOTE: the
    * action must be ACTIVATED (play + paused) or the mixer evaluates nothing
-   * and the scan silently returns 0. */
-  function scanContact(act, clip, slot) {
+   * and the scan silently returns 0.
+   * `lead` (root-local units): for the pickup clip, snap the contact to the
+   * FIRST frame where the hands have "landed" (within lead of the lowest
+   * height) instead of the absolute bottom. The Mixamo start is authored
+   * empty-handed — its hands look planted ~0.4s before they reach the floor.
+   * Grab at the landing frame so the handle meets the hands the moment they
+   * drop, instead of leaving a visible reach gap. The bell's HEIGHT stays at
+   * the true floor level (lowest point) so it never floats; only its x/z
+   * slide to the landing spot. */
+  function scanContact(act, clip, slot, lead = 0) {
     act.reset().play();
     act.paused = true;
     let bestT = 0, bestY = Infinity;
+    const floorPos = new THREE.Vector3(), floorQuat = new THREE.Quaternion();
     const n = 120;
     for (let i = 0; i <= n; i++) {
       act.time = (i / n) * clip.duration;
       mixerB.update(0);
       captureRest(propsB, slot);
-      if (rests[slot].pos.y < bestY) { bestY = rests[slot].pos.y; bestT = act.time; }
+      if (rests[slot].pos.y < bestY) {
+        bestY = rests[slot].pos.y; bestT = act.time;
+        floorPos.copy(rests[slot].pos); floorQuat.copy(rests[slot].quat);
+      }
     }
-    act.time = bestT;
-    mixerB.update(0);
-    captureRest(propsB, slot);         // final capture at the contact frame
+    if (lead > 0) {
+      /* first frame where the hands look "planted" (within lead of the floor)
+       * becomes the grab time; keep the TRUE floor height so the bell never
+       * floats, but take that frame's x/z so the handle meets the hands. */
+      let landT = bestT;
+      for (let i = 0; i <= n; i++) {
+        act.time = (i / n) * clip.duration;
+        mixerB.update(0);
+        pinKb(propsB);
+        if (propsB.bell.position.y <= bestY + lead) { landT = act.time; break; }
+      }
+      bestT = landT;
+      act.time = landT;
+      mixerB.update(0);
+      pinKb(propsB);
+      rests[slot].pos.copy(propsB.bell.position);
+      rests[slot].pos.y = floorPos.y;       // true floor height
+      rests[slot].quat.copy(floorQuat);     // floor orientation (not mid-air tilt)
+    } else {
+      rests[slot].pos.copy(floorPos);
+      rests[slot].quat.copy(floorQuat);
+      act.time = bestT;
+      mixerB.update(0);
+    }
     act.time = 0;
     return bestT;
   }
-  if (actStart) contact.start = scanContact(actStart, startClip, 'start');
+  if (actStart) contact.start = scanContact(actStart, startClip, 'start', 0.03);
   if (actEnd) {
     actStart.stop();                   // a paused-but-active action would blend its pose in
     contact.end = scanContact(actEnd, endClip, 'end');
