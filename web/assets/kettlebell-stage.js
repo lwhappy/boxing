@@ -377,14 +377,22 @@ async function loadModel() {
     palmLocal(p.root, p.handL, p.knucL, _pa);
     palmLocal(p.root, p.handR, p.knucR, _pb);
     p.mid.copy(_pa).add(_pb).multiplyScalar(0.5);
-    _x.copy(_pb).sub(_pa);
-    if (_x.lengthSq() < 1e-10) return;
-    _x.normalize();
-    /* local -Y must point at world-down (in root-local terms) */
+    /* The bell body ALWAYS hangs straight down. The Mixamo start clip is
+     * authored empty-handed with the hands at very unequal heights (~14cm),
+     * so tying the bell's up-axis to the hand line made it visibly tilt.
+     * Local +Y is locked to world-up; the crossbar (local X) is just the
+     * hand-to-hand line flattened onto the horizontal plane, so the handle
+     * stays level and the bell never cocks to one side. */
     p.root.getWorldQuaternion(_q).invert();
     _d.copy(WORLD_DOWN).applyQuaternion(_q);
-    _y.copy(_d).negate().addScaledVector(_x, _d.dot(_x)).normalize();  // local +Y = up
-    _z.crossVectors(_x, _y);
+    _y.copy(_d).negate().normalize();                 // local +Y = world up
+    _x.copy(_pb).sub(_pa);                            // hand-to-hand line
+    _x.addScaledVector(_y, -_x.dot(_y));              // flatten to horizontal
+    if (_x.lengthSq() < 1e-10) {                      // hands stacked vertically
+      _x.set(1, 0, 0).addScaledVector(_y, -_y.x);
+    }
+    _x.normalize();
+    _z.crossVectors(_x, _y).normalize();
     _m.makeBasis(_x, _y, _z);
     p.bell.position.copy(p.mid);
     p.bell.quaternion.setFromRotationMatrix(_m);
@@ -565,6 +573,12 @@ async function loadModel() {
       act.time = bestT;
       mixerB.update(0);
     }
+    /* Center the floor bell on the body's midline. The Mixamo start pose is
+     * asymmetric (the left hand reaches far to one side), so the palm midpoint
+     * sat ~12cm off-center — the bell looked parked beside the lifter. The
+     * feet/hips sit at root-local x=0, so snap the floor x there. The lift-off
+     * blend still carries it from this centered spot onto the hands. */
+    rests[slot].pos.x = 0;
     act.time = 0;
     return bestT;
   }
