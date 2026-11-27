@@ -156,8 +156,18 @@
   @media (max-width: 620px) {
     .kb-hero > * { min-width: 0; }
     #kb-stage-big .stage-btn { padding: 5px 8px; font-size: 10px; }
-    #kb-stage-big .hero-callout { width: calc(44% - 8px); padding: 6px 8px 7px; }
+    /* 手机竖屏：舞台竖向拉长，上面放 Spine/Float、下面放 Hinge/Grip，
+       中间整条留给运动员（人不再被卡片压住，卡片也不会互相重叠） */
+    #kb-stage-big { aspect-ratio: auto; height: 122vw; min-height: 420px; max-height: 560px; max-width: 100%; }
+    #kb-stage-big .hero-callout { width: calc(46% - 6px); padding: 6px 8px 7px; }
     #kb-stage-big .hero-callout .txt { font-size: 10px; line-height: 1.4; }
+  }
+  /* 320~360 的小屏：舞台变窄、卡片行数变多，卡片再收一号，保证中间那条空档
+     仍然高过运动员的整个动作幅度 */
+  @media (max-width: 360px) {
+    #kb-stage-big .hero-callout { width: calc(48% - 5px); padding: 5px 7px 6px; }
+    #kb-stage-big .hero-callout .txt { font-size: 9px; line-height: 1.32; }
+    #kb-stage-big .hero-callout .tag { font-size: 8px; letter-spacing: .1em; }
   }
 </style>
 <script>
@@ -448,6 +458,6 @@ window.PAGE = { section: 'sport', depth: 2, breadcrumb: [{ label: 'Kettlebell Sw
   }
 }
 </script>
-<script type="module" src="../../assets/kettlebell-stage.js?v=23"></script>
+<script type="module" src="../../assets/kettlebell-stage.js?v=24"></script>
 </body>
 </html>

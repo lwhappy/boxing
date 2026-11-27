@@ -648,11 +648,13 @@ async function loadModel() {
       Float: { right: '2.5%', top: '-9%' },
       Grip:  { right: '2.5%', top: '32%' },
     },
+    /* 窄屏：舞台竖向拉长后，上面 Spine/Float、下面 Hinge/Grip，
+       中间整条留给运动员；下排用 bottom 贴住控制条上方，避免压住按钮 */
     narrow: {
-      Hinge: { left: '0%', top: '16%' },
-      Spine: { left: '0%', top: '-17%' },
-      Float: { right: '0%', top: '-7%' },
-      Grip:  { right: '0%', top: '20%' },
+      Spine: { left: '1%', top: '1%' },
+      Float: { right: '1%', top: '1%' },
+      Hinge: { left: '1%', bottom: '54px' },
+      Grip:  { right: '1%', bottom: '54px' },
     },
   };
   const narrowMQ = window.matchMedia('(max-width: 620px)');
@@ -669,7 +671,8 @@ async function loadModel() {
       const p = set[c.tag];
       callEls[i].style.left = p.left || 'auto';
       callEls[i].style.right = p.right || 'auto';
-      callEls[i].style.top = p.top;
+      callEls[i].style.top = p.bottom ? 'auto' : p.top;
+      callEls[i].style.bottom = p.bottom || 'auto';
     });
   };
   layoutCallouts();
@@ -677,10 +680,12 @@ async function loadModel() {
   let frameY = 0.82;
   let frameX = 0;
   const applyNarrowFrame = () => {
-    const want = narrowMQ.matches ? 0.95 : 0.82;
+    /* 窄屏舞台拉高后画面中心落在人身上偏下，往上抬一点，让人落在
+       上下两条卡片带之间的空档里 */
+    const want = narrowMQ.matches ? 0.64 : 0.82;
     const d = want - frameY; frameY = want;
     controlsB.target.y += d; big.camera.position.y += d;
-    const wantX = narrowMQ.matches ? 0.40 : 0;
+    const wantX = narrowMQ.matches ? 0.66 : 0;
     const dx = wantX - frameX; frameX = wantX;
     controlsB.target.x += dx; big.camera.position.x += dx;
     controlsB.update();
