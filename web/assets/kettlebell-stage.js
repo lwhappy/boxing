@@ -853,27 +853,129 @@ async function loadModel() {
     if (smallHost) obs.observe(smallHost);
   }
 
-  /* ---- right arm must descend LIKE the left (not ahead of it) ----
-   * The empty-handed start donor drops the right arm ~0.9 s before the left,
-   * so the right hand overshoots BEHIND the handle while the left is still
-   * front-above it — the right hand then has to slide forward to grip. Until
-   * the grip frame we drive the right arm chain from a MIRROR of the left arm
-   * (whose arc is the correct "descend front-above, then curl onto the bar"
-   * motion), then fade the mirror out at contact so the baked, already
-   * symmetric pose takes over with no pop. The mirror of a Mixamo local
-   * quaternion across the sagittal plane is (x, -y, -z, w). */
-  const MIRROR_SEGS = ['shoulder', 'arm', 'forearm', 'hand'];
-  const mirL = MIRROR_SEGS.map((s) => boneExact(rootB, 'left' + s));
-  const mirR = MIRROR_SEGS.map((s) => boneExact(rootB, 'right' + s));
-  const _mq = new THREE.Quaternion();
-  function mirrorRightArm(amt) {
-    if (amt <= 0) return;
-    for (let i = 0; i < mirL.length; i++) {
-      const l = mirL[i], r = mirR[i];
-      if (!l || !r) continue;
-      _mq.set(l.quaternion.x, -l.quaternion.y, -l.quaternion.z, l.quaternion.w).normalize();
-      r.quaternion.slerp(_mq, amt);
+  /* ---- make the right arm descend the way the left one does ----
+   * The empty-handed start donor lowers the right arm long before the left, so
+   * the right hand reaches the bell early, hangs low behind the handle and
+   * then slides forward to grip.
+   *
+   * Two cheaper fixes both misbehave here:
+   *  - copying the left arm's LOCAL rotations (naive mirror) leaves the hand
+   *    ~7 cm too far inboard, so it skims past / behind the thigh and looks
+   *    like it slides from behind the leg to the front;
+   *  - replaying the right arm late keeps its own (behind-the-hip) path.
+   * Mirroring the left arm's WORLD orientation is exact orientation-wise but
+   * still misses, because the two shoulder roots are not symmetric on this rig
+   * (~7 cm apart), and rotations can never move a bone root.
+   *
+   * So drive the right wrist to the exact mirror of the left wrist with a
+   * two-bone IK, elbow steered by the mirrored left elbow. The right hand then
+   * physically follows the left hand's path — the path the user is happy with
+   * — and can never wander behind the leg.
+   *
+   * The mirror plane is the body's sagittal plane: normal sideDir, through the
+   * midpoint of the two upper-arm roots (that midpoint is the midline by
+   * definition, so the target is always reachable and stays symmetric).
+   * Weight fades to 0 over the last ARM_FADE seconds, handing the pose back to
+   * the baked clip exactly at the grip frame. */
+  const IK_SEGS = ['arm', 'forearm', 'hand'];
+  const ikL = IK_SEGS.map((s) => boneExact(rootB, 'left' + s));
+  const ikR = IK_SEGS.map((s) => boneExact(rootB, 'right' + s));
+  const ARM_FADE = 0.35;
+  const _armOk = ikL.every(Boolean) && ikR.every(Boolean) && !!(ikR[0] && ikR[0].parent);
+  const _nrm = sideDir.clone().normalize();
+  const _refl = new THREE.Matrix4();
+  {
+    const n = _nrm;
+    _refl.set(
+      1 - 2 * n.x * n.x, -2 * n.x * n.y, -2 * n.x * n.z, 0,
+      -2 * n.y * n.x, 1 - 2 * n.y * n.y, -2 * n.y * n.z, 0,
+      -2 * n.z * n.x, -2 * n.z * n.y, 1 - 2 * n.z * n.z, 0,
+      0, 0, 0, 1,
+    );
+  }
+  const _vS = new THREE.Vector3(), _vT = new THREE.Vector3(), _vE = new THREE.Vector3();
+  const _vA = new THREE.Vector3(), _vB = new THREE.Vector3(), _vP = new THREE.Vector3();
+  const _vMid = new THREE.Vector3(), _vDir = new THREE.Vector3(), _vPole = new THREE.Vector3();
+  const _vC = new THREE.Vector3();
+  const _qA = new THREE.Quaternion(), _qB = new THREE.Quaternion(), _qC = new THREE.Quaternion();
+  const _qbaked = [new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion()];
+  const _qik = [new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion()];
+  const _mL = new THREE.Matrix4(), _mR = new THREE.Matrix4(), _mP = new THREE.Matrix4();
+  const armLen = [0, 0];
+  if (_armOk) {
+    ikR[0].getWorldPosition(_vA); ikR[1].getWorldPosition(_vB);
+    armLen[0] = _vA.distanceTo(_vB);
+    ikR[1].getWorldPosition(_vA); ikR[2].getWorldPosition(_vB);
+    armLen[1] = _vA.distanceTo(_vB);
+  }
+  /* rotate a bone in world space so its axis (bone -> child) points at
+   * `target`, converting the result back into the bone's local rotation */
+  const _qAim = new THREE.Quaternion();
+  function aimBone(bone, target) {
+    bone.getWorldPosition(_vA);
+    const ch = bone.children[0];
+    if (!ch) return;
+    ch.getWorldPosition(_vB);
+    _vC.copy(_vB).sub(_vA).normalize();                 // current bone axis (world)
+    _vB.copy(target).sub(_vA).normalize();              // desired bone axis (world)
+    _qA.setFromUnitVectors(_vC, _vB);                   // shortest world rotation
+    bone.getWorldQuaternion(_qB);
+    _qC.copy(_qA).multiply(_qB);                        // desired world rotation
+    bone.parent.getWorldQuaternion(_qA).invert();
+    _qAim.copy(_qA).multiply(_qC);                      // -> local
+    bone.quaternion.copy(_qAim);
+    bone.updateMatrixWorld(true);
+  }
+  /* mirror a world point across the sagittal plane (normal _nrm, through mid) */
+  const _vHelp = new THREE.Vector3();
+  function reflectPoint(p, mid, out) {
+    _vHelp.copy(p).sub(mid);
+    out.copy(_vHelp).addScaledVector(_nrm, -2 * _vHelp.dot(_nrm)).add(mid);
+    return out;
+  }
+  function poseRightArmFromMirror(w) {
+    if (!_armOk || w <= 0) return;
+    rootB.updateMatrixWorld(true);
+    for (let i = 0; i < 3; i++) _qbaked[i].copy(ikR[i].quaternion);
+
+    ikL[0].getWorldPosition(_vA); ikR[0].getWorldPosition(_vS);
+    _vMid.addVectors(_vA, _vS).multiplyScalar(0.5);          // body midline point
+    ikL[2].getWorldPosition(_vT);                            // left wrist
+    reflectPoint(_vT, _vMid, _vT);
+    ikL[1].getWorldPosition(_vP);                            // left elbow (pole)
+    reflectPoint(_vP, _vMid, _vP);
+
+    const L1 = armLen[0], L2 = armLen[1];
+    _vDir.copy(_vT).sub(_vS);
+    let d = _vDir.length() || 1e-4;
+    _vDir.divideScalar(d);
+    d = Math.min(Math.max(d, Math.abs(L1 - L2) + 0.004), L1 + L2 - 0.004);
+    const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
+    const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    _vPole.copy(_vP).sub(_vS);
+    _vPole.addScaledVector(_vDir, -_vPole.dot(_vDir));
+    if (_vPole.lengthSq() < 1e-8) _vPole.set(0, 0, 1).cross(_vDir);
+    _vPole.normalize();
+    _vE.copy(_vS).addScaledVector(_vDir, a).addScaledVector(_vPole, h);
+
+    aimBone(ikR[0], _vE);
+    aimBone(ikR[1], _vT);
+
+    /* hand keeps the mirrored copy of the left hand's ORIENTATION */
+    _mL.extractRotation(ikL[2].matrixWorld);
+    _mR.multiplyMatrices(_refl, _mL).multiply(_refl);
+    _mP.extractRotation(ikR[2].parent.matrixWorld);
+    _qA.setFromRotationMatrix(_mP).invert();
+    _qB.setFromRotationMatrix(_mR);
+    ikR[2].quaternion.copy(_qA).multiply(_qB);
+
+    if (w < 1) {
+      for (let i = 0; i < 3; i++) {
+        _qik[i].copy(ikR[i].quaternion);
+        ikR[i].quaternion.copy(_qbaked[i]).slerp(_qik[i], w);
+      }
     }
+    rootB.updateMatrixWorld(true);
   }
 
   const clock = new THREE.Clock();
@@ -888,13 +990,10 @@ async function loadModel() {
       viewTw.tick(dt);
       if (phase === 'rest' && time >= restUntil) startCycle();
       mixerB.update(dt);
-      /* while the bell is still on the floor and the hands are descending
-       * toward it, mirror the left arm onto the right so BOTH hands come down
-       * from the front-above; the weight fades to 0 exactly at the grip frame,
-       * letting the baked symmetric pose take over seamlessly. */
       if (phase === 'start' && bellMode === 'ground' && actStart) {
+        /* right hand follows the mirrored left hand until the grip frame */
         const remain = contact.start - actStart.time;      // seconds until grip
-        mirrorRightArm(THREE.MathUtils.clamp(remain / 0.35, 0, 1));
+        poseRightArmFromMirror(THREE.MathUtils.clamp(remain / ARM_FADE, 0, 1));
       }
       /* fingers close onto the bar once the bell is held, and reopen as it
        * is set back down — the open hand descends, then visibly grips */
@@ -964,6 +1063,12 @@ async function loadModel() {
     phase: () => phase,
     bellMode: () => bellMode,
     contactStart: () => contact.start,
+    mirrorInfo: () => ({
+      ok: _armOk,
+      t: actStart ? +actStart.time.toFixed(2) : -1,
+      w: actStart ? +THREE.MathUtils.clamp((contact.start - actStart.time) / ARM_FADE, 0, 1).toFixed(2) : 0,
+      phase, bellMode,
+    }),
     bellFit,
     seekBig: (t) => {
       /* jump straight into the looping swing (QA / hero framing) */
