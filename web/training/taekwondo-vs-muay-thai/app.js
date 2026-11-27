@@ -682,7 +682,7 @@ function tick() {
     loadingText.textContent = 'Loading the muay thai fighter…';
     await muay.load('./models/muay-man.glb?v=1', 'muay');
     loadingText.textContent = 'Loading the taekwondo fighter…';
-    await tkd.load('./models/tkd-man.glb?v=1', 'tkd');
+    await tkd.load('./models/tkd-man.glb?v=2', 'tkd');
     for (const f of [muay, tkd]) {
       for (const a of Object.values(f.actions)) a.setEffectiveTimeScale(TS);
     }
