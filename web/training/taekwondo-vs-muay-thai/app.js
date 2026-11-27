@@ -631,15 +631,18 @@ new ResizeObserver(() => {
 const v = new THREE.Vector3();
 function placeHp(el, fighter) {
   if (!fighter.head || !fighter.ready) { el.style.display = 'none'; return; }
+  const docked = stageEl.classList.contains('tmt-docked');
   fighter.head.getWorldPosition(v);
-  v.y += 0.45;
+  v.y += docked ? 0.32 : 0.45;
   v.project(camera);
   const stage = canvas.parentElement.getBoundingClientRect();
   const x = (v.x * 0.5 + 0.5) * stage.width;
   const y = (-v.y * 0.5 + 0.5) * stage.height;
   el.style.display = v.z < 1 ? 'flex' : 'none';
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
+  /* keep the whole kit inside the stage: name capsule must not clip at the top */
+  const halfW = el.offsetWidth / 2, hgt = el.offsetHeight;
+  el.style.left = Math.min(Math.max(x, halfW + 2), stage.width - halfW - 2) + 'px';
+  el.style.top = Math.min(Math.max(y, hgt + 2), stage.height - 2) + 'px';
 }
 
 /* ---------- loop ---------- */
