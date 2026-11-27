@@ -853,6 +853,29 @@ async function loadModel() {
     if (smallHost) obs.observe(smallHost);
   }
 
+  /* ---- right arm must descend LIKE the left (not ahead of it) ----
+   * The empty-handed start donor drops the right arm ~0.9 s before the left,
+   * so the right hand overshoots BEHIND the handle while the left is still
+   * front-above it — the right hand then has to slide forward to grip. Until
+   * the grip frame we drive the right arm chain from a MIRROR of the left arm
+   * (whose arc is the correct "descend front-above, then curl onto the bar"
+   * motion), then fade the mirror out at contact so the baked, already
+   * symmetric pose takes over with no pop. The mirror of a Mixamo local
+   * quaternion across the sagittal plane is (x, -y, -z, w). */
+  const MIRROR_SEGS = ['shoulder', 'arm', 'forearm', 'hand'];
+  const mirL = MIRROR_SEGS.map((s) => boneExact(rootB, 'left' + s));
+  const mirR = MIRROR_SEGS.map((s) => boneExact(rootB, 'right' + s));
+  const _mq = new THREE.Quaternion();
+  function mirrorRightArm(amt) {
+    if (amt <= 0) return;
+    for (let i = 0; i < mirL.length; i++) {
+      const l = mirL[i], r = mirR[i];
+      if (!l || !r) continue;
+      _mq.set(l.quaternion.x, -l.quaternion.y, -l.quaternion.z, l.quaternion.w).normalize();
+      r.quaternion.slerp(_mq, amt);
+    }
+  }
+
   const clock = new THREE.Clock();
   let time = 0;
   (function tickFrame() {
@@ -865,6 +888,14 @@ async function loadModel() {
       viewTw.tick(dt);
       if (phase === 'rest' && time >= restUntil) startCycle();
       mixerB.update(dt);
+      /* while the bell is still on the floor and the hands are descending
+       * toward it, mirror the left arm onto the right so BOTH hands come down
+       * from the front-above; the weight fades to 0 exactly at the grip frame,
+       * letting the baked symmetric pose take over seamlessly. */
+      if (phase === 'start' && bellMode === 'ground' && actStart) {
+        const remain = contact.start - actStart.time;      // seconds until grip
+        mirrorRightArm(THREE.MathUtils.clamp(remain / 0.35, 0, 1));
+      }
       /* fingers close onto the bar once the bell is held, and reopen as it
        * is set back down — the open hand descends, then visibly grips */
       const wantGrip = bellMode === 'hands' ? 1 : 0;
@@ -932,6 +963,7 @@ async function loadModel() {
     setGroup,
     phase: () => phase,
     bellMode: () => bellMode,
+    contactStart: () => contact.start,
     bellFit,
     seekBig: (t) => {
       /* jump straight into the looping swing (QA / hero framing) */
