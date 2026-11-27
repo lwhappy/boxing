@@ -38,10 +38,6 @@ from mathutils import Matrix, Vector
 RIG = "/Users/justrun/project/boxing-game/sport/rig/man.fbx"
 CLIPS = [
     ("carry", "/Users/justrun/project/boxing-game/sport/rig/Walking.fbx"),
-    # bend down + take hold + stand up — the same pickup the back-squat page
-    # uses; the intro plays once before the carry loop (bells start ON THE
-    # FLOOR, then ride the palms once both hands arrive)
-    ("grab-bar", "/Users/justrun/project/boxing-game/sport/rig/Back Squat grabbar.fbx"),
 ]
 OUT = "/Users/justrun/project/boxing-3/web/media/glb/sport-farmercarry.glb"
 MAXTEX = 2048
@@ -457,7 +453,7 @@ print(f"[sport] arms locked down over {fr_c1 - fr_c0 + 1} frames")
 
 
 for a in list(bpy.data.actions):
-    if a.name not in {"carry", "grab-bar"}:
+    if a.name not in {"carry"}:
         bpy.data.actions.remove(a)
 for track in list(ad.nla_tracks):
     if track.strips and track.strips[0].action is None:
