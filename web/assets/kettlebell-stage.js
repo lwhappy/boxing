@@ -405,6 +405,38 @@ async function loadModel() {
     p.bell.position.copy(p.mid);
     p.bell.quaternion.setFromRotationMatrix(_m);
   }
+
+  /* ---- finger curl: the Mixamo "start" clip is authored EMPTY-HANDED — the
+   * hands reach down OPEN, so although the palm bone rides the crossbar, the
+   * fingers hang 4–7cm below it and read as "hand beside the bell, not
+   * gripping". Closing the four fingers onto the bar is what makes the grab
+   * honest: +local-X on phalanges 1..3 lifts each fingertip from ~7cm under
+   * the bar to within ~6mm of it (verified on BOTH hands). Applied AFTER the
+   * mixer writes the clip each frame (the mixer overwrites bone quats), so it
+   * is a true additive curl, not a baked pose. ---- */
+  const CURL_AMT = 1.0;                 // radians on the first phalanx
+  const CURL_FACTOR = [0, 1, 0.8, 0.6]; // diminishing down the finger chain
+  const _cq = new THREE.Quaternion();
+  const _cx = new THREE.Vector3(1, 0, 0);
+  function findFingerBones(root) {
+    const out = [];
+    root.traverse((o) => {
+      if (!o.isBone) return;
+      const m = o.name.match(/Hand(Index|Middle|Ring|Pinky)([123])$/i);
+      if (!m) return;
+      const j = +m[2];
+      if (j <= 3) out.push({ bone: o, f: CURL_FACTOR[j] });
+    });
+    return out;
+  }
+  function applyGrip(p, amt) {
+    if (!p.fingers || amt <= 0) return;
+    for (const { bone, f } of p.fingers) {
+      _cq.setFromAxisAngle(_cx, CURL_AMT * f * amt);
+      bone.quaternion.multiply(_cq);
+    }
+  }
+
   function attachProps(root) {
     const bell = makeKettlebell();
     root.add(bell);
@@ -412,6 +444,8 @@ async function loadModel() {
       root, bell, mid: new THREE.Vector3(),
       handL: boneExact(root, 'lefthand'), handR: boneExact(root, 'righthand'),
       knucL: boneExact(root, 'lefthandmiddle1'), knucR: boneExact(root, 'righthandmiddle1'),
+      fingers: findFingerBones(root),
+      grip: 0,
     };
     pinKb(p);
     return p;
@@ -831,6 +865,11 @@ async function loadModel() {
       viewTw.tick(dt);
       if (phase === 'rest' && time >= restUntil) startCycle();
       mixerB.update(dt);
+      /* fingers close onto the bar once the bell is held, and reopen as it
+       * is set back down — the open hand descends, then visibly grips */
+      const wantGrip = bellMode === 'hands' ? 1 : 0;
+      propsB.grip += (wantGrip - propsB.grip) * Math.min(1, dt * 20);
+      applyGrip(propsB, propsB.grip);
       updateBell(propsB);
       controlsB.update();
       big.renderer.render(big.scene, big.camera);
@@ -838,6 +877,8 @@ async function loadModel() {
     }
     if (small && vis.small) {
       small.mixer.update(dt);
+      small.props.grip = 1;             // the small stage only ever holds the bell
+      applyGrip(small.props, 1);
       pinKb(small.props);
       small.controls.update();
       small.renderer.render(small.scene, small.camera);
@@ -903,6 +944,7 @@ async function loadModel() {
     startCycle,
     big: { mixer: mixerB, act: actSwing, actStart, actEnd, camera: big.camera, controls: controlsB, root: rootB, scene: big.scene },
     updateBell: () => updateBell(propsB),
+    applyGrip: (a) => { propsB.grip = a; applyGrip(propsB, a); },
     small: small ? { camera: small.camera, controls: small.controls, mixer: small.mixer, root: small.root, scene: small.scene } : null,
     groups: GROUPS.map((g) => g.key),
     props: propsB,
