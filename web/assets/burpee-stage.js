@@ -135,7 +135,7 @@ function draw(dt=0) {
   const L=state.local;
   let ikW=0;
   if(!state.turn&&L>0.62&&L<3.45) ikW=L<0.88?(L-0.62)/0.26:L>3.18?(3.45-L)/0.27:1;
-  poseArmsIK(ikW);
+  poseArmsIK(ikW,state.dir);
   gap.visible=!state.turn&&state.local>=2.98&&state.local<=3.16;
   // Yellow start line: extends to both sides and shrinks back while
   // pulsing bright, through the whole first rep — a "hands stay behind
@@ -216,7 +216,7 @@ function buildArmIK() {
   }
   armIK = { arm, fore, hand, flat, zPos };
 }
-function poseArmsIK(w) {
+function poseArmsIK(w, dir) {
   if (!armIK || w <= 0) return;
   athlete.updateMatrixWorld(true);
   athlete.getWorldQuaternion(_aRoot);
@@ -225,15 +225,19 @@ function poseArmsIK(w) {
     _abaked[0].copy(A.quaternion); _abaked[1].copy(F.quaternion); _abaked[2].copy(H.quaternion);
     A.getWorldPosition(_aS); F.getWorldPosition(_aB); H.getWorldPosition(_aP);
     const l1 = _aS.distanceTo(_aB), l2 = _aB.distanceTo(_aP);
-    _aT.set(_aS.x + 0.03, 0.085, armIK.zPos[i]);       // palm on the floor, under the shoulder
+    /* captured hand z is useless: the clip plants BOTH palms on the same
+     * side. Target the shoulder instead — symmetric by construction. */
+    const outward = dir * (i === 0 ? 1 : -1);
+    _aT.set(_aS.x + 0.03, 0.085, _aS.z + outward * 0.10); // palm under the shoulder, slightly out
     _aD.copy(_aT).sub(_aS);
     let d = _aD.length() || 1e-4;
     _aD.divideScalar(d);
     d = Math.min(Math.max(d, Math.abs(l1 - l2) + 0.004), l1 + l2 - 0.004);
     const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
     const hh = Math.sqrt(Math.max(0, l1 * l1 - a * a));
-    /* pole: elbows flare out to the sides and back, like the chest-to-floor pose */
-    _aPole.set(-0.35, 0.15, Math.sign(armIK.zPos[i]) * 0.8).applyQuaternion(_aRoot);
+    /* pole: elbows flare out to the sides and back, in WORLD axes
+     * (travel axis = x, outward = z mirrored by direction) */
+    _aPole.set(-dir * 0.35, 0.15, outward * 0.8);
     _aP.copy(_aS).add(_aPole);
     _aPole.copy(_aP).sub(_aS);
     _aPole.addScaledVector(_aD, -_aPole.dot(_aD));

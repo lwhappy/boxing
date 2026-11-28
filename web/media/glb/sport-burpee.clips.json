@@ -1,0 +1,16 @@
+{
+  "scale": 1.83,
+  "duration": 5.4,
+  "takeoff": 3.9,
+  "landing": 4.52,
+  "palmForward": 0.3,
+  "toeForward": 0,
+  "gap": 0.3,
+  "gapWindow": [
+    2.98,
+    3.16
+  ],
+  "source": "man.fbx",
+  "cycle": "burpee-cycle",
+  "fps": 30
+}
