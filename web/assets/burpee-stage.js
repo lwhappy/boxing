@@ -71,9 +71,9 @@ function sample(t) {
   let rem=t;
   for(let lap=0;lap<4;lap++) {
     const dir=lap%2?-1:1;
-    // Lap 1 starts 30 cm behind the line: the palms plant ON the yellow
-    // start line, never past it (palmForward = 0.3 in the clip metadata).
-    const start=lap===0?-.30:(dir===1?-.10:20.10);
+    // Lap 1 starts well behind the line: the palms plant clearly BEFORE the
+    // yellow start line, never on or past it (palmForward = 0.3).
+    const start=lap===0?-.55:(dir===1?-.10:20.10);
     const end=dir===1?20.55:-.55;
     if(rem<=LEG || lap===3) {
       const v=Math.min(rem,LEG), rep=Math.min(9,Math.floor(v/CYCLE));
@@ -132,12 +132,15 @@ function draw(dt=0) {
   }
   athlete.updateMatrixWorld(true);
   gap.visible=!state.turn&&state.local>=2.98&&state.local<=3.16;
-  // Yellow start line blinks while the first rep's palms are planted:
-  // a "hands stay on this line, never past it" reminder.
+  // Yellow start line: extends to both sides and shrinks back while
+  // pulsing bright, through the whole first rep — a "hands stay behind
+  // this line" reminder that reads from any camera angle.
   if(startLine) {
-    const hint=!state.turn&&state.lap===0&&state.rep===0&&state.local<3.9;
-    startLine.material.emissive.setHex(0xffd35e);
-    startLine.material.emissiveIntensity=hint?(Math.sin(time*Math.PI*2/.45)>0?1.6:.12):0;
+    const hint=!state.turn&&state.lap===0&&state.rep===0&&state.local<CYCLE;
+    const p=hint?Math.pow(Math.sin(((time%.9)/.9)*Math.PI),1.5):0;
+    startLine.material.emissive.setHex(0xffe08a);
+    startLine.material.emissiveIntensity=hint?p*2.8:0;
+    startLine.scale.z=1+p*.8;
   }
   gap.position.set(state.x,.01,.61);gap.rotation.y=state.dir===1?0:Math.PI;
   $('bp-gap-label').hidden=!gap.visible;
