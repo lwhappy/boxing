@@ -228,7 +228,7 @@ function poseArmsIK(w, dir) {
     /* captured hand z is useless: the clip plants BOTH palms on the same
      * side. Target the shoulder instead — symmetric by construction. */
     const outward = dir * (i === 0 ? 1 : -1);
-    _aT.set(_aS.x + 0.03, 0.085, _aS.z + outward * 0.10); // palm under the shoulder, slightly out
+    _aT.set(_aS.x + 0.03, 0.085, _aS.z + outward * 0.26); // palm under the shoulder, shoulder-width stance
     _aD.copy(_aT).sub(_aS);
     let d = _aD.length() || 1e-4;
     _aD.divideScalar(d);
