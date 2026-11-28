@@ -131,11 +131,6 @@ function draw(dt=0) {
     athlete.position.y+=.055*Math.abs(Math.sin(k*Math.PI*4));
   }
   athlete.updateMatrixWorld(true);
-  // palms stay under the shoulders for the whole hands-on-floor window
-  const L=state.local;
-  let ikW=0;
-  if(!state.turn&&L>0.62&&L<3.45) ikW=L<0.88?(L-0.62)/0.26:L>3.18?(3.45-L)/0.27:1;
-  poseArmsIK(ikW,state.dir);
   gap.visible=!state.turn&&state.local>=2.98&&state.local<=3.16;
   // Yellow start line: extends to both sides and shrinks back while
   // pulsing bright, through the whole first rep — a "hands stay behind
@@ -166,99 +161,8 @@ function draw(dt=0) {
   updateCamera(state,dt);renderer.render(scene,camera);
 }
 function seek(t) {time=clamp(t,0,TOTAL);playing=false;cameraReset=true;draw();return {...state};}
-/* ---------- planted-arm IK: palms under the shoulders ---------- */
-/* The clip plants the palms ~20 cm ahead of the shoulders with slanted
- * forearms. While the hands are on the floor, this IK pulls each palm under
- * its shoulder: straight arms in the plank, bent elbows at chest-to-floor.
- * Palm orientation is kept exactly as the clip plants it (flat on the floor). */
-let armIK = null;
-const _jA = new THREE.Vector3(), _jB = new THREE.Vector3(), _jC = new THREE.Vector3();
-const _aS = new THREE.Vector3(), _aB = new THREE.Vector3(), _aT = new THREE.Vector3(), _aE = new THREE.Vector3(),
-      _aP = new THREE.Vector3(), _aD = new THREE.Vector3(), _aPole = new THREE.Vector3();
-const _aqA = new THREE.Quaternion(), _aqB = new THREE.Quaternion(), _aqC = new THREE.Quaternion(),
-      _aqAim = new THREE.Quaternion(), _aRoot = new THREE.Quaternion();
-const _abaked = [new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion()];
-const _aik = [new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion()];
-function aimBone(bone, target) {
-  bone.getWorldPosition(_jA);
-  const ch = bone.children[0];
-  if (!ch) return;
-  ch.getWorldPosition(_jB);
-  _jC.copy(_jB).sub(_jA).normalize();
-  _jB.copy(target).sub(_jA).normalize();
-  _aqA.setFromUnitVectors(_jC, _jB);
-  bone.getWorldQuaternion(_aqB);
-  _aqC.copy(_aqA).multiply(_aqB);
-  bone.parent.getWorldQuaternion(_aqA).invert();
-  _aqAim.copy(_aqA).multiply(_aqC);
-  bone.quaternion.copy(_aqAim);
-  bone.updateMatrixWorld(true);
-}
-function buildArmIK() {
-  const get = n => athlete.getObjectByName('mixamorig' + n);
-  const arm = [get('LeftArm'), get('RightArm')];
-  const fore = [get('LeftForeArm'), get('RightForeArm')];
-  const hand = [get('LeftHand'), get('RightHand')];
-  if (arm.some(b => !b) || fore.some(b => !b) || hand.some(b => !b)) return;
-  /* capture the palm-flat hand orientation at a clip frame where both palms
-   * rest flat on the floor, stored relative to the athlete root so it follows
-   * the shuttle turns */
-  action.time = 1.0; mixer.update(0); athlete.updateMatrixWorld(true);
-  athlete.getWorldQuaternion(_aRoot);
-  const inv = _aRoot.clone().invert();
-  const flat = [], zPos = [];
-  const v = new THREE.Vector3();
-  for (let i = 0; i < 2; i++) {
-    const q = hand[i].getWorldQuaternion(new THREE.Quaternion()).premultiply(inv);
-    flat.push(q);
-    hand[i].getWorldPosition(v);
-    zPos.push(v.z);
-  }
-  armIK = { arm, fore, hand, flat, zPos };
-}
-function poseArmsIK(w, dir) {
-  if (!armIK || w <= 0) return;
-  athlete.updateMatrixWorld(true);
-  athlete.getWorldQuaternion(_aRoot);
-  for (let i = 0; i < 2; i++) {
-    const A = armIK.arm[i], F = armIK.fore[i], H = armIK.hand[i];
-    _abaked[0].copy(A.quaternion); _abaked[1].copy(F.quaternion); _abaked[2].copy(H.quaternion);
-    A.getWorldPosition(_aS); F.getWorldPosition(_aB); H.getWorldPosition(_aP);
-    const l1 = _aS.distanceTo(_aB), l2 = _aB.distanceTo(_aP);
-    /* captured hand z is useless: the clip plants BOTH palms on the same
-     * side. Target the shoulder instead — symmetric by construction. */
-    const outward = dir * (i === 0 ? 1 : -1);
-    _aT.set(_aS.x + 0.03, 0.085, _aS.z + outward * 0.26); // palm under the shoulder, shoulder-width stance
-    _aD.copy(_aT).sub(_aS);
-    let d = _aD.length() || 1e-4;
-    _aD.divideScalar(d);
-    d = Math.min(Math.max(d, Math.abs(l1 - l2) + 0.004), l1 + l2 - 0.004);
-    const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
-    const hh = Math.sqrt(Math.max(0, l1 * l1 - a * a));
-    /* pole: elbows flare out to the sides and back, in WORLD axes
-     * (travel axis = x, outward = z mirrored by direction) */
-    _aPole.set(-dir * 0.35, 0.15, outward * 0.8);
-    _aP.copy(_aS).add(_aPole);
-    _aPole.copy(_aP).sub(_aS);
-    _aPole.addScaledVector(_aD, -_aPole.dot(_aD));
-    if (_aPole.lengthSq() < 1e-8) _aPole.set(0, 0, 1).cross(_aD);
-    _aPole.normalize();
-    _aE.copy(_aS).addScaledVector(_aD, a).addScaledVector(_aPole, hh);
-    aimBone(A, _aE);
-    aimBone(F, _aT);
-    /* palm orientation: the clip's own flat-on-floor orientation */
-    _aqB.copy(_aRoot).multiply(armIK.flat[i]);
-    H.parent.getWorldQuaternion(_aqA).invert();
-    H.quaternion.copy(_aqA).multiply(_aqB);
-    _aik[0].copy(A.quaternion); _aik[1].copy(F.quaternion); _aik[2].copy(H.quaternion);
-    A.quaternion.copy(_abaked[0]).slerp(_aik[0], w);
-    F.quaternion.copy(_abaked[1]).slerp(_aik[1], w);
-    H.quaternion.copy(_abaked[2]).slerp(_aik[2], w);
-  }
-  athlete.updateMatrixWorld(true);
-}
-
-async function init() {  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
+async function init() {
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
   scene=new THREE.Scene();scene.background=new THREE.Color(0x1b222c);scene.fog=new THREE.Fog(0x1b222c,25,65);
@@ -294,7 +198,6 @@ async function init() {  renderer=new THREE.WebGLRenderer({canvas,antialias:true
   mixer=new THREE.AnimationMixer(athlete);
   const clip=gltf.animations.find(c=>c.name===meta.cycle)||gltf.animations[0];if(!clip)throw new Error('No authored animation in model');
   action=mixer.clipAction(clip);action.play();action.paused=true;ready=true;$('bp-loading').hidden=true;
-  buildArmIK();
   $('bp-play').onclick=()=>{if(time>=TOTAL)time=0;playing=!playing;draw();};
   $('bp-reset').onclick=()=>{time=0;playing=true;cameraReset=true;manual=false;draw();};
   $('bp-speed').onchange=e=>speed=Number(e.target.value);
